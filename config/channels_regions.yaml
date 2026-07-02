@@ -1,0 +1,23 @@
+# Channel -> region aggregation and homologous L/R pairs (10-20 montage).
+# Adjust to the montage morgoth-viewer actually uses (confirm in Phase 2).
+
+regions:
+  L_frontal:  [Fp1, F3, F7]
+  R_frontal:  [Fp2, F4, F8]
+  L_temporal: [T3, T5]           # (T7, P7 in modern nomenclature)
+  R_temporal: [T4, T6]           # (T8, P8)
+  L_central:  [C3]
+  R_central:  [C4]
+  L_parietal: [P3]
+  R_parietal: [P4]
+  L_occipital: [O1]
+  R_occipital: [O2]
+  midline:    [Fz, Cz, Pz]
+
+# Homologous region pairs for asymmetry log-ratios (Left / Right).
+homologous_pairs:
+  frontal:   [L_frontal, R_frontal]
+  temporal:  [L_temporal, R_temporal]
+  central:   [L_central, R_central]
+  parietal:  [L_parietal, R_parietal]
+  occipital: [L_occipital, R_occipital]

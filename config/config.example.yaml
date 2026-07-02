@@ -1,0 +1,71 @@
+# Copy to config/config.yaml and edit. config.yaml is gitignored.
+
+data:
+  s3:
+    bucket: bdsp-opendata-credentialed
+    growth_curves: morgoth2/data/internal_dataset/Growth_curves/
+    focal_examples: morgoth1/data/internal_dataset/FOCALSLOWING/
+    gen_examples:   morgoth1/data/internal_dataset/GENSLOWING/
+  local:
+    raw:     ./data/raw
+    derived: ./data/derived
+
+# OMOP (age/sex at EEG). Credentials come from env, NOT this file. See docs/omop-query-instructions.txt
+omop:
+  host: localhost      # via SSH tunnel to the Aurora endpoint
+  port: 5433
+  dbname: bdsp_omop
+  # user/password: set OMOP_USER / OMOP_PASSWORD in the environment
+  eeg_concept_id: 4181917
+  psg_concept_id: 4189015
+
+# Multitaper spectral estimation — MUST match morgoth-viewer preprocessing (confirm).
+spectral:
+  segment_seconds: 15
+  fs: 200                 # confirm sampling rate
+  time_bandwidth: 4      # NW
+  n_tapers: 7
+  freq_range: [0.5, 30]
+
+bands:                    # Hz
+  delta: [0.5, 4]
+  theta: [4, 7]
+  alpha: [8, 13]
+  beta:  [13, 30]
+  low_freq: [0.5, 7]
+  broadband: [0.5, 30]
+
+states:                  # norms are computed per-state
+  - wake_eyes_open
+  - wake_eyes_closed
+  - wake_drowsy
+  - N1
+  - N2
+  - N3
+  - REM
+
+scoring:
+  z_threshold: 2.0       # tau; calibrate against held-out normals
+  # ACNS-style prevalence words (fraction of usable state time)
+  prevalence_words:
+    rare:        [0.00, 0.01]
+    occasional:  [0.01, 0.10]
+    frequent:    [0.10, 0.50]
+    abundant:    [0.50, 0.90]
+    continuous:  [0.90, 1.01]
+  # provisional patient-level-z severity words
+  severity_words:
+    mild:     [2.0, 3.0]
+    moderate: [3.0, 4.5]
+    marked:   [4.5, 999]
+
+normative_model:
+  method: gamlss         # gamlss | quantile_regression | robust_zscore
+  age_continuous: true
+  percentiles: [3, 10, 25, 50, 75, 90, 97]
+  validation: loso       # leave-one-subject-out
+
+control_group:
+  age_bands: [[0,2],[3,5],[6,12],[13,17],[18,29],[30,44],[45,59],[60,74],[75,120]]
+  sexes: [F, M]
+  min_usable_segments_per_state: 20   # denominator guard

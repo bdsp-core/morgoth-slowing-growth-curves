@@ -1,0 +1,168 @@
+# Querying the BDSP de-identified OMOP database
+
+A practical guide to connecting to and querying the production **BDSP OMOP** database (Aurora PostgreSQL,
+database `bdsp_omop`). The data is **de-identified** and follows the **OMOP Common Data Model (CDM)** — all
+sites' data live together in one unified set of tables.
+
+> You need credentials + network access first (see below). Ask **Brandon** for: the Aurora **host/endpoint**,
+> the **read-only DB user + password**, and (if off the VPC) the **SSH bastion** host + key. None of those are
+> in this doc on purpose.
+
+---
+
+## 1. Connect
+
+The database is in a **private VPC**, so you reach it either from the production bastion or through an **SSH
+tunnel** from your laptop to `localhost:5433`.
+
+**Open a tunnel (laptop):**
+```bash
+ssh -i <your-bastion-key.pem> -N -L 5433:<AURORA_ENDPOINT>:5432 ec2-user@<BASTION_HOST>
+# leave this running in its own terminal; it drops sometimes — just restart it
+```
+
+**Then connect with psql:**
+```bash
+psql "host=localhost port=5433 dbname=bdsp_omop user=<DB_USER>"
+# it will prompt for the password (or set PGPASSWORD=... in your env)
+```
+
+**Or from Python (psycopg v3):**
+```python
+import psycopg
+conn = psycopg.connect(host="localhost", port=5433, dbname="bdsp_omop",
+user="<DB_USER>", password="<DB_PASSWORD>")
+cur = conn.cursor()
+cur.execute("SELECT count(*) FROM omop_prod.person")
+print(cur.fetchone())
+```
+(`pip install "psycopg[binary]" pandas` — and `pandas.read_sql(sql, conn)` is handy for exploration.)
+
+A read-only role (e.g. `myelin_readers`) exists — use that; don't write to `omop_prod`.
+
+---
+
+## 2. Schemas
+
+| Schema | What's in it |
+|---|---|
+| **`omop_prod`** | The **OMOP CDM** — the real, unified clinical data: `person`, `visit_occurrence`, `condition_occurrence`, `procedure_occurrence`, `drug_exposure`, `measurement`, `observation`, `note`, `note_nlp`, `concept`, `concept_ancestor`, … |
+| **`work_meem`** | **Our derived / scratch tables** (not CDM): note categorization, clinical-specialty tags, EEG/PSG recording detail, recording↔report links, etc. Reusable, but home-grown. |
+| `note_meta`, `omop_staging` | staging / metadata |
+
+Set a search path to save typing: `SET search_path TO omop_prod, work_meem;`
+
+---
+
+## 3. Things to know before you run anything
+
+- **`person_id` = the BDSP patient id** (same id used across all BDSP data).
+- **The `note` table is ~502M rows.** Never scan it unfiltered. Filter by `person_id` (indexed) or join from a
+smaller table, and read `left(note_text, N)` rather than whole documents. A regex over all of `note_text`
+will run for hours.
+- **De-identification shifts dates per-patient but consistently** — so *within one patient* you can compare
+dates across tables (e.g. a note and a procedure line up), but absolute calendar dates are not real.
+- **Vocabulary is loaded** (`concept` 6.35M rows; SNOMED / RxNorm / LOINC / ICD / CPT / HCPCS). Use
+`concept` / `concept_ancestor` to resolve and roll up codes.
+- **`provider` is empty and `care_site` is hospital-level only** (13 rows: MGH=0, BWH=-1, BIDMC=2, BCH=3,
+Stanford=4, Emory=6, Kaiser=7, Yale=8, Wisconsin=9, …). There's no department/specialty in the structured
+data — see the derived specialty tags in §5 for that.
+- **`person` is ~15M rows but most are roster/demographics-only** — a person row does not mean the patient has
+clinical events. Join to the event tables to find patients "with data".
+- **To cancel a runaway query, use `pg_terminate_backend(pid)`** (find your `pid` in `pg_stat_activity`).
+`Ctrl-C` / killing the client does *not* stop the server-side query. `SET statement_timeout='120s';` at the
+top of a session is a good habit.
+
+---
+
+## 4. Core CDM query patterns
+
+**Count patients with a given condition (roll up a SNOMED concept to all its descendants):**
+```sql
+SELECT count(DISTINCT co.person_id)
+FROM omop_prod.condition_occurrence co
+JOIN omop_prod.concept_ancestor ca ON ca.descendant_concept_id = co.condition_concept_id
+WHERE ca.ancestor_concept_id = 192226; -- <a standard SNOMED concept_id>
+```
+
+**Find a concept_id by name:**
+```sql
+SELECT concept_id, concept_name, vocabulary_id, domain_id
+FROM omop_prod.concept
+WHERE standard_concept='S' AND concept_name ILIKE '%epilepsy%'
+LIMIT 20;
+```
+
+**A patient's notes (filtered — fast):**
+```sql
+SELECT note_id, note_date, note_title, left(note_text, 300) AS head
+FROM omop_prod.note
+WHERE person_id = 150000007
+ORDER BY note_date;
+```
+
+**Procedures for a patient (e.g. EEG = concept 4181917, PSG = 4189015):**
+```sql
+SELECT procedure_date, procedure_concept_id
+FROM omop_prod.procedure_occurrence
+WHERE person_id = 150000007 AND procedure_concept_id IN (4181917, 4189015);
+```
+
+---
+
+## 5. Useful derived tables in `work_meem`
+
+These were built by this repo's pipelines (see the module READMEs).
+
+**Clinical specialty / subspecialty of each note** — `work_meem.note_specialty`
+(`note_id, site, specialty, subspecialty, method, conf`). ~149M notes tagged. Specialty ∈ {neurology,
+cardiology, gastroenterology, nephrology, pulmonary, endocrinology, hematology_oncology, infectious_disease,
+psychiatry, radiology, …}; for those with subtypes, `subspecialty` ∈ {epilepsy, sleep, stroke_vascular,
+neuromuscular, …; cardiology→electrophysiology/heart_failure/…; etc.}.
+```sql
+-- how many sleep-medicine notes, by site?
+SELECT site, count(*) FROM work_meem.note_specialty
+WHERE specialty='neurology' AND subspecialty='sleep' GROUP BY 1 ORDER BY 2 DESC;
+
+-- pull the actual epilepsy notes for one patient
+-- (note_specialty is keyed by note_id — join to omop_prod.note for person_id / date / text)
+SELECT n.note_date, left(n.note_text, 400) AS head
+FROM work_meem.note_specialty s
+JOIN omop_prod.note n USING (note_id)
+WHERE n.person_id = 150000007
+AND s.specialty = 'neurology' AND s.subspecialty = 'epilepsy';
+```
+`conf`/`method`: `high`/`title_v1` = specialty named in the note title; `med` = keyword; `ml`/`ml_v1` =
+TF-IDF/SGD model prediction (≥0.55) on the note head. Filter on `conf='high'` if you want only the precise ones.
+
+**EEG/PSG signal recordings → OMOP** — `work_meem.bdsp_recording_detail`
+(`procedure_occurrence_id, person_id, modality, site, start_time, end_time, duration_s, channel_count,
+sampling_freq, s3_path, …`). One row per EDF file; procedures are in `omop_prod.procedure_occurrence`
+(concept 4181917 EEG / 4189015 PSG).
+
+**Recording ↔ interpreting-report links** — `work_meem.recording_report_link`
+(`procedure_occurrence_id ↔ note_id`, with `date_gap`, `confidence`, `episode_id`). Both directions:
+```sql
+-- which report(s) describe this recording?
+SELECT note_id, date_gap, confidence FROM work_meem.recording_report_link
+WHERE procedure_occurrence_id = 2030000001;
+```
+
+**Note categorization** (doc type, radiology modality/body-part) lives in per-site `work_meem.<site>_note_category`
+tables and in `omop_prod.note_nlp` — ask if you need these; they're a bit more bespoke.
+
+---
+
+## 6. Etiquette / performance
+
+- Always filter `note`, `note_nlp`, `procedure_occurrence`, `condition_occurrence` (they're 100M–1B+ rows).
+- Prototype with `LIMIT` and a `person_id` filter, then widen.
+- `SET statement_timeout='300s';` so a mistake doesn't hold resources.
+- Read-only: don't write to `omop_prod`. If you need scratch space, ask for a `work_*` schema.
+- The tunnel drops — if a query fails with a connection error, restart the tunnel and retry.
+
+Questions about what's in the data, or a table you can't find → ask Brandon.
+
+
+
+Get Outlook for Mac

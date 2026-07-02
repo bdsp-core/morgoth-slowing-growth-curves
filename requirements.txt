@@ -1,0 +1,28 @@
+# Core scientific stack
+numpy
+scipy
+pandas
+pyarrow            # parquet
+pyyaml
+
+# Signal / EEG
+mne                # EEG IO + montage helpers
+# multitaper: scipy.signal.windows.dpss (no extra dep) or nitime/spectrum if preferred
+
+# Modeling (normative growth curves)
+scikit-learn
+statsmodels        # quantile regression, GAM-ish
+# gamlss equivalent in python: pygam (GAMs) — chosen model per config
+pygam
+
+# Data access
+boto3              # S3
+s3fs               # pandas/parquet directly from s3
+
+# Viz
+matplotlib
+seaborn
+
+# Dev / notebooks
+jupyter
+pytest

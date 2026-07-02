@@ -1,0 +1,32 @@
+# Data — never commit PHI or large data
+data/*
+!data/.gitkeep
+*.edf
+*.bdf
+*.set
+*.fif
+*.npz
+*.parquet
+*.mat
+
+# Local config with credentials/paths
+config/config.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Outputs
+outputs/
+figures/
+*.log
