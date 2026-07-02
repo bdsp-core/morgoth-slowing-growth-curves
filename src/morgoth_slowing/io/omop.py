@@ -42,6 +42,31 @@ def connect(host="localhost", port=5433, dbname="bdsp_omop", user=None, password
     return psycopg.connect(host=host, port=port, dbname=dbname, user=user, password=password)
 
 
+# Sex pull. NOTE the id-mapping question: Growth_curves filenames give BDSP ids like
+# "S0001114208778"; OMOP person_id in the docs is numeric. Resolve via bdsp_recording_detail.s3_path
+# (which contains the "sub-<id>" string) -> person_id -> person.gender_concept_id.
+SEX_SQL = """
+SET statement_timeout = '300s';
+SELECT DISTINCT r.person_id,
+       r.s3_path,
+       CASE p.gender_concept_id WHEN 8532 THEN 'F' WHEN 8507 THEN 'M' ELSE NULL END AS sex
+FROM work_meem.bdsp_recording_detail r
+JOIN omop_prod.person p USING (person_id)
+WHERE r.s3_path LIKE ANY(%(patterns)s);
+"""
+
+
+def get_sex(conn, sub_ids: "list[str]") -> pd.DataFrame:
+    """Return person_id, s3_path, sex for the given Growth_curves sub-ids.
+
+    Matches each sub-id against bdsp_recording_detail.s3_path (which embeds 'sub-<id>').
+    If the numeric part of the id turns out to BE the OMOP person_id, swap this for a direct
+    person-table lookup instead (confirm the id convention first).
+    """
+    patterns = [f"%sub-{sid}%" for sid in sub_ids]
+    return pd.read_sql(SEX_SQL, conn, params={"patterns": patterns})
+
+
 def age_at_eeg(conn, person_ids: "list[int]") -> pd.DataFrame:
     """Return one row per EEG recording: person_id, s3_path, eeg_time, age_at_eeg, sex.
 

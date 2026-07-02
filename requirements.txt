@@ -18,6 +18,10 @@ pygam
 # Data access
 boto3              # S3
 s3fs               # pandas/parquet directly from s3
+psycopg[binary]    # OMOP (Postgres) — age/sex lookup
+
+# Tables / reporting
+tableone           # Table 1 cohort characteristics
 
 # Viz
 matplotlib

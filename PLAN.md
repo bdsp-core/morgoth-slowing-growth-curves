@@ -207,8 +207,13 @@ via the rclone S3 remote `bdsp:` (configured from the BDSP open-data keys in
   paths, determine feature-level vs. raw, **and stand up the OMOP tunnel to resolve age/sex at EEG
   for every subject** (§2.1). Deliverable: `notebooks/00_data_inventory.ipynb`, an age/sex table,
   data dictionary in [docs/data_sources.md](docs/data_sources.md).
-- **Phase 1 — Control cohort + lifespan coverage audit.** Define "normal", build cohort (joined to
-  the OMOP age/sex table), produce the age×sex×state coverage matrix, flag gaps. (§3)
+- **Phase 0.5 — Sleep staging (morgoth2).** Locate raw EEG for the 12k recordings, run
+  `infer_sleep_staging.py` on a GPU, map 10-s stage predictions → our 15-s segments. Prerequisite
+  for state-specific norms. See [docs/sleep_staging.md](docs/sleep_staging.md).
+- **Phase 1 — Control cohort + lifespan coverage audit.** Clean ages, attach **sex from OMOP**
+  (`scripts/07_pull_sex_omop.py`), produce the age×sex×state coverage matrix, flag gaps. **Table 1
+  drafted** ([scripts/make_table1.py](scripts/make_table1.py), in README) — add Sex row once OMOP
+  resolved. (§3)
 - **Phase 2 — Feature pipeline.** Port/confirm multitaper + band/ratio/asymmetry features,
   aligned with morgoth-viewer preprocessing. (§4)
 - **Phase 3 — Reference models / growth curves.** Fit continuous age×sex percentile models per
