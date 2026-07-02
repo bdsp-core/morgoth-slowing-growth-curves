@@ -1,23 +1,46 @@
-# Channel -> region aggregation and homologous L/R pairs (10-20 montage).
-# Adjust to the montage morgoth-viewer actually uses (confirm in Phase 2).
+# Bipolar (double-banana) montage used by the Growth_curves feature set.
+# 18 channels in the fixed order below (matches the 18x31 array; see docs/data_dictionary.md).
 
+channel_order:
+  - Fp1-F7   # 0
+  - F7-T3    # 1
+  - T3-T5    # 2
+  - T5-O1    # 3
+  - Fp2-F8   # 4
+  - F8-T4    # 5
+  - T4-T6    # 6
+  - T6-O2    # 7
+  - Fp1-F3   # 8
+  - F3-C3    # 9
+  - C3-P3    # 10
+  - P3-O1    # 11
+  - Fp2-F4   # 12
+  - F4-C4    # 13
+  - C4-P4    # 14
+  - P4-O2    # 15
+  - Fz-Cz    # 16
+  - Cz-Pz    # 17
+
+# Clinical regions as groups of bipolar channels.
 regions:
-  L_frontal:  [Fp1, F3, F7]
-  R_frontal:  [Fp2, F4, F8]
-  L_temporal: [T3, T5]           # (T7, P7 in modern nomenclature)
-  R_temporal: [T4, T6]           # (T8, P8)
-  L_central:  [C3]
-  R_central:  [C4]
-  L_parietal: [P3]
-  R_parietal: [P4]
-  L_occipital: [O1]
-  R_occipital: [O2]
-  midline:    [Fz, Cz, Pz]
+  L_temporal:    [Fp1-F7, F7-T3, T3-T5, T5-O1]     # left temporal chain
+  R_temporal:    [Fp2-F8, F8-T4, T4-T6, T6-O2]     # right temporal chain
+  L_parasagittal: [Fp1-F3, F3-C3, C3-P3, P3-O1]    # left parasagittal chain
+  R_parasagittal: [Fp2-F4, F4-C4, C4-P4, P4-O2]    # right parasagittal chain
+  midline:       [Fz-Cz, Cz-Pz]
 
-# Homologous region pairs for asymmetry log-ratios (Left / Right).
+# Homologous L/R pairs for asymmetry log-ratios (Left / Right), region-matched.
 homologous_pairs:
-  frontal:   [L_frontal, R_frontal]
-  temporal:  [L_temporal, R_temporal]
-  central:   [L_central, R_central]
-  parietal:  [L_parietal, R_parietal]
-  occipital: [L_occipital, R_occipital]
+  temporal:     [L_temporal, R_temporal]
+  parasagittal: [L_parasagittal, R_parasagittal]
+
+# Optional finer anterior/posterior splits within a chain (for focal localization):
+subregions:
+  L_anterior_temporal:  [Fp1-F7, F7-T3]
+  R_anterior_temporal:  [Fp2-F8, F8-T4]
+  L_posterior_temporal: [T3-T5, T5-O1]
+  R_posterior_temporal: [T4-T6, T6-O2]
+  L_frontocentral:      [Fp1-F3, F3-C3]
+  R_frontocentral:      [Fp2-F4, F4-C4]
+  L_centroparietal:     [C3-P3, P3-O1]
+  R_centroparietal:     [C4-P4, P4-O2]

@@ -54,16 +54,28 @@ All on AWS S3, bucket `bdsp-opendata-credentialed` (credentialed access required
 | **Focal-slowing examples** (validation / positives) | `s3://bdsp-opendata-credentialed/morgoth1/data/internal_dataset/FOCALSLOWING/` |
 | **Generalized-slowing examples** (validation / positives) | `s3://bdsp-opendata-credentialed/morgoth1/data/internal_dataset/GENSLOWING/` |
 
-**Open question to resolve first (Phase 0):** does `Growth_curves/` already contain
-*precomputed segment-level features with sleep stages* (what the framework assumes), or raw/BIDS
-EEG that we must featurize ourselves? This changes disk footprint and compute by 1–2 orders of
-magnitude. See §7.
+**Phase 0 findings (resolved 2026-07-02 — see [docs/data_dictionary.md](docs/data_dictionary.md)):**
+- `Growth_curves/` = **precomputed features**, 2.0 GiB, one `.mat` per recording, already split into
+  `normal/` (**our control group**), `focal_slow/`, `general_slow/` — so **labels come free**.
+- Each `.mat` has a `res` table: row per 15-s segment = `[sleep_stage 0–5, start, end, 18×31 array]`.
+  Montage is **bipolar (double-banana, 18 ch)**; 31 features = 5 band powers (δθαβγ) + total +
+  relative powers + band ratios (incl. alpha/delta, alpha/theta). **Phase 2 largely done by JJ.**
+- Filenames `sub-<BDSP_ID>_<YYYYMMDDHHMMSS>.mat` encode person_id **and EEG datetime** → OMOP only
+  needs birth date for age.
+- FOCALSLOWING (18.7 GiB) / GENSLOWING (50.7 GiB) hold `segments_raw/` + an event xlsx — richer
+  labeled positives for validation.
+- ⚠️ **BLOCKER: sleep stage is uniformly "Other" in every Growth_curves file** — this set is
+  *unstaged*, so state-specific norms (a core goal) can't be built from it as-is. Must obtain morgoth
+  staging, run a stager on raw, or start stage-agnostic. Decide before Phase 3. (phase0_findings #1)
 
-### 2.1 Age (and sex) at EEG — via OMOP  *(prerequisite for everything)*
+### 2.1 Age and sex
 
-Age is the **x-axis of every growth curve**, so we must have a trustworthy age-at-EEG for every
-subject before using them. Unless age is already in the Growth_curves metadata (check first), derive
-it from the **BDSP de-identified OMOP database** (`bdsp_omop`, Aurora Postgres) — see
+**Age is embedded in every `.mat`** (`age` field, integer years) and spans infancy→elderly, so the
+growth-curve x-axis needs no OMOP lookup. Clean impossible values first (observed min −6, max 121).
+
+**Sex is NOT in the files** — for sex-stratified curves, pull it from the **BDSP OMOP database**
+(`person.gender_concept_id` keyed by BDSP id = `person_id`); age-only curves can proceed meanwhile.
+OMOP details (and an optional age cross-check) — see
 [docs/omop-query-instructions.txt](docs/omop-query-instructions.txt), implemented in
 [src/morgoth_slowing/io/omop.py](src/morgoth_slowing/io/omop.py):
 
@@ -83,8 +95,14 @@ into the control cohort and every scored patient.
 
 ## 3. Finding the control group (lifespan-representative "normal")
 
-This is a first-class task, not an afterthought — the growth curves are only as good as the
-"normal" definition. **We must not assume JJ already did this**; Phase 1 audits it explicitly.
+This is a first-class task — the growth curves are only as good as the "normal" definition.
+
+**Status (measured — see [docs/phase0_findings.md](docs/phase0_findings.md)):** JJ *did* build a
+lifespan-spread control set. The `normal/` folder has **4,916 recordings covering age 0–2 through
+75+** (thinnest cells 3–5 and 6–12, but usable). So Phase 1 shifts from "find controls" to
+**"validate + clean"**: drop impossible ages, attach sex (OMOP), confirm the coverage matrix per
+state *if* staging becomes available, and flag thin cells for wider CIs. The staging gap (§below /
+phase0_findings #1) is the real open problem, not control availability.
 
 **Definition of a control.** A subject whose EEG was **clinically reported as normal** (no
 epileptiform activity, no pathological slowing, no focal abnormality), on **no strongly
@@ -172,15 +190,14 @@ contains (Phase 0 resolves this):
 
 | Scenario | Rough footprint | Comfortable? |
 |---|---|---|
-| Precomputed **segment feature tables** (parquet/npz) | GBs–low tens of GB | **Easily** |
-| Precomputed **multitaper spectrograms** per subject | tens–low hundreds of GB | **Yes** |
-| **Raw / BIDS EEG** for a lifespan control cohort we must featurize | 0.1–few TB | **Probably**, but tight if it's multi-TB; featurize then discard raw, or stream from S3 |
+| **Growth_curves** precomputed features (what we build curves from) | **2.0 GiB** | **Trivially** |
+| **FOCALSLOWING** `segments_raw/` + events (validation positives) | **18.7 GiB** | **Easily** |
+| **GENSLOWING** `segments_raw/` + events (validation positives) | **50.7 GiB** | **Easily** |
 
-**Bottom line:** for the feature-level use case (which the framework assumes) there is plenty of
-room. If it turns out to be raw EEG in the multi-TB range, we'll process in batches (pull → featurize
-→ store features → drop raw) rather than mirroring the whole bucket. First action in Phase 0 is to
-measure it: `aws s3 ls --recursive --summarize <path>` (or an rclone S3 remote) — I could not size
-it here because AWS credentials / CLI aren't installed on this machine yet.
+**Bottom line (measured 2026-07-02):** all three paths total **~71 GiB** against **~7.1 TiB free** —
+no constraint whatever. The 2 GiB Growth_curves feature set has been pulled to `data/raw/`. Access is
+via the rclone S3 remote `bdsp:` (configured from the BDSP open-data keys in
+`~/Desktop/GithubRepos/AWSKeys/`).
 
 ---
 
@@ -207,9 +224,12 @@ it here because AWS credentials / CLI aren't installed on this machine yet.
 
 ## 9. Open questions for the team
 
-1. Does `Growth_curves/` hold precomputed features (+ sleep stages + normal/abnormal labels), or raw
-   EEG? → sets Phase 0/2 scope.
-2. Is there an existing curated control list from JJ, and does it cover the full lifespan? (§3)
-3. Source of the normal/abnormal + focal/generalized labels — structured field vs. report NLP?
-4. Which montage/reference does morgoth-viewer use, so features match exactly? (§4)
+1. ~~Does `Growth_curves/` hold precomputed features or raw EEG?~~ **Resolved:** precomputed features,
+   labeled (normal/focal/general), bipolar montage — see §2 findings + data_dictionary.
+2. Does the `normal/` set cover the full lifespan once ages are attached? (§3 — audit still needed;
+   we have ~5k normals but age distribution is unknown until OMOP join.)
+3. Exact band-edge definitions JJ used, and the precise tail order of the 31 features (ratios).
+4. Wake is a single stage in this set (no eyes-open/closed/drowsy split) — accept, or revisit raw?
 5. Pediatric scope — include young children (very different norms) or adults-first?
+6. How the focal/general labels were assigned (report-based? which side/region?) — needed to make the
+   discrimination study and topographic calibration meaningful.

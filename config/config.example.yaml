@@ -19,30 +19,26 @@ omop:
   eeg_concept_id: 4181917
   psg_concept_id: 4189015
 
-# Multitaper spectral estimation — MUST match morgoth-viewer preprocessing (confirm).
+# Growth_curves features are PRECOMPUTED (18x31 per 15-s segment; see docs/data_dictionary.md).
+# We consume them directly; spectral params are only needed if we ever re-featurize raw EEG.
 spectral:
   segment_seconds: 15
-  fs: 200                 # confirm sampling rate
-  time_bandwidth: 4      # NW
-  n_tapers: 7
-  freq_range: [0.5, 30]
+  # fs / multitaper params: only relevant for re-featurizing raw (FOCAL/GENSLOWING segments_raw).
 
-bands:                    # Hz
-  delta: [0.5, 4]
-  theta: [4, 7]
-  alpha: [8, 13]
-  beta:  [13, 30]
-  low_freq: [0.5, 7]
-  broadband: [0.5, 30]
+# Bands present in the feature set (JJ's definitions). Features are linear power -> log before z.
+bands: [delta, theta, alpha, beta, gamma]
+# Slowing ratios of interest already provided per channel:
+#   alpha/delta (inverse DAR), alpha/theta (inverse TAR), delta/total, theta/total, delta/theta.
 
-states:                  # norms are computed per-state
-  - wake_eyes_open
-  - wake_eyes_closed
-  - wake_drowsy
-  - N1
-  - N2
-  - N3
-  - REM
+# Sleep stages as coded in res column 1. Norms are computed per-state.
+# NOTE: wake is a single stage here (eyes-open/closed/drowsy are NOT separated) -> limitation.
+states:
+  "0": W
+  "1": N1
+  "2": N2
+  "3": N3
+  "4": REM
+  # "5": Other  -> excluded from norms
 
 scoring:
   z_threshold: 2.0       # tau; calibrate against held-out normals
