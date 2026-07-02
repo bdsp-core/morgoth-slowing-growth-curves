@@ -20,8 +20,8 @@ def main():
     df = segments.load_metadata({"data": {"local": {"raw": "data/raw"}}}, with_age=True)
     sex_path = Path("data/derived/sex.parquet")
     if sex_path.exists():
-        sex = pd.read_parquet(sex_path)[["person_id", "sex"]].drop_duplicates("person_id")
-        df = df.merge(sex, on="person_id", how="left")
+        sex = pd.read_parquet(sex_path)[["bdsp_id", "sex"]].drop_duplicates("bdsp_id")
+        df = df.merge(sex, on="bdsp_id", how="left")
     else:
         df["sex"] = pd.NA  # pending OMOP (scripts/07_pull_sex_omop.py)
 

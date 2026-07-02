@@ -42,29 +42,34 @@ def connect(host="localhost", port=5433, dbname="bdsp_omop", user=None, password
     return psycopg.connect(host=host, port=port, dbname=dbname, user=user, password=password)
 
 
-# Sex pull. NOTE the id-mapping question: Growth_curves filenames give BDSP ids like
-# "S0001114208778"; OMOP person_id in the docs is numeric. Resolve via bdsp_recording_detail.s3_path
-# (which contains the "sub-<id>" string) -> person_id -> person.gender_concept_id.
+# ID MAPPING (verified 2026-07-02): the Growth_curves hashid is "S000<site>" + the OMOP person_id.
+# e.g. "S0001114208778" -> person_id 114208778 (bigint). Strip the 5-char "S000<site>" prefix.
+import re as _re
+
+
+def hashid_to_person_id(hashid: str) -> int:
+    """'S0001114208778' -> 114208778 (OMOP person_id)."""
+    return int(_re.sub(r"^S000\d", "", hashid))
+
+
 SEX_SQL = """
 SET statement_timeout = '300s';
-SELECT DISTINCT r.person_id,
-       r.s3_path,
-       CASE p.gender_concept_id WHEN 8532 THEN 'F' WHEN 8507 THEN 'M' ELSE NULL END AS sex
-FROM work_meem.bdsp_recording_detail r
-JOIN omop_prod.person p USING (person_id)
-WHERE r.s3_path LIKE ANY(%(patterns)s);
+SELECT person_id,
+       CASE gender_concept_id WHEN 8532 THEN 'F' WHEN 8507 THEN 'M' ELSE NULL END AS sex,
+       gender_source_value
+FROM omop_prod.person
+WHERE person_id = ANY(%(ids)s);
 """
 
 
-def get_sex(conn, sub_ids: "list[str]") -> pd.DataFrame:
-    """Return person_id, s3_path, sex for the given Growth_curves sub-ids.
+def get_sex(conn, person_ids: "list[int]") -> pd.DataFrame:
+    """Return person_id, sex ('M'/'F'/None), gender_source_value for OMOP person_ids.
 
-    Matches each sub-id against bdsp_recording_detail.s3_path (which embeds 'sub-<id>').
-    If the numeric part of the id turns out to BE the OMOP person_id, swap this for a direct
-    person-table lookup instead (confirm the id convention first).
-    """
-    patterns = [f"%sub-{sid}%" for sid in sub_ids]
-    return pd.read_sql(SEX_SQL, conn, params={"patterns": patterns})
+    Convert Growth_curves hashids first with hashid_to_person_id(). Reads only omop_prod.person
+    (works with the read-only myelin_readers role — no work_meem needed)."""
+    cur = conn.cursor()
+    cur.execute(SEX_SQL, {"ids": list(person_ids)})
+    return pd.DataFrame(cur.fetchall(), columns=["person_id", "sex", "gender_source_value"])
 
 
 def age_at_eeg(conn, person_ids: "list[int]") -> pd.DataFrame:

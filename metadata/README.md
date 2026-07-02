@@ -11,7 +11,7 @@
 | `label` | `normal` (control) / `focal_slow` / `general_slow` (folder = class) |
 | `age` | age in years, embedded in the `.mat` file |
 | `age_valid` | False for implausible ages (<0 or >120) — 18 rows |
-| `sex` | from OMOP; **blank until `scripts/07_pull_sex_omop.py` runs** |
+| `sex` | M/F from OMOP `gender_concept_id` (resolved 12,378/12,379) |
 
-De-identified BDSP research ids only. To refresh Table 1 after sex is added:
-`python scripts/build_cohort_metadata.py && python scripts/make_table1.py`.
+De-identified BDSP research ids only. `bdsp_id` = `"S000<site>"` + OMOP `person_id`. To refresh:
+`python scripts/07_pull_sex_omop.py && python scripts/build_cohort_metadata.py && python scripts/make_table1.py`.

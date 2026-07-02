@@ -1,14 +1,15 @@
-"""Pull sex for the Growth_curves cohort from OMOP, save data/derived/sex.parquet.
+"""Pull sex for the Growth_curves cohort from OMOP -> data/derived/sex.parquet.
 
-Prereqs (see docs/omop-query-instructions.txt):
-  1. Open the SSH tunnel to the myelin bastion:
-       ssh -i .../myelin-bastion-userkeys/myelin-bastion-<you>.pem -N \
-           -L 5433:bdsp-omop-aurora-instance-1.cz06iykeon5i.us-west-2.rds.amazonaws.com:5432 \
-           <you>@<MYELIN_BASTION_HOST>
-     NOTE (2026-07-02): tunnel to 35.92.7.76 currently fails 'Permission denied (publickey)' for the
-     hanwu key as hanwu/ec2-user/ubuntu — verify the bastion IP, login username, and that the key is
-     provisioned on that host before running this.
-  2. export OMOP_USER=myelin_<you>  OMOP_PASSWORD=...   (read-only myelin_readers role)
+Working method (verified 2026-07-02):
+  - Tunnel: myelin bastion is 35.163.225.34 (NOT the prod web box 35.92.7.76). Forward local 5433:
+      ssh -i .../myelin-bastion-userkeys/myelin-bastion-<you>.pem -N \
+          -L 5433:bdsp-omop-aurora-instance-1.cz06iykeon5i.us-west-2.rds.amazonaws.com:5432 \
+          <you>@35.163.225.34
+  - DB: user myelin_<you> (myelin_readers, read-only; password from the Box creds file). Set env
+      OMOP_USER / OMOP_PASSWORD before running.
+  - ID map: hashid 'S000<site>' + OMOP person_id, so person_id = int(hashid without 'S000<site>').
+    Sex from omop_prod.person.gender_concept_id (8507=M, 8532=F). No work_meem needed.
+
 Then: python scripts/07_pull_sex_omop.py
 """
 from __future__ import annotations
@@ -20,19 +21,24 @@ from morgoth_slowing.io import segments, omop
 
 
 def main():
-    cfg = {"data": {"local": {"raw": "data/raw"}}}
-    meta = segments.load_metadata(cfg, with_age=False)
-    sub_ids = sorted(meta.person_id.unique())
-    print(f"{len(sub_ids)} unique sub-ids to resolve")
+    meta = segments.load_metadata({"data": {"local": {"raw": "data/raw"}}}, with_age=False)
+    meta["omop_person_id"] = meta.bdsp_id.map(omop.hashid_to_person_id)
+    ids = sorted(meta.omop_person_id.unique().tolist())
+    print(f"{len(ids)} unique person_ids to resolve")
 
     conn = omop.connect(user=os.environ["OMOP_USER"], password=os.environ["OMOP_PASSWORD"])
-    sex = omop.get_sex(conn, sub_ids)
-    print("resolved sex for", sex.person_id.nunique(), "person_ids")
-    print(sex.sex.value_counts(dropna=False).to_string())
+    sex = omop.get_sex(conn, ids).rename(columns={"person_id": "omop_person_id"})
+    conn.close()
 
-    out = Path("data/derived"); out.mkdir(parents=True, exist_ok=True)
-    sex.to_parquet(out / "sex.parquet")
-    print("wrote", out / "sex.parquet", "-> re-run scripts/make_table1.py to add the Sex row")
+    out = (meta[["bdsp_id", "omop_person_id"]].drop_duplicates()
+           .merge(sex, on="omop_person_id", how="left"))
+    print("resolved:", int(out.sex.notna().sum()), "/", len(out))
+    print(out.sex.value_counts(dropna=False).to_string())
+
+    dst = Path("data/derived"); dst.mkdir(parents=True, exist_ok=True)
+    out.to_parquet(dst / "sex.parquet")
+    print("wrote", dst / "sex.parquet",
+          "-> now: python scripts/build_cohort_metadata.py && python scripts/make_table1.py")
 
 
 if __name__ == "__main__":
