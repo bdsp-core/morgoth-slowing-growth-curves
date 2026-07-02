@@ -45,6 +45,10 @@ files); it will be added as a row here.
 *18 recordings with implausible age (<0 or >120) excluded. Controls skew younger than the slowing
 groups — an age confound the normative model conditions on; 75+ controls are relatively sparse.*
 
+Reproducible cohort metadata (bdsp_id, age, sex, label, …) lives in
+[metadata/cohort_metadata.csv](metadata/cohort_metadata.csv) — regenerates Table 1 and the curves
+without S3.
+
 ## Layout
 
 ```
