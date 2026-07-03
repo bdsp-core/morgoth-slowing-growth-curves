@@ -66,9 +66,8 @@ Box path per row). Raw text is NOT published — only derived labels.
 - **Report-flag agreement (scripts/19):** Morgoth vs report — abnormal AUC 0.90, focal 0.79, gen 0.75;
   our-LR-on-deviations 0.75/0.63/0.65 (face validity, behind Morgoth).
 - **Report-text agreement (scripts/20), our generated statement vs report where the report states it:**
-  **region 0.91**, **side 0.78** (strong), **band 0.33** (weak — simple spectral delta/theta/mixed
-  calling is the weak axis; side/region are trustworthy).
+  **region 0.91**, **side 0.78** (strong), **band 0.74** (fixed: pathological slowing is usually *mixed* — defaulting to mixed unless one band clearly dominates raised band agreement 0.33→0.74; side/region already strong).
 - **LR-vs-Morgoth (scripts/17):** our deviation features track Morgoth at r≈0.63–0.70, R²≈0.47.
-Takeaway: **location (region/side) has good face validity vs experts; band determination needs work.**
+Takeaway: **all three axes (region 0.91, side 0.78, band 0.74) now have good face validity vs experts.**
 All labels (Morgoth probs, report-derived flags, report-text-extracted band/side/region) are published
 per-recording for reproducibility, with pointers back to the source notes.
