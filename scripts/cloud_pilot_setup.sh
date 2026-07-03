@@ -19,6 +19,7 @@ export MORGOTH_DEVICE=cuda
 if [ "${1:-setup}" = "run" ]; then
   N="${2:-10}"
   cd "$REPO"
+  mkdir -p data/derived results/figs                  # data/ is excluded from the copy
   source .venv/bin/activate
   export PILOT_VENV="$(command -v python)"
   export PYTHONPATH=src
