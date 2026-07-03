@@ -13,8 +13,8 @@ import numpy as np
 import pandas as pd
 
 STAGE_MAP = {0: "W", 1: "N1", 2: "N2", 3: "N3", 4: "REM", 5: "Other"}
-# sub-<PID>[_ses-<N>]_<YYYYMMDDHHMMSS>.mat  (session part is optional)
-_FNAME_RE = re.compile(r"sub-(?P<pid>[A-Za-z0-9]+)(?:_ses-(?P<ses>[A-Za-z0-9]+))?_(?P<ts>\d{14})\.mat$")
+# sub-<PID>[_ses-<N>]_<YYYYMMDDHHMMSS>.<ext>  (session optional; .mat/.csv/etc.)
+_FNAME_RE = re.compile(r"sub-(?P<pid>[A-Za-z0-9]+)(?:_ses-(?P<ses>[A-Za-z0-9]+))?_(?P<ts>\d{14})\.[A-Za-z0-9]+$")
 
 # 31 feature names in array order (docs/data_dictionary.md). Verify tail ratios against read_me.txt.
 FEATURE_NAMES = [
