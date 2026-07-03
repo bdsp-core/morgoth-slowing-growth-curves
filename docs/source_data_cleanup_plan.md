@@ -1,5 +1,6 @@
-> STATUS: ON HOLD (decided after pilot — see 'Pilot findings' below: morgoth-H5 float64 is
-> larger, not smaller; revisit with int16+gain + reader update if space savings are needed).
+> STATUS: GO (int16). The float64-H5 size problem is solved by storing lossless int16 digital +
+> per-channel gain/offset (EDF's own scheme): bit-exact AND ~0.13-0.27x the EDF size. Requires a
+> small morgoth `_load_h5` update (physical = digital*gain + offset; see io/h5_int16.load_h5_int16).
 
 # Source-Data Cleanup Plan: Harvard EEG (BDSP) scalp EDF → morgoth H5
 
@@ -252,3 +253,10 @@ Rough combined estimate: **~40-60% fewer channels**, and with compression a conv
   change); (b) convert to float64 morgoth-H5 for **usability/annotation-headroom, accepting larger
   size**; or (c) H5 with int16+gain storage + update the morgoth reader (best-of-both, needs coord).
 Code: io/h5_convert.py, scripts/27_h5_cleanup_pilot.py (validated locally; source untouched).
+
+## int16 prototype result (resolves the space finding)
+io/h5_int16.py + scripts/28: store original int16 digital + gain/offset (EDF scheme). Validated on
+3 EDFs: reconstruction max|Δ| ≈ 1e-9 µV (bit-exact), **int16-H5 = 0.13-0.27× the EDF** (and ~6× smaller
+than float64-H5). float64 added zero information (EDF is int16 natively). GO with int16-H5; the only
+dependency is updating morgoth `_load_h5` to apply gain/offset on read (one line; morgoth-inference
+parity guaranteed since reconstructed Volts are identical). Dead-channel pruning stacks on top.
