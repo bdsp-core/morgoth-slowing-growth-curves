@@ -1,68 +1,60 @@
-# Results — v1 (stage-agnostic)
+# Results
 
-Growth curves + discrimination for EEG slowing, built from the Growth_curves feature set
-(12,379 recordings: normal 4,916 / focal_slow 2,067 / general_slow 5,396). Fully reproducible:
-`scripts/03_compute_features.py → 04_fit_reference_models.py → 06_discrimination.py → 05_score_patients.py`.
+EEG slowing normative growth curves + Morgoth-gated report, on 12,379 recordings
+(normal 4,916 / focal_slow 2,067 / general_slow 5,396). Everything reproducible from raw EEG in
+Python. Pipeline: `03 features → 04 curves → 06 discrimination → 09 map-stages → 10 stage-curves →
+11 descriptive → 13 recompute(py) → 14 gate → 15 feature-select → 16 gated report`.
 
-**Scope:** v1 is **stage-agnostic** — the Growth_curves set is unstaged (all "Other"). Sleep-stage
-stratification is being added by staging the raw EEG with morgoth2 (see docs/sleep_staging.md);
-until then, curves pool all wake/sleep segments. Everything below is age- and sex-conditioned.
+## 0. Reproducible features (Python, from raw)
+Original Growth_curves features were precomputed (MATLAB, code unavailable). `features/extract.py`
+recomputes them from raw EEG (referential→18 bipolar→0.5 Hz HP + notch→15-s multitaper→31 features),
+**validated vs JJ: per-band log-power r = 0.89–0.95** (docs/feature_extraction.md). All results below use
+the Python-recomputed features (JJ's kept as `*_jj`). Caveat: absolute relative-power runs high (a
+low-edge/total-band calibration TODO); z-based results are scale-invariant and unaffected.
 
-## 1. Cohort — see [Table 1](../README.md#table-1--cohort-characteristics)
-Sex ~50/50 across groups. Controls skew ~20 yr younger than the slowing groups → **age adjustment is
-essential**, which is why all scoring is done vs the age×sex normal curve.
+## 1. Cohort — [Table 1](../README.md#table-1--cohort-characteristics)
+Sex ~50/50 across groups; controls skew ~20 yr younger → **all scoring is age & sex conditioned.**
 
-## 2. Growth curves validate against known development
-Absolute delta power (`figures/curves/log_delta__whole_head.png`) shows the textbook trajectory:
-**high in infancy (~3.1 log units), steep decline through childhood to a plateau by ~30, slight
-elderly uptick** — and the slowing groups sit clearly above the normal band. The normal-referenced z
-is **centered on 0 for normals (median 0.03)** and elevated for focal (0.93) and generalized (1.02),
-confirming the reference model is well calibrated. Curves for 8 features × 5 regions are in
-`figures/curves/`.
+## 2. Growth curves validate against development
+Absolute delta falls steeply through childhood to a plateau by ~30 (textbook); normal-referenced z is
+centered on 0 for normals. `figures/curves/` (8 features × 5 regions).
 
-## 3. Which features discriminate? (age & sex adjusted AUC)
-Top features (full table: [discrimination.md](discrimination.md)). `auc_adj` = AUC of the
-normal-referenced z; `auc_raw` = unadjusted (age-confounded).
+## 3. Sleep-stage-specific norms (v2)
+Cohort staged with morgoth2 `ss_hm_1.pth` (MPS; validated stage mix). Normal median relative delta
+rises with sleep depth: **W≈N1 < N2 < N3** (REM intermediate) — so delta abnormal in wake is normal in
+N2/N3, and every segment is scored against **its own stage's** normal curve (normal prevalence ≈ 0).
+`figures/stage_curves/`. Coverage caveat (docs/coverage_by_stage.md): N3 sparse in adults; expandable
+via long labeled EEGs in `bdsp-opendata-repository`.
 
-| feature | region | pair | AUC (adj) | AUC (raw) |
-|---|---|---|---|---|
-| **log_delta** (absolute δ power) | whole_head | normal vs generalized | **0.75** | 0.68 |
-| log_delta | L_temporal | normal vs focal | 0.74 | 0.64 |
-| log_theta | whole_head | normal vs focal | 0.74 | 0.64 |
-| **TAR** (θ/α) | L_temporal | normal vs generalized | 0.73 | 0.71 |
-| log_theta | L_temporal | normal vs focal | 0.73 | 0.64 |
+## 4. Which features discriminate (age/sex-adjusted AUC)
+log_delta / log_theta / **TAR (θ/α)** lead (AUC ~0.67–0.75). Feature selection
+(results/feature_selection.md, L1 + RF + stability): **TAR dominates**, then log_theta/log_delta →
+compact keep-list. Per-channel homologous asymmetry (`|asym_ch_T3-T5_delta|`) is a **top focal
+discriminator** (AUC ~0.70) — validating the per-channel/homologous-pair features.
 
-**Findings.** (1) **Absolute delta and theta power are the strongest single markers** of slowing
-(AUC ≈ 0.73–0.75). (2) **Age/sex adjustment clearly helps** (0.75 vs 0.68 raw), confirming the age
-confound. (3) The **theta/alpha ratio (TAR)** is a strong ratio marker. (4) Relative-power and
-whole-head-vs-regional differences are secondary here — expected, since v1 pools sleep stages
-(sleep delta dilutes the pathological signal; stratifying by stage should sharpen this).
+## 5. Morgoth detection gate (the "whether/what")
+All Morgoth heads run on all 12,379 (window + EEG-level). Per-EEG probabilities →
+`results/morgoth_slowing_probabilities.csv` (p_abnormal, p_focal_slowing, p_generalized_slowing;
+keyed by `file_name = sub-<BDSPPatientID>_<StartTime>`; see docs/morgoth_gate_outputs.md). Sanity vs
+labels (median): p_abnormal normal **0.10** vs focal/general **0.98–0.996**; p_focal highest in focal,
+p_generalized highest in generalized. Slowing gate at P≥0.30 (Youden J=0.75): **gates in 79% focal /
+86% generalized / 8.9% normal.**
 
-## 4. Topography classifier (provisional)
-`topo_class` (focal / lateralized / generalized / multifocal / none) vs true label:
+## 6. Final gated report (the deliverable)
+`scripts/16_gated_report.py` (results/example_reports_final.md): Morgoth gate decides whether to
+report and focal-vs-generalized; our normative features add **region+side, band, prevalence,
+persistence, and stage-dependence**. Examples:
+> *Frequent mild left temporal delta slowing — present in 48% of segments; peak 2.1 SD above
+> age/stage norms; longest run 3.8 min over 4 episodes.*
+> *Frequent mild generalized delta slowing — present in 31%…; present only during sleep; accentuated
+> in N1.*
 
-```
-topo_class    focal  generalized  lateralized  multifocal  none
-normal           61           61            9           1  4784   (97% correctly "none")
-focal_slow      134           81           34           7  1769
-general_slow    281          324           39          16  4426
-```
-**High specificity (97% of normals → none), low sensitivity** at the strict z>2 / dominance
-thresholds — most abnormal recordings' *median* z stays below threshold because slowing is often
-intermittent/focal. This is the expected v1 behavior and the two clear next steps are (a) calibrate
-thresholds against expert labels and (b) use **segment-level burden** (already computed) rather than
-the recording median to recover sensitivity for intermittent slowing.
-
-## 5. Report generation
-`report/phrase.py` turns the scoring table into sentences (examples:
-[example_reports.md](example_reports.md)), e.g.:
-> *Record: continuous moderate generalized delta slowing, present in 100% of segments; generalized
-> burden 3.7 SD above norms.*
-> *Record: frequent moderate left temporal delta slowing … left–right asymmetry 3.8 SD above normal.*
-
-## 6. Limitations / next
-- **Stage-agnostic** (biggest one) — staging in progress via morgoth2 on the raw EEG + Apple GPU.
-- Topography thresholds uncalibrated; use segment burden for sensitivity.
-- Empirical-percentile→z replaced by parametric weighted-Gaussian z (unbounded); revisit for
-  non-Gaussian features.
-- `focal` detection is weak — asymmetry signal needs the segment-level + finer subregions.
+## 7. Limitations / next
+- **Feature↔Morgoth gaps:** some Morgoth-confident cases show flat spectral features ("peak ~0 SD") —
+  Morgoth detects patterns our current features miss and/or the rel-power calibration; the report then
+  reads weak. Next: calibrate rel-power, add morphology-aware features, distill Morgoth prob → features
+  (scripts/15 with gate target).
+- **N3/adult coverage** and **stage-specific abnormal power** are thin — expand from the repository
+  (§coverage doc).
+- **Regional stage-specific curves** (focal localization within stage) — recording-level localization
+  is wired; per-region×stage curves are the next refinement.
