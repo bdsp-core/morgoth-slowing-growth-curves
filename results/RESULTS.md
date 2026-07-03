@@ -79,3 +79,17 @@ per-recording for reproducibility, with pointers back to the source notes.
 - **Reporting keep-list** (feature selection distilling both the clinical label AND Morgoth's
   abnormality call, results/feature_selection.md): **TAR (θ/α), DAR (δ/α), log-δ, log-θ** (whole-head +
   temporal/parasagittal), stability 1.0. Per-channel homologous asymmetry (e.g. T3-T5 δ) for focal.
+
+## 10. Phase 8 outcomes (pilots, plans, morphology)
+- **Slowing-ingestion pilot (local): VALIDATED** end-to-end on full multi-hour BIDS EDFs (io/edf.py
+  harmonize + artifact.py reject + featurize + full-recording staging + per-stage features); rel_delta
+  in cohort range, real W/N1/N2/N3/REM stages. Ready for the AWS full wave (docs/aws_cloud_plan.md:
+  ~$1k, ~6 days, 25× g4dn spot).
+- **Artifact rejection: VALIDATED** (rel_delta 0.047→0.32 on a real EDF); validation plan in
+  docs/artifact_rejection_plan.md.
+- **EDF→H5 cleanup pilot: VALIDATED lossless** but **space-saving premise fails** (morgoth float64-H5
+  ~1.6× larger than EDF) → cleanup ON HOLD pending format decision (int16+gain + reader update).
+- **P1 morphology (slow-band centroid): negative for band determination** (0.45 vs 0.74) — centroid is
+  1/f-dominated (~2.1 Hz for delta & mixed). Band call stays at the default-mixed z-logic (0.74 ≈ the
+  74%-mixed report base rate; near ceiling for spectral-only). Further gains need aperiodic/FOOOF (P2).
+  Morphology features (morphology_features.parquet) retained as candidate discrimination features.
