@@ -36,4 +36,8 @@ the pipeline is wired so stages drop in later as a groupby key.
 - [x] D scoring (scores.parquet, topography, example_reports.md)
 - [x] E discrimination (results/discrimination.md; log_delta/log_theta/TAR top, AUC~0.73-0.75 adj)
 - [x] F write-up (results/RESULTS.md)
-- [~] STAGING (stretch): raw EEG downloading; torch+MPS ready; adapting morgoth2 infer next.
+- [~] STAGING (stretch): FEASIBLE, reverse-engineered end-to-end (docs/sleep_staging.md). Raw on S3
+  (matches 1:1, NORMAL downloading), model = SLEEPPSG.pth (base_patch200_200, 5-class), exact Mac/MPS
+  command found, pilot reached model-load. Blocked only by env isolation (pyhealth pins pandas<2 vs
+  analysis stack) → needs a dedicated venv. Clean pickup; not shipped autonomously to avoid a broken
+  env + unvalidated stages overnight.
