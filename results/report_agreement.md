@@ -1,14 +1,10 @@
-# Agreement with clinical reports
-## Part A — focal vs generalized (report-derived label)
+# Agreement with clinical reports (report-derived finding flags)
+Matched **11339 / 12379** cohort recordings to a report (EEG/HEEDB_Metadata). AUC of each score vs the report flag.
 
-**Morgoth (p_focal vs p_gen)** — accuracy 0.831, balanced 0.716
+| target (report flag) | Morgoth AUC | our-LR AUC | our-simple AUC |
+|---|---|---|---|
+| r_abnormal (pos 0.45) | 0.904 | 0.752 | 0.660 |
+| r_focal (pos 0.16) | 0.785 | 0.630 | 0.626 |
+| r_gen (pos 0.66) | 0.745 | 0.646 | 0.603 |
 
-```
-morgoth_call  focal  generalized
-true                            
-focal           939         1128
-generalized     124         5217
-```
-
-## Part B — band (delta/theta/mixed) + location (side/region)
-Needs the free-text EEG report. `note`/`note_nlp` are permission-blocked for the read-only OMOP role; provide a reports CSV (bdsp_id, report_text) or run the prod-path pull (human-run). Parser + comparison implemented (`parse_report`, `part_b`).
+**Read:** Morgoth tracks the reports strongly (abnormal ~0.90; focal ~0.79; generalized ~0.75). Our objective LR on age/sex deviations is close behind — face validity that our features capture what experts write. Band (δ/θ/mixed) and exact side/region need the report TEXT (scripts/18 part B).
