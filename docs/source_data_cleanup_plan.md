@@ -232,3 +232,20 @@ Rough combined estimate: **~40-60% fewer channels**, and with compression a conv
 
 ### QC gates (delete predicate)
 `deletable = A(max|Δ|≤1e-6 µV, MSE≤1e-12) && B(stat rel-diff≤1e-9, bandpower rel-diff≤1e-6, channel-set exact) && C(argmax match ≥99.9%, prob |Δ|≤1e-3) && backup_verified(re-hashed) && quarantine(soft-delete, not rm)` — all true, logged, and signed off before any hard delete.
+
+## Pilot findings (local, 5 real scalp EDFs) — IMPORTANT, changes the premise
+- **Lossless & correct: proven.** Every kept channel reconstructs bit-exactly (max|Δ|=0.0 µV, MSE=0);
+  only genuinely dead non-EEG leads dropped (SpO2/OSAT, pulse-rate, flat LOC); all 19 ten-twenty + EKG
+  + EOG/EMG kept on every file; scalp/intracranial classification correct. (Two bugs found+fixed:
+  never-drop-signal now uses ANY probe window; duplicates only drop unlisted twins.)
+- **⚠️ Space savings do NOT materialize as planned.** BDSP scalp EDFs are already lean (~2-3 dead
+  channels of 30-50), and morgoth's H5 stores **float64 Volts** (reader requirement) = ~4× the EDF's
+  int16; gzip recovers only to ~0.85× → **H5 mean ≈ 1.57× the EDF size (larger)**. The "~45-60% saved"
+  target is unachievable in float64.
+- **To get BOTH lossless AND smaller:** store **int16 digital + per-channel gain/offset** (EDF's own
+  scheme; exact; ~0.15-0.5× size) — but this **breaks morgoth's current `_load_h5`** (which expects
+  float64 V), so it needs a morgoth reader update / compatibility shim.
+- **Decision needed:** (a) keep source as EDF + only prune dead channels (minor savings, no format
+  change); (b) convert to float64 morgoth-H5 for **usability/annotation-headroom, accepting larger
+  size**; or (c) H5 with int16+gain storage + update the morgoth reader (best-of-both, needs coord).
+Code: io/h5_convert.py, scripts/27_h5_cleanup_pilot.py (validated locally; source untouched).
