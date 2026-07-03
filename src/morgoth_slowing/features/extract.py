@@ -20,8 +20,11 @@ BIPOLAR = [
     ("Fp2", "F4"), ("F4", "C4"), ("C4", "P4"), ("P4", "O2"),
     ("Fz", "Cz"), ("Cz", "Pz"),
 ]
-# band edges (Hz) — aligned to feature_spec; validated against JJ's features
-BANDS = {"delta": (0.5, 4.0), "theta": (4.0, 7.0), "alpha": (8.0, 13.0),
+# band edges (Hz). delta low-edge = 1.0 (not 0.5): the 0.5-1 Hz range is dominated by sub-delta
+# drift/1-f and artifact and inflated relative-delta ~0.5 vs the ~0.30 reference; delta 1-4 is a
+# standard clinical convention and calibrates rel_delta to JJ's precomputed features (median 0.33 vs
+# 0.30). See docs/feature_extraction.md.
+BANDS = {"delta": (1.0, 4.0), "theta": (4.0, 7.0), "alpha": (8.0, 13.0),
          "beta": (13.0, 30.0), "gamma": (30.0, 45.0), "total": (0.5, 45.0)}
 SEG_SAMPLES = 3000     # 15 s @ 200 Hz
 SEG_STEP = 2800        # 14 s (1 s overlap) — matches Growth_curves res
