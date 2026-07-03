@@ -29,10 +29,15 @@ def edf_to_h5_int16(edf_path, h5_path, keep_labels=None):
             dmin, dmax = f.getDigitalMinimum(i), f.getDigitalMaximum(i)
             gain = (pmax - pmin) / (dmax - dmin)
             offset = pmin - dmin * gain                              # physical = dig*gain + offset
+            unit = f.getPhysicalDimension(i).strip()
+            # fold physical-unit -> Volts into gain/offset so the loader is trivial and matches the
+            # existing float64-H5 (mne Volts) convention exactly. EDF physical is usually µV.
+            scale = 1e-6 if unit.lower() in ("uv", "µv", "microvolt", "microvolts") else 1.0
+            gain *= scale; offset *= scale
             ds = g.create_dataset(labels[i], data=dig.reshape(-1, 1),
                                   compression="gzip", shuffle=True)
             ds.attrs["gain"] = float(gain); ds.attrs["offset"] = float(offset)
-            ds.attrs["unit"] = f.getPhysicalDimension(i); ds.attrs["fs"] = float(fs_all[i])
+            ds.attrs["unit"] = "V"; ds.attrs["orig_unit"] = unit; ds.attrs["fs"] = float(fs_all[i])
     f._close()
     return {"n_kept": len(keep)}
 
