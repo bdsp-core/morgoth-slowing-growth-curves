@@ -83,7 +83,14 @@ def main():
         # strongest slowing evidence from our features (regional delta or whole-head theta)
         best_z = max([z for z in region_z.values() if np.isfinite(z)] +
                      [z for z in (whz, thz) if np.isfinite(z)] + [0.0])
-        band = "theta slowing" if (np.isfinite(thz) and thz > (whz if np.isfinite(whz) else 0)) else "delta slowing"
+        # band: delta / theta / mixed (mixed when both delta and theta are elevated)
+        dz_, tz_ = (whz if np.isfinite(whz) else -9), (thz if np.isfinite(thz) else -9)
+        if dz_ >= 1.0 and tz_ >= 1.0:
+            band = "mixed theta/delta slowing"
+        elif tz_ > dz_:
+            band = "theta slowing"
+        else:
+            band = "delta slowing"
         # Morgoth gated it in -> always describe; severity floored to at least "mild"
         sev = ph.severity_word(max(best_z, 2.01))
         prevw = ph.prevalence_word(prev)

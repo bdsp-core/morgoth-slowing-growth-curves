@@ -58,3 +58,17 @@ persistence, and stage-dependence**. Examples:
   (§coverage doc).
 - **Regional stage-specific curves** (focal localization within stage) — recording-level localization
   is wired; per-region×stage curves are the next refinement.
+
+## 8. Validation against expert reports (essential for clinical use)
+Pulled the free-text EEG reports (Box de-identified; local only, not committed) and extracted labels
+with provenance → `results/report_extracted_labels.csv` (12,303/12,379 matched; source note name +
+Box path per row). Raw text is NOT published — only derived labels.
+- **Report-flag agreement (scripts/19):** Morgoth vs report — abnormal AUC 0.90, focal 0.79, gen 0.75;
+  our-LR-on-deviations 0.75/0.63/0.65 (face validity, behind Morgoth).
+- **Report-text agreement (scripts/20), our generated statement vs report where the report states it:**
+  **region 0.91**, **side 0.78** (strong), **band 0.33** (weak — simple spectral delta/theta/mixed
+  calling is the weak axis; side/region are trustworthy).
+- **LR-vs-Morgoth (scripts/17):** our deviation features track Morgoth at r≈0.63–0.70, R²≈0.47.
+Takeaway: **location (region/side) has good face validity vs experts; band determination needs work.**
+All labels (Morgoth probs, report-derived flags, report-text-extracted band/side/region) are published
+per-recording for reproducibility, with pointers back to the source notes.
