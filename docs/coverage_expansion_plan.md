@@ -148,3 +148,20 @@ small even though raw transit is large.
 (adult abnormal-with-sleep). Wave 3: `priority 3.0–3.5` adult-normal to top up adult N3 norms. Stop
 once each age band × sex × stage cell clears the fitter's min-effective-n gate (~n=30); the tables
 above show every adult cell clears it many times over, so Waves 1–3 are almost certainly sufficient.
+
+## Pilot findings (ingestion feasibility) — READ BEFORE FULL WAVE
+Validated one real BIDS EDF end-to-end (io/edf.py: channel harmonize + resample 256→200 Hz + featurize).
+Blockers found — full wave should NOT run until these are resolved:
+1. **Scale/consistency:** EDF-ingested whole-head rel_delta ≈ 0.055 vs cohort norm ~0.34. Full clinical
+   recordings contain much more artifact (EMG/movement) than the curated 15-s segments the norms were
+   built on; montage/reference/filtering also differ. → need **artifact rejection + pipeline
+   harmonization** so expansion features match the norm distribution (or re-fit norms on EDF-derived
+   features). This is the key scientific blocker.
+2. **Disk/compute:** ~1.8 GB per recording (median 21 h) → full wave (33,946) ≈ **~60 TB** raw + weeks
+   of MPS staging. Must be **batched (pull→stage→featurize→drop raw)** and realistically run on
+   **cloud/cluster GPU**, not this Mac.
+3. **Selection fixes:** drop ~60 impossible-duration outliers (>~48 h single recording); the candidate
+   CSV needs the **per-recording EDF path/session** (BidsFolder+SessionID) to actually pull each one.
+**Recommendation:** (a) harmonize the EDF feature pipeline + add artifact rejection; (b) validate on a
+proper ~100-recording pilot that reproduces the cohort feature distribution; (c) fix selection (paths +
+duration); (d) run the full wave batched on cloud GPU. io/edf.py + the pilot are the groundwork.
