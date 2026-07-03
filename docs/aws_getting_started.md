@@ -1,3 +1,8 @@
+> REGION VERIFIED (2026-07-03): both bdsp-opendata buckets are in **us-east-1**. Brandon's
+> existing EC2 is us-west-2 — for the 60 TB ingestion, launch the fleet in **us-east-1**
+> (same region = free transfer, ~$1k total). Running in us-west-2 costs ~$1,200 cross-region
+> (inter-region S3→EC2 ~$0.02/GB). Pilot (~10 recordings) is negligible cost in either region.
+
 # AWS getting started — hands-on (single instance → fleet)
 
 Companion to `aws_cloud_plan.md` (the architecture/cost). This is the **step-by-step** to get running.
