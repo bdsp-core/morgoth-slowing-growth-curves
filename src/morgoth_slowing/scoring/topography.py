@@ -16,14 +16,24 @@ def dominance_ratio(region_burdens: dict) -> float:
 
 
 def classify(region_burdens: dict, hemisphere_asym_z: float,
-             burden_thr: float, dominance_thr: float, asym_thr: float = 2.0) -> str:
+             burden_thr: float = 2.0, dominance_thr: float = 1.8, asym_thr: float = 2.0) -> str:
     """Return one of: 'focal', 'lateralized', 'generalized', 'multifocal', 'none'.
 
-    Rules (calibrate thresholds against expert labels, feature_spec §6):
-      - none: no region above burden_thr
-      - focal: single dominant region (dominance high) above threshold
-      - lateralized: one hemisphere abnormal + abnormal hemisphere asymmetry
-      - generalized: many regions abnormal, low dominance, asymmetry not abnormal
-      - multifocal: >=2 noncontiguous abnormal regions, low dominance
+    region_burdens: {region: patient-level z (burden proxy)}. Thresholds provisional
+    (calibrate against expert labels, feature_spec §6).
     """
-    raise NotImplementedError("Phase 4: implement decision rules + calibrate thresholds.")
+    vals = {r: v for r, v in region_burdens.items() if np.isfinite(v)}
+    abn = {r: v for r, v in vals.items() if v >= burden_thr}
+    if not abn:
+        return "none"
+    dom = dominance_ratio(vals)
+    asym_abn = abs(hemisphere_asym_z) >= asym_thr
+    if len(abn) >= 2 and dom < dominance_thr and not asym_abn:
+        return "generalized"
+    if dom >= dominance_thr and asym_abn:
+        return "focal"
+    if asym_abn:
+        return "lateralized"
+    if len(abn) >= 2:
+        return "multifocal"
+    return "focal"
