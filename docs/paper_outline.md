@@ -25,11 +25,18 @@ Communications, npj Digital Medicine). Companion open-source package + published
 ## 1. Introduction
 - Clinical problem: slowing (focal vs generalized) is a core EEG abnormality; interpretation is
   age- and state-dependent and largely qualitative/expert-dependent.
-- **Literature review** (see docs/literature_review.md → this section): (a) lifespan normative qEEG
-  (normal values), (b) classic small-sample age-norm references clinicians rely on, (c) qEEG
-  abnormality quantification (van Putten et al., DAR/TAR, ICU qEEG), (d) automated EEG
-  interpretation/report generation. **Gap:** none combine large N + lifespan + sleep-stage-specific +
-  *deviation-from-normal* + validated expert-style description.
+- **Literature review** (full: docs/literature_review.md, incl. comparison Table T2): (a) lifespan
+  normative qEEG (normal values; maturational slow→fast shift; aging) + modern deviation frameworks
+  (EEG brain-age; MRI "brain charts", Bethlehem 2022 *Nature*); (b) classic small-N, wake-only,
+  qualitative age-norm references clinicians still rely on (Petersén & Eeg-Olofsson 1971) — and the
+  **direct precedent, John et al. 1980/1988 *Science* "developmental equations"/"neurometrics"**, which
+  scored deviation from age norms but at tiny scale, wake-only; (c) qEEG abnormality quantification
+  (van Putten Brain Symmetry Index 2004/2007; Finnigan & van Putten DAR in stroke; ICU/coma qEEG) —
+  disease-specific, threshold-based, un-normed for age/sex/stage; (d) automated interpretation
+  (TUAB binary normal/abnormal; Schirrmeister/Gemein ConvNets; LaBraM/foundation models; Biswal &
+  Westover 2015 report NLP — extraction not normative generation). **Gap:** none combine large N +
+  lifespan-continuous + sex- and sleep-stage-specific + *deviation-from-normal* + validated
+  expert-style description. (Caveat: verify exact Ns/pages for the historical norms before submission.)
 - Contributions (bulleted): reproducible lifespan×sex×stage norms; deviation scoring; Morgoth-gated
   focal/generalized; report-sentence generation validated vs reports; open package + published labels.
 
