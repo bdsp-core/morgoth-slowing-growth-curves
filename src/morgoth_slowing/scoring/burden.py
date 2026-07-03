@@ -24,6 +24,28 @@ def burden(z, tau, weights=None):
     return float((w * np.maximum(z - tau, 0.0)).sum() / w.sum())
 
 
-def persistence(is_abnormal, segment_seconds=15):
-    """Return dict: longest_run_min, n_episodes, median_episode_min (feature_spec §3)."""
-    raise NotImplementedError("Phase 4: run-length encode the boolean abnormality series.")
+def persistence(is_abnormal, segment_seconds=15, step_seconds=14):
+    """Run-length stats of an ordered boolean abnormality series (feature_spec §3).
+
+    Returns longest_run_min, n_episodes, median_episode_min. An "episode" is a maximal run of
+    consecutive abnormal segments; duration = segment_seconds + (run_len-1)*step_seconds converted
+    to minutes (segments overlap/step by step_seconds)."""
+    a = np.asarray(is_abnormal, bool)
+    runs = []
+    i = 0
+    while i < len(a):
+        if a[i]:
+            j = i
+            while j < len(a) and a[j]:
+                j += 1
+            runs.append(j - i)
+            i = j
+        else:
+            i += 1
+    if not runs:
+        return {"longest_run_min": 0.0, "n_episodes": 0, "median_episode_min": 0.0}
+    dur = lambda n: (segment_seconds + (n - 1) * step_seconds) / 60.0
+    durations = [dur(n) for n in runs]
+    return {"longest_run_min": max(durations), "n_episodes": len(runs),
+            "median_episode_min": float(np.median(durations))}
+
