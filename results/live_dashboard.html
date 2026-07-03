@@ -1,0 +1,31 @@
+<!doctype html><meta charset=utf8>
+<title>Slowing ingestion — live dashboard</title>
+<style>
+ body{font:15px/1.5 -apple-system,system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;color:#1a1f2b}
+ h1{font-size:1.5rem} h2{font-size:1.1rem;margin-top:2rem;border-bottom:1px solid #e3e6ee;padding-bottom:.3rem}
+ table{border-collapse:collapse;width:100%;margin:.5rem 0;font-variant-numeric:tabular-nums}
+ td,th{border:1px solid #e3e6ee;padding:.35rem .6rem;text-align:left} th{background:#f5f7fb}
+ figure{margin:1rem 0} img{max-width:100%;border:1px solid #e3e6ee;border-radius:6px}
+ figcaption{color:#6b7280;font-size:.85rem;margin-top:.25rem}
+ pre{background:#f5f7fb;padding:1rem;overflow:auto;border-radius:6px;font-size:.8rem}
+</style>
+<h1>Slowing ingestion — live dashboard</h1>
+<h2>Health checks</h2><table><tr><th>Check</th><th>Value</th><th>Status</th></tr><tr><td>whole-head rel_delta median</td><td>0.378 (expect 0.2-0.45)</td><td>✅ PASS</td></tr><tr><td>N3 rel_delta > W rel_delta (physiologic)</td><td>N3=0.321 vs W=0.353</td><td>⚠️ WARN</td></tr><tr><td>staged segments (not 'Other')</td><td>100% staged</td><td>✅ PASS</td></tr><tr><td>no all-NaN feature columns</td><td>none</td><td>✅ PASS</td></tr><tr><td>label coverage</td><td>focal_slow=1</td><td>⚠️ WARN</td></tr></table>
+<h2>Ingestion progress</h2><table><tr><td>recordings ingested</td><td>1</td></tr><tr><td>feature rows</td><td>77568</td></tr><tr><td>by label</td><td>focal_slow=1</td></tr></table>
+<h2>rel_delta by sleep stage (whole head)</h2><pre>       n_segments  median_rel_delta
+stage                              
+W            1238             0.353
+N1            884             0.372
+N2            884             0.405
+N3            114             0.321
+REM           112             0.381</pre>
+<h2>Table 1 (live)</h2><pre>|                             |                | Missing   | Overall          | Focal slowing    | Generalized slowing   | Normal           |
+|-----------------------------|----------------|-----------|------------------|------------------|-----------------------|------------------|
+| n                           |                |           | 12380            | 2068             | 5396                  | 4916             |
+| Age (years), median [Q1,Q3] |                | 18        | 53.0 [26.0,69.0] | 61.0 [44.0,72.0] | 58.0 [31.0,72.0]      | 38.0 [20.0,61.0] |
+| sex, n (%)                  | F              |           | 6123 (49.5)      | 1085 (52.5)      | 2643 (49.0)           | 2395 (48.7)      |
+|                             | M              |           | 6256 (50.5)      | 982 (47.5)       | 2753 (51.0)           | 2521 (51.3)      |
+|                             | None           |           | 1 (0.0)          | 1 (0.0)          | 0 (0.0)               | 0 (0.0)          |
+| Cohort, n (%)               | Newly ingested |           | 1 (0.0)          | 1 (0.0)          | 0 (0.0)               | 0 (0.0)          |
+|                             | Original       |           | 12379 (100.0)    | 2067 (100.0)     | 5396 (100.0)          | 4916 (100.0)     |</pre>
+<h2>Figures</h2><p><em>No figures yet.</em></p>

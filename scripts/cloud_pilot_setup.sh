@@ -28,11 +28,12 @@ if [ "${1:-setup}" = "run" ]; then
 fi
 
 echo ">>> [1/6] system deps"
-sudo apt-get update -qq && sudo apt-get install -y -qq unzip git
+sudo apt-get update -qq && sudo apt-get install -y -qq unzip git rsync
 
-echo ">>> [2/6] clone repos"
-[ -d "$REPO" ] || git clone https://github.com/bdsp-core/morgoth-slowing-growth-curves.git "$REPO"
-[ -d "$MORGOTH2_DIR" ] || git clone --depth 1 https://github.com/bdsp-core/morgoth2 "$MORGOTH2_DIR"
+echo ">>> [2/6] verify repos (rsync'd from the Mac — both are private, so no git clone)"
+for d in "$REPO" "$MORGOTH2_DIR"; do
+  [ -d "$d" ] || { echo "  !! $d missing — rsync it from your Mac first (see block above)"; exit 1; }
+done
 
 echo ">>> [3/6] checkpoint + selection metadata into place"
 mkdir -p "$MORGOTH2_DIR/checkpoints" "$PILOT_SCRATCH"
@@ -40,15 +41,16 @@ mkdir -p "$MORGOTH2_DIR/checkpoints" "$PILOT_SCRATCH"
 [ -d ~/eegmeta ] && mv ~/eegmeta "$PILOT_SCRATCH/" || echo "  (eegmeta already in place?)"
 [ -d ~/reports ] && mv ~/reports "$PILOT_SCRATCH/" || echo "  (reports already in place?)"
 
-echo ">>> [4/6] python venv (inherits the AMI's CUDA torch via system-site-packages)"
+echo ">>> [4/6] python venv (self-contained: CUDA torch from PyPI + all deps; apex NOT needed for --predict)"
 cd "$REPO"
-python3 -m venv .venv --system-site-packages
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -q -U pip
-# our deps + morgoth2's runtime deps; torch/torchvision come from the AMI (do NOT reinstall)
-pip install -q numpy scipy pandas pyarrow pyyaml scikit-learn statsmodels pygam \
-    mne boto3 s3fs matplotlib seaborn pyedflib h5py \
-    einops "timm==1.0.11" tensorboardX mat73 hdf5storage
+pip install -q torch torchvision                      # Linux x86 PyPI wheel = CUDA build
+# our deps + morgoth2's runtime deps for inference (tableone added for the live Table 1 refresh)
+pip install -q numpy scipy pandas pyarrow pyyaml scikit-learn statsmodels pygam tableone \
+    mne boto3 s3fs matplotlib seaborn pyedflib h5py tqdm \
+    einops "timm==1.0.11" tensorboardX mat73 hdf5storage pyhealth
 python -c "import torch;assert torch.cuda.is_available(),'CUDA not visible!';print('  torch',torch.__version__,'CUDA OK:',torch.cuda.get_device_name(0))"
 
 echo ">>> [5/6] rclone + BDSP S3 remote 'bdsp:'"
