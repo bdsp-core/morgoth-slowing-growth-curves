@@ -29,6 +29,36 @@ the pipeline is wired so stages drop in later as a groupby key.
 - Age cleaned to [0,120]; drop the 18 implausible rows.
 - Patient-level z: empirical percentile→z of burden vs the LOSO null from normals.
 
+## Status (v2, updated live)
+
+**Done & committed**
+- v1 stage-pooled: features, age×sex growth curves, discrimination (log_delta/theta/TAR AUC 0.73–0.75),
+  scoring, report phrases. Gallery (artifact) + PDF.
+- **Sleep staging** (morgoth2 `ss_hm_1.pth` on MPS) — validated (W60/N1/N2/N3/REM sane). normal+focal
+  staged; general in progress.
+- **Stage-specific curves** — normal delta rises W<N1<N2<N3 (validated physiology). figures/stage_curves/.
+- **Stage-aware descriptive scoring** — prevalence, persistence (runs/episodes), stage-accentuation,
+  only-in-sleep; normals prevalence≈0 (calibrated). results/example_reports_v2.md.
+- **Reproducible Python feature extractor** (features/extract.py) from raw EEG — validated vs JJ
+  (per-band log-power r=0.89–0.95); io/raw.py handles v5+v7.3 raw.
+- **Per-channel (18) + homologous-pair (8) features** for focal localization (recording.py).
+- Docs: report_architecture (3-tier Morgoth gate), coverage_by_stage (+ expansion via
+  bdsp-opendata-repository, labeled long EEGs, not PSG), sleep_staging, data_dictionary, phase0.
+- Morgoth run instructions for collaborator (in ../tele-eeg-publishing).
+
+**Running in background**
+- Morgoth **gate heads** NORMAL.pth + SLOWING.pth over all groups (→ data/derived/gate_*), after
+  general staging finishes (orchestrator).
+- **Full Python recompute** of all features from raw (→ *_py parquets), per-channel + pairs.
+
+**Remaining (assemble when jobs done)**
+- Aggregate gate window-probs → per-recording P(abnormal), P(slowing), P(focal), P(generalized).
+- Feature selection: distill gate prob → our features (LASSO/GBM+SHAP, stability, dedup) → keep-list.
+- Final **gated report generator**: Morgoth gate decides whether/what; our features (region+side+band+
+  prevalence+persistence+stage) describe. Verbal examples.
+- Re-run curves/discrimination/stage/descriptive on the Python (*_py) features; refresh gallery/PDF.
+- Regional/focal localization in the v2 descriptions (needs per-channel *_py features).
+
 ## Status log (updated as I go)
 - [x] A features (recording_features/asymmetry/segment_features.parquet)
 - [x] B curves (growth_curves.parquet + figures/curves/*.png; delta developmental trajectory validated)
