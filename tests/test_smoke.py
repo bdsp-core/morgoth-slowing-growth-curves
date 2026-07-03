@@ -29,3 +29,25 @@ def test_phrase_render():
 def test_phrase_normal():
     f = phrase.StateFinding("Awake", 0.0, 0.5, "generalized", "delta slowing", 0, 0, 0)
     assert "no significant slowing" in phrase.render(f)
+
+
+def test_recording_features_shapes():
+    import numpy as np
+    from morgoth_slowing.features import recording as rec
+    rng = np.random.RandomState(0)
+    res = np.empty((5, 4), dtype=object)
+    for i in range(5):
+        feat = np.abs(rng.rand(18, 31)) + 0.1
+        feat[:, 5] = feat[:, :5].sum(axis=1)  # total = sum of 5 bands (so rel powers <= 1)
+        res[i] = [5, i * 3000 + 1, (i + 1) * 3000, feat]
+    rows, segs, asym = rec.recording_features(res)
+    assert len(rows) == len(rec.REGIONS)
+    assert 0 <= [r for r in rows if r["region"] == "whole_head"][0]["rel_delta"] <= 1
+    assert any(k.startswith("asym_temporal") for k in asym)
+
+
+def test_topography_classify():
+    from morgoth_slowing.scoring import topography as topo
+    assert topo.classify({"L_temporal": 0.1, "R_temporal": 0.1}, 0.0) == "none"
+    assert topo.classify({"L_temporal": 4.0, "R_temporal": 0.2}, 3.5) == "focal"
+    assert topo.classify({"L_temporal": 3.0, "R_temporal": 3.0, "L_parasagittal": 3.0}, 0.0) == "generalized"

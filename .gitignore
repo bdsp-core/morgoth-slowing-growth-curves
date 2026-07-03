@@ -28,5 +28,5 @@ venv/
 
 # Outputs
 outputs/
-figures/
 *.log
+# figures/ ARE committed (results deliverables) — small PNGs
