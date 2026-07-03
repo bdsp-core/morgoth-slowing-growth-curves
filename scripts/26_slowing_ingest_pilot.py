@@ -11,7 +11,7 @@ in metadata/cohort_metadata.csv.
 Run: python scripts/26_slowing_ingest_pilot.py [N]   (default N=6)
 """
 from __future__ import annotations
-import sys, subprocess, tempfile, shutil
+import os, sys, subprocess, tempfile, shutil
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.io import savemat, loadmat
@@ -19,11 +19,15 @@ from morgoth_slowing.io.edf import load_edf_referential
 from morgoth_slowing.features import extract as ex, recording as rec, artifact as af
 from morgoth_slowing.io import staging as st
 
-RC = str(Path.home() / ".local/bin/rclone")
-REPO = "bdsp-opendata-repository/EEG"
-SCRATCH = Path("/private/tmp/claude-503/-Users-mbwest/7f57b202-b703-4b7d-b490-920bc2680984/scratchpad")
-M2 = "/private/tmp/claude-503/-Users-mbwest/7f57b202-b703-4b7d-b490-920bc2680984/scratchpad/morgoth2"
-VENV = str(Path("~/Desktop/GithubRepos/morgoth-slowing-growth-curves/.venv/bin/python").expanduser())
+# All paths env-configurable so the SAME script runs locally (Mac/MPS) and on a cloud GPU box (CUDA).
+# Defaults reproduce the original local behavior; set the env vars below on the cloud box.
+_LOCAL_SCRATCH = "/private/tmp/claude-503/-Users-mbwest/7f57b202-b703-4b7d-b490-920bc2680984/scratchpad"
+RC = os.environ.get("RCLONE_BIN", str(Path.home() / ".local/bin/rclone"))
+REPO = os.environ.get("BDSP_EEG_REPO", "bdsp-opendata-repository/EEG")
+SCRATCH = Path(os.environ.get("PILOT_SCRATCH", _LOCAL_SCRATCH))   # holds eegmeta/ and reports/
+M2 = os.environ.get("MORGOTH2_DIR", str(SCRATCH / "morgoth2"))
+VENV = os.environ.get("PILOT_VENV", str(Path("~/Desktop/GithubRepos/morgoth-slowing-growth-curves/.venv/bin/python").expanduser()))
+DEVICE = os.environ.get("MORGOTH_DEVICE", "mps")                  # set to "cuda" on the cloud GPU box
 OUT = Path("data/derived"); STAGES = ["W", "N1", "N2", "N3", "REM"]
 
 
@@ -65,7 +69,7 @@ def stage_dir(indir, outdir):
         f"--dataset SLEEPPSG --data_format mat --sampling_rate 0 --already_format_channel_order no "
         f"--already_average_montage no --allow_missing_channels yes --max_length_hour no "
         f"--eval_sub_dir {indir} --eval_results_dir {outdir} --prediction_slipping_step_second 5 "
-        f"--polarity 1 --rewrite_results no --num_workers 0 --device mps"], check=True, capture_output=True)
+        f"--polarity 1 --rewrite_results no --num_workers 0 --device {DEVICE}"], check=True, capture_output=True)
 
 
 def main(n=6):
