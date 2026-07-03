@@ -45,11 +45,12 @@ def main(limit=None):
         except Exception as e:
             print("  skip", f.name, type(e).__name__, e); continue
         base = {"bdsp_id": p["bdsp_id"], "age": m.get("age"), "sex": m.get("sex"), "label": m.get("label")}
-        for r in rows:
+        for r in rows:                                   # recording-level: all 6 regions + 18 channels
             reg_rows.append({**base, **r})
-        asym_rows.append({**base, **asym})
-        for s in segs:
-            seg_rows.append({"bdsp_id": p["bdsp_id"], "label": m.get("label"), **s})
+        asym_rows.append({**base, **asym})               # 2 region + 8 channel homologous pairs
+        for s in segs:                                   # segment-level: only 6 aggregated regions (size)
+            if s["region"] in rec.AGG_REGIONS:
+                seg_rows.append({"bdsp_id": p["bdsp_id"], "label": m.get("label"), **s})
 
     pd.DataFrame(reg_rows).to_parquet(OUT / "recording_features_py.parquet")
     pd.DataFrame(asym_rows).to_parquet(OUT / "recording_asymmetry_py.parquet")
