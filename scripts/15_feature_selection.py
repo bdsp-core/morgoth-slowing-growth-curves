@@ -50,13 +50,20 @@ def run(target_name, y, X):
 
 def main():
     X = build_matrix()
-    feats = X.drop(columns=["label"])
+    # add Morgoth-distillation target: reconstruct Morgoth's expert-calibrated abnormality call
+    import pandas as _pd
+    gate = _pd.read_parquet(DER / "gate_probs.parquet").set_index("bdsp_id")
+    X = X.join(gate[["p_abnormal"]], how="left")
+    X["morgoth_abn"] = (X.p_abnormal > 0.5).astype("Int64")
+    feats = X.drop(columns=["label", "p_abnormal", "morgoth_abn"])
     out = [f"# Feature selection\n\nTarget importances into age/sex-adjusted feature z-scores "
            f"({feats.shape[1]} candidate feature@region columns, n={len(X)}).\n"]
-    for target_name, mask, pos in [("normal_vs_focal", X.label.isin(["normal", "focal_slow"]), "focal_slow"),
-                                   ("normal_vs_general", X.label.isin(["normal", "general_slow"]), "general_slow")]:
-        sub = X[mask]; y = (sub.label == pos).astype(int).values
-        imp = run(target_name, y, sub.drop(columns=["label"]))
+    targets = [("normal_vs_focal", X.label.isin(["normal", "focal_slow"]), lambda s: (s.label == "focal_slow")),
+               ("normal_vs_general", X.label.isin(["normal", "general_slow"]), lambda s: (s.label == "general_slow")),
+               ("distill_MORGOTH_abnormal", X.morgoth_abn.notna(), lambda s: (s.morgoth_abn == 1))]
+    for target_name, mask, posfn in targets:
+        sub = X[mask]; y = posfn(sub).astype(int).values
+        imp = run(target_name, y, sub.drop(columns=["label", "p_abnormal", "morgoth_abn"]))
         out.append(f"\n## {target_name} (top 15 by RF importance; stability = bootstrap L1 selection freq)\n")
         out.append("| feature@region | RF imp | L1 |coef| | stability |\n|---|---|---|---|\n")
         for _, r in imp.head(15).iterrows():

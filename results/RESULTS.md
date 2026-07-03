@@ -71,3 +71,11 @@ Box path per row). Raw text is NOT published — only derived labels.
 Takeaway: **all three axes (region 0.91, side 0.78, band 0.74) now have good face validity vs experts.**
 All labels (Morgoth probs, report-derived flags, report-text-extracted band/side/region) are published
 per-recording for reproducibility, with pointers back to the source notes.
+
+## 9. Calibration + feature keep-list (Phase 7 complete)
+- **Delta band calibrated to 1–4 Hz** → normal whole-head rel_delta 0.34 (physiological; was ~0.5–0.6;
+  ref 0.30). Full pipeline recomputed; **all validation metrics held**: report agreement region 0.92 /
+  side 0.79 / band 0.74; LR↔Morgoth r 0.64–0.69; discrimination TAR/asymmetry unchanged.
+- **Reporting keep-list** (feature selection distilling both the clinical label AND Morgoth's
+  abnormality call, results/feature_selection.md): **TAR (θ/α), DAR (δ/α), log-δ, log-θ** (whole-head +
+  temporal/parasagittal), stability 1.0. Per-channel homologous asymmetry (e.g. T3-T5 δ) for focal.
