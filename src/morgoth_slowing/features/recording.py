@@ -11,13 +11,22 @@ import numpy as np
 BAND_IDX = {"delta": 0, "theta": 1, "alpha": 2, "beta": 3, "gamma": 4, "total": 5}
 
 # channel indices (order per docs/data_dictionary.md / config/channels_regions.yaml)
-REGIONS = {
+CH_NAMES = ["Fp1-F7", "F7-T3", "T3-T5", "T5-O1", "Fp2-F8", "F8-T4", "T4-T6", "T6-O2",
+            "Fp1-F3", "F3-C3", "C3-P3", "P3-O1", "Fp2-F4", "F4-C4", "C4-P4", "P4-O2",
+            "Fz-Cz", "Cz-Pz"]
+_AGG = {
     "L_temporal": [0, 1, 2, 3], "R_temporal": [4, 5, 6, 7],
     "L_parasagittal": [8, 9, 10, 11], "R_parasagittal": [12, 13, 14, 15],
     "midline": [16, 17], "whole_head": list(range(18)),
 }
+AGG_REGIONS = list(_AGG)                                   # the 6 clinical regions (for segment table)
+# full region set = 6 aggregated + 18 individual channels (for recording-level localization)
+REGIONS = {**_AGG, **{ch: [i] for i, ch in enumerate(CH_NAMES)}}
+# homologous L/R pairs: 2 region-level + 8 individual bipolar-channel pairs (for asymmetry/localization)
+_HOMOLOG_CH = [(0, 4), (1, 5), (2, 6), (3, 7), (8, 12), (9, 13), (10, 14), (11, 15)]
 ASYM_PAIRS = {"temporal": ("L_temporal", "R_temporal"),
-              "parasagittal": ("L_parasagittal", "R_parasagittal")}
+              "parasagittal": ("L_parasagittal", "R_parasagittal"),
+              **{f"ch_{CH_NAMES[l]}": (CH_NAMES[l], CH_NAMES[r]) for l, r in _HOMOLOG_CH}}
 EPS = 1e-12
 
 
