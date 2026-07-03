@@ -57,6 +57,13 @@ def _derived(bp: np.ndarray) -> dict:
     }
 
 
+def recording_features_tensor(tensor, agg=np.nanmedian):
+    """Same as recording_features but takes a (n_seg, 18, 31) feature tensor directly
+    (e.g. from features.extract.extract on raw EEG) instead of a `res` object array."""
+    res = [(5, 0, 0, tensor[i]) for i in range(tensor.shape[0])]   # stage/start/end unused here
+    return recording_features(res, agg=agg)
+
+
 def recording_features(res, agg=np.nanmedian):
     """Return (rows, seg_rows):
       rows: list of dicts, one per region, aggregated over segments (for curves).
