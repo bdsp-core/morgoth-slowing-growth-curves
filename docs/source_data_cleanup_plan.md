@@ -1,3 +1,6 @@
+> STATUS: ON HOLD (decided after pilot — see 'Pilot findings' below: morgoth-H5 float64 is
+> larger, not smaller; revisit with int16+gain + reader update if space savings are needed).
+
 # Source-Data Cleanup Plan: Harvard EEG (BDSP) scalp EDF → morgoth H5
 
 **Status:** proposal / design doc

@@ -8,7 +8,9 @@ page.)
 
 ## What's new — EEG dataset cleanup & normative-slowing resources
 
-**1. Storage cleanup (scalp EEG).** We are pruning non-recorded/dead channels from scalp EEG files and
+**1. Storage cleanup (scalp EEG) — UNDER EVALUATION (not yet live).** A pilot confirmed lossless
+channel-pruned EDF→H5 conversion, but for these already-lean files the annotation-ready float64 H5 is
+*larger* than the EDF, so the format/space tradeoff is being finalized before any rollout. When live, we would prune non-recorded/dead channels from scalp EEG files and
 re-packaging them from EDF into an annotation-ready **HDF5** format. Scope and guarantees:
 - **Only scalp studies** are pruned; **stereo/intracranial (sEEG/iEEG) recordings are left byte-for-byte
   intact.**
