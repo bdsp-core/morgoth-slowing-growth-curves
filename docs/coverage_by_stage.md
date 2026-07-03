@@ -51,3 +51,33 @@ focal_slow  W   N1  N2  N3  REM     (single digits in most cells)
 4. **Practical guardrail in code:** the curve fitter already NaNs cells below a min effective-n; add
    the same gate to scoring so we never score a patient's stage against a thin/absent norm (fall back
    to the stage-pooled norm and say so).
+
+## Data expansion — filling the N3/adult-sleep gap (the real fix)
+
+The gaps above are solvable: the full BDSP EEG repository has **many long, sleep-capturing routine
+EEGs at every age**. `s3://bdsp-opendata-repository/EEG/bids/<site>/` with per-site metadata at
+`EEG/eeg-metadata/<site>_eeg_metadata_*.csv` (columns incl. `BDSPPatientID`, `BidsFolder`,
+`DurationInSeconds`, **`AgeAtVisit`**, **`SexDSC`**).
+
+Sizing (site **S0001** alone): 119,544 recordings / 46,038 patients; **43,953 are >6 h** (37%),
+8,023 are >24 h (multi-day). Long recordings by age band: 0-2 955 · 3-5 686 · 6-12 1,564 · 13-17
+1,089 · 18-29 4,990 · 30-44 5,274 · 45-59 8,504 · 60-74 11,792 · 75+ 6,526. → **thousands of
+sleep-containing EEGs at every adult age**, i.e. plenty of N3 to build adult N3 norms.
+
+**Constraints (per Brandon):**
+- **Only use recordings with a clinician report giving normal/abnormal** (and ideally focal vs
+  generalized slowing). Demographics come from the metadata CSV (age/sex); the **normal/abnormal
+  label must come from the interpreting report** — link recording→report and parse it (report text
+  via OMOP `note`, or a report/label table), *not* from a model, since the report is the ground truth.
+- **Do NOT use the PSG files** (`s3://bdsp-opendata-repository/PSG/`): different acquisition, and no
+  pathological-vs-physiological slowing labels.
+
+**Workflow to expand (future phase):**
+1. From `eeg-metadata`, select long routine EEGs (e.g. >6 h) with age/sex, balanced across age×sex.
+2. Join to interpreting reports → keep only those labeled normal (for norms) or abnormal-slowing
+   (focal/generalized, for validation). Report linkage: OMOP `note` / recording↔report link.
+3. Pull those BIDS EEGs, extract sleep, **stage** (morgoth2 `ss_hm_1`) + **featurize** (this repo's
+   pipeline), then rebuild stage×age norms — now with well-powered adult N3/REM.
+4. Process in batches (multi-day EEGs are large): pull → extract sleep segments' features → drop raw.
+   Don't mirror the bucket (it's very large).
+
