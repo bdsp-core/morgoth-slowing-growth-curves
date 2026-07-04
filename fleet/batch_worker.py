@@ -12,7 +12,7 @@ Env:
     RCLONE_BIN, CODE_COMMIT, RUN_GATE=1, GATE_STEP
 """
 from __future__ import annotations
-import os, json, subprocess, tempfile, importlib.util, shutil
+import os, json, subprocess, tempfile, importlib.util, shutil, hashlib
 from pathlib import Path
 import pandas as pd
 
@@ -40,33 +40,68 @@ def upload(rid):
     subprocess.run(["bash", "-lc", f"echo done | {RC} rcat {S3_OUT}/done/{rid}.done"], check=False)
 
 
+def upload_done_only(rid):
+    """Mark an unprocessable recording (noedf / too-short) done so peers/passes don't retry it forever."""
+    subprocess.run(["bash", "-lc", f"echo noout | {RC} rcat {S3_OUT}/done/{rid}.done"], check=False)
+
+
+def _rid(row):
+    r = pd.Series(row)
+    return f"{r.SiteID}{r.pid}_{r.date}"
+
+
+def s3_done_set():
+    """One bulk listing of all .done markers -> set of rids (cheap: single S3 LIST vs per-recording HEAD)."""
+    r = subprocess.run([RC, "lsf", f"{S3_OUT}/done/"], capture_output=True, text=True)
+    return {l[:-5] for l in r.stdout.splitlines() if l.endswith(".done")}
+
+
 def main():
     rows = [json.loads(l) for l in open(os.environ["MANIFEST_LOCAL"]) if l.strip()]
-    mine = rows[IDX::SIZE]                              # strided slice -> even label mix per task
-    print(f"task {IDX}/{SIZE}: {len(mine)} of {len(rows)} recordings")
+    dynamic = os.environ.get("DYNAMIC", "0") == "1"
+    if dynamic:
+        # ELASTIC mode: each worker walks the WHOLE manifest in its own hash-shuffled order, skipping
+        # anything already .done. Any number of workers fully covers the manifest; spot interruptions
+        # self-heal (a dead worker's un-done recordings get picked up by survivors); a quota increase
+        # just means launching more workers. Repeats passes until a full pass adds nothing new.
+        seed = os.environ.get("SEED", str(IDX))
+        mine = sorted(rows, key=lambda r: hashlib.md5(f"{seed}:{_rid(r)}".encode()).digest())
+        print(f"dynamic worker seed={seed}: walking {len(rows)} recordings, S3_OUT={S3_OUT}", flush=True)
+    else:
+        mine = rows[IDX::SIZE]                          # strided slice -> even label mix per task
+        print(f"task {IDX}/{SIZE}: {len(mine)} of {len(rows)} recordings", flush=True)
     work = Path(tempfile.mkdtemp())
     ok = 0
     try:
-        for row in mine:
-            r = pd.Series(row)
-            rid = f"{r.SiteID}{r.pid}_{r.date}"
-            if s3_done(rid):
-                continue
-            try:
-                res = p30.process_one(r, work)
-                if isinstance(res, dict):
-                    upload(rid); ok += 1
-                    print(f"  DONE {rid} ({res['usable']}/{res['total']})  [{ok}]")
-                else:
-                    print(f"  {res} {rid}")
-            except Exception as e:
-                print(f"  FAIL {rid}: {type(e).__name__}: {e}")
-            finally:
-                for sub in ("in", "out"):
-                    shutil.rmtree(work / sub, ignore_errors=True)
+        while True:
+            done = s3_done_set()                        # refresh once per pass
+            processed = 0
+            for row in mine:
+                rid = _rid(row)
+                if rid in done or s3_done(rid):         # bulk set + last-moment recheck (avoid dup work)
+                    continue
+                try:
+                    res = p30.process_one(pd.Series(row), work)
+                    if isinstance(res, dict):
+                        upload(rid); ok += 1; processed += 1
+                        print(f"  DONE {rid} ({res['usable']}/{res['total']})  [{ok}]", flush=True)
+                    else:
+                        upload_done_only(rid)           # unprocessable (noedf/short) -> mark done so peers skip
+                        print(f"  {res} {rid} (marked done)", flush=True)
+                except Exception as e:
+                    print(f"  FAIL {rid}: {type(e).__name__}: {e}", flush=True)
+                finally:
+                    for sub in ("in", "out"):
+                        shutil.rmtree(work / sub, ignore_errors=True)
+            if not dynamic or processed == 0:           # stride: one pass. dynamic: until a pass adds nothing
+                break
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    print(f"task {IDX} done: {ok} recordings uploaded to {S3_OUT}")
+    print(f"worker done: {ok} recordings uploaded to {S3_OUT}", flush=True)
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
