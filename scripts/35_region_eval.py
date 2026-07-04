@@ -22,17 +22,19 @@ SIDES = ["left", "right", "bilateral"]
 
 
 def heatmap(cm, labels, title, path, cmap="Blues"):
-    cmn = cm / cm.sum(axis=1, keepdims=True).clip(min=1)      # row-normalized (recall)
-    fig, ax = plt.subplots(figsize=(1.3 + 1.1 * len(labels), 1.1 + 1.0 * len(labels)))
+    n_row = cm.sum(axis=1, keepdims=True)
+    cmn = cm / n_row.clip(min=1)                              # row-normalized (recall)
+    ylab = [f"{l} (n={int(n)})" for l, n in zip(labels, n_row.ravel())]
+    fig, ax = plt.subplots(figsize=(1.7 + 1.1 * len(labels), 1.3 + 1.0 * len(labels)))
     im = ax.imshow(cmn, cmap=cmap, vmin=0, vmax=1)
     ax.set_xticks(range(len(labels))); ax.set_xticklabels(labels, rotation=40, ha="right")
-    ax.set_yticks(range(len(labels))); ax.set_yticklabels(labels)
+    ax.set_yticks(range(len(labels))); ax.set_yticklabels(ylab)
     ax.set_xlabel("our prediction"); ax.set_ylabel("report (reference)"); ax.set_title(title)
     for i in range(len(labels)):
         for j in range(len(labels)):
-            ax.text(j, i, f"{cm[i, j]}", ha="center", va="center",
+            ax.text(j, i, f"{cmn[i, j]:.2f}", ha="center", va="center",
                     color="white" if cmn[i, j] > 0.5 else "#333", fontsize=9)
-    fig.colorbar(im, ax=ax, fraction=0.046, label="row-normalized (recall)")
+    fig.colorbar(im, ax=ax, fraction=0.046, label="row-normalized (proportion of report class)")
     fig.tight_layout(); fig.savefig(path, dpi=130); plt.close(fig)
 
 
