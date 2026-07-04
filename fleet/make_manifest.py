@@ -27,12 +27,22 @@ def main():
     j = p26.eligible().copy()
     j["plabel"] = np.where(j.rnorm == 1, "normal", np.where(j.rfoc == 1, "focal_slow", "general_slow"))
     j["ageband"] = pd.cut(pd.to_numeric(j.AgeAtVisit, errors="coerce"), bins=AGE_BINS)
-    groups = [g.reset_index(drop=True) for _, g in j.groupby(["plabel", "ageband"], observed=True)]
-    picks, gi = [], [0] * len(groups)
-    while len(picks) < n and any(gi[k] < len(groups[k]) for k in range(len(groups))):
-        for k in range(len(groups)):
-            if gi[k] < len(groups[k]):
-                picks.append(groups[k].iloc[gi[k]]); gi[k] += 1
+
+    def _stream(sub):                                   # round-robin across age bands
+        gs = [g.reset_index(drop=True) for _, g in sub.groupby("ageband", observed=True)]
+        out, gi = [], [0] * len(gs)
+        while any(gi[k] < len(gs[k]) for k in range(len(gs))):
+            for k in range(len(gs)):
+                if gi[k] < len(gs[k]):
+                    out.append(gs[k].iloc[gi[k]]); gi[k] += 1
+        return out
+    streams = {lab: _stream(j[j.plabel == lab]) for lab in ("focal_slow", "general_slow", "normal")}
+    picks, si = [], {k: 0 for k in streams}             # interleave labels
+    order = ["focal_slow", "general_slow", "normal"]
+    while len(picks) < n and any(si[k] < len(streams[k]) for k in order):
+        for lab in order:
+            if si[lab] < len(streams[lab]):
+                picks.append(streams[lab][si[lab]]); si[lab] += 1
                 if len(picks) >= n:
                     break
     df = pd.DataFrame(picks)
