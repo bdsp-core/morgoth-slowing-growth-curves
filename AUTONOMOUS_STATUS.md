@@ -53,3 +53,9 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
   (reuses validated process_one + S3 sync + .done resumability), launch_fleet.sh (ECR+Batch+budget),
   stage_models.sh, README runbook. Prepared + locally validated; NOT run on AWS (no creds) — one-command
   for Brandon on return. Next: refit curves + rerun analysis on expanded data; finalize manuscript/bdsp.io.
+- (cycle 5) Found selection clustered by label (9 focal->9 gen->9 normal per round) => early set all
+  focal. **Fixed to interleave labels x age-band** (focal,gen,normal,...) in worker + make_manifest;
+  relaunched (balanced from here; 23 focal preserved). Combined data validated: 23 recs -> 1.8M feature
+  rows; features physiologic (N3>W delta, 100% staged, no NaN); gate flags abnormality ~1.0 correctly.
+  rel_delta 0.462 is expected for the focal-only prefix (drops once normals land). Full refit
+  (curves/discrimination/calibration) deferred to next cycle when balanced F/G/N data has accumulated.
