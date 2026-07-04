@@ -166,21 +166,34 @@ def process_one(r, work):
 AGE_BINS = [0, 2, 5, 12, 17, 29, 44, 59, 74, 120]
 
 
+def _ageband_stream(sub):
+    """One recording at a time, round-robin across age bands (spreads ages)."""
+    groups = [g.reset_index(drop=True) for _, g in sub.groupby("ageband", observed=True)]
+    out, gi = [], [0] * len(groups)
+    while any(gi[k] < len(groups[k]) for k in range(len(groups))):
+        for k in range(len(groups)):
+            if gi[k] < len(groups[k]):
+                out.append(groups[k].iloc[gi[k]]); gi[k] += 1
+    return out
+
+
 def select_balanced(n):
-    """Round-robin across (primary label x age band) strata so sparse cells (pediatric, elderly,
-    generalized) get even coverage rather than prevalence-weighted. Excludes already-.done recordings."""
+    """INTERLEAVE the three labels (focal, gen, normal), each drawn round-robin across age bands, so the
+    processing order is label-balanced AND age-spread throughout (not clustered by label). Excludes
+    already-.done recordings for resumability."""
     j = p26.eligible().copy()
     j["plabel"] = np.where(j.rnorm == 1, "normal", np.where(j.rfoc == 1, "focal_slow", "general_slow"))
     j["ageband"] = pd.cut(pd.to_numeric(j.AgeAtVisit, errors="coerce"), bins=AGE_BINS)
     j["rid"] = j.SiteID.astype(str) + j.pid.astype(str) + "_" + j.date.astype(str)
     done_ids = {p.stem for p in DONE.glob("*.done")}
     j = j[~j.rid.isin(done_ids)]
-    groups = [g.reset_index(drop=True) for _, g in j.groupby(["plabel", "ageband"], observed=True)]
-    picks, gi = [], [0] * len(groups)
-    while len(picks) < n and any(gi[k] < len(groups[k]) for k in range(len(groups))):
-        for k in range(len(groups)):
-            if gi[k] < len(groups[k]):
-                picks.append(groups[k].iloc[gi[k]]); gi[k] += 1
+    streams = {lab: _ageband_stream(j[j.plabel == lab]) for lab in ("focal_slow", "general_slow", "normal")}
+    picks, si = [], {k: 0 for k in streams}
+    order = ["focal_slow", "general_slow", "normal"]
+    while len(picks) < n and any(si[k] < len(streams[k]) for k in order):
+        for lab in order:
+            if si[lab] < len(streams[lab]):
+                picks.append(streams[lab][si[lab]]); si[lab] += 1
                 if len(picks) >= n:
                     break
     return pd.DataFrame(picks), len(done_ids)
