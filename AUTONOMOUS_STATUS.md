@@ -84,3 +84,7 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
   (rare, n~66) -> motivates region-stratified collection. All three region approaches now in dashboard,
   honest. Stage AUROC re-run with more staged abnormals. Region localization = partially solved
   (temporal/frontal ok), the rest needs targeted data.
+- (cycle 11) Manuscript finalized (prev cycle). bdsp.io update notice expanded with honest results
+  (age-AUROC, localization macro-F1, staging-oversight-fixed, stage-stratified). Staging 921/7463 and
+  climbing; stage AUROC re-run with more data. Remaining: let staging finish/plateau then resume EDF
+  expansion; final summary + stop loop.
