@@ -29,7 +29,7 @@ if [ "${1:-setup}" = "run" ]; then
 fi
 
 echo ">>> [1/6] system deps"
-sudo apt-get update -qq && sudo apt-get install -y -qq unzip git rsync
+sudo apt-get update -qq && sudo apt-get install -y -qq unzip git rsync python3.12-venv
 
 echo ">>> [2/6] verify repos (rsync'd from the Mac — both are private, so no git clone)"
 for d in "$REPO" "$MORGOTH2_DIR"; do
