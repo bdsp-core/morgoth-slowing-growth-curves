@@ -32,7 +32,11 @@ def load_events():
 def main():
     ev = load_events()
     now = time.time()
-    start = next((e for e in ev if e.get("event") == "start"), None)
+    # progress.jsonl accumulates across runs; anchor on the LATEST start event (current run)
+    start_idxs = [i for i, e in enumerate(ev) if e.get("event") == "start"]
+    si = start_idxs[-1] if start_idxs else 0
+    start = ev[si] if start_idxs else None
+    ev = ev[si:]                                       # only events from the current run
     total = int(start["total"]) if start else max([e.get("total", 0) for e in ev] + [0])
     t0 = start["t"] if start else (ev[0]["t"] if ev else now)
     done_events = [e for e in ev if e.get("event") in ("done", "finish")]
