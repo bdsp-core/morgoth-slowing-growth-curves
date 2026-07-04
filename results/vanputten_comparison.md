@@ -9,6 +9,7 @@ AUROC vs the clinical report label. Raw metrics use no age/sex/stage normalizati
 | van Putten BSI                |      0.688 |   0.803 |         0.644 |
 | ours: DAR deviation (age/sex) |      0.668 |   0.634 |         0.681 |
 | ours: |temporal asym| dev     |      0.548 |   0.681 |         0.504 |
+| ours: BSI deviation (age/sex) |      0.682 |   0.799 |         0.637 |
 | Morgoth p_abnormal            |      0.929 |   0.963 |         0.916 |
 | Morgoth p_focal               |      0.784 |   0.986 |         0.706 |
 
