@@ -88,3 +88,9 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
   (age-AUROC, localization macro-F1, staging-oversight-fixed, stage-stratified). Staging 921/7463 and
   climbing; stage AUROC re-run with more data. Remaining: let staging finish/plateau then resume EDF
   expansion; final summary + stop loop.
+- (cycle 22) Staging 4432/7463. During Brandon's review: added per-region one-vs-normal detection
+  (all regions 0.66-0.75), 4-curve band lateralization ROC, comprehensive evaluation-inventory dashboard
+  (curatable checklist + growth curves vs age/stage + captions). Report generator wired
+  (gate->band->band-matched antisymmetric side + bilateral abstain); fleet manifest prepends 17.6k
+  focal-theta priority candidates. Awaiting Brandon's curation of extra evals (severity/prevalence/
+  stage-accentuation/cross-site) + whether to improve the stage plot (regional vs whole-head).
