@@ -51,3 +51,19 @@ band(s) we called dominant.
    and AUROC (A-P), honest per-class.
 4. Report generator: wire gate → band → matched-band deviation description; keep ML internal.
 5. Data: region/band-stratified collection to lift θ-focal and posterior-lobe n (the real bottleneck).
+
+## 5b. Age (Brandon's question) — verified
+- **Detection & regional deviation are age-normed** (age×sex×stage growth-curve z; per-channel
+  age-band-adjusted deviations). **Lateralizer is NOT age-stratified and does not need to be**: signed
+  within-subject asymmetry is intrinsically age/sex-controlled, and lateralization AUROC is flat across
+  the lifespan (0.81 ≤18y → 0.89 ≥76y). No age-conditioning added.
+- **Empirical age-dependent left predominance:** left-fraction of focal-lateralized cases rises 0.65→0.77
+  with age (benign temporal slowing of the elderly). We symmetrize it away for the model but REPORT it
+  (manuscript Discussion + citations Inui 2001 etc.).
+
+## 6. Targeted theta-focal collection (Brandon's point 1) — search done
+Searched all 217,415 reports (`EEGs_And_Reports.csv`, free text + focalSlowing flag): focal + theta +
+temporal + lateralized = **48,214 recordings / 9,106 patients; 31,016 / 6,679 NEW** (not in cohort) ->
+`results/candidate_focal_theta_temporal.csv`. This is the band/region-stratified ingestion manifest that
+lifts the theta-focal (n=41) and posterior-lobe bottlenecks; feed it to the fleet worker. Same query
+pattern (flag + text on band/region/side) generates posterior-lobe and other targeted cohorts.
