@@ -11,7 +11,7 @@ in metadata/cohort_metadata.csv.
 Run: python scripts/26_slowing_ingest_pilot.py [N]   (default N=6)
 """
 from __future__ import annotations
-import os, sys, subprocess, tempfile, shutil
+import os, sys, gc, subprocess, tempfile, shutil
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.io import savemat, loadmat
@@ -87,6 +87,7 @@ def main(n=6):
             rclone(["copy", f"bdsp:{ep}", str(work)])
             src = next(work.glob("*.edf")); src.rename(local)
             data, chs, fs = load_edf_referential(str(local))
+            data = data.astype(np.float32, copy=False)      # halve RAM (multi-hour EEGs OOM on 16 GB)
             bip = ex.to_bipolar(ex.preprocess(data, fs), chs)
             segidx = ex.segment_indices(bip.shape[0])
             mask, reasons = af.usable_mask(bip, segidx, fs)
@@ -97,16 +98,19 @@ def main(n=6):
                     continue
                 fr, psd = ex.multitaper_psd(bip[s:e].T, fs)
                 feats.append((s, e, ex.features_31(ex.band_powers(fr, psd))))
+            usable, total = int(mask.sum()), len(segidx)
+            del bip, mask, segidx; gc.collect()             # free bipolar before the .mat copy
             # write staging .mat (full recording, referential) for morgoth
             # morgoth mat format: data as (n_ch, n_samp) like segments_raw; channels as string array
             savemat(str(sin / (rid + ".mat")),
                     {"Fs": float(fs), "channels": np.array(chs),
-                     "data": data.T.astype(np.float64)}, do_compression=True)
-            recs[rid] = {"feats": feats, "usable": int(mask.sum()), "total": len(segidx),
+                     "data": np.ascontiguousarray(data.T)}, do_compression=True)  # float32
+            recs[rid] = {"feats": feats, "usable": usable, "total": total,
                          "reasons": reasons, "age": r.AgeAtVisit, "sex": r.SexDSC,
                          "label": "normal" if r.rnorm else ("focal_slow" if r.rfoc else "general_slow")}
+            del data; gc.collect()
             local.unlink(missing_ok=True)  # drop raw
-            print(f"  {rid}: {mask.sum()}/{len(segidx)} usable ({reasons})")
+            print(f"  {rid}: {usable}/{total} usable ({reasons})")
         except Exception as ex_:
             print("  FAIL", rid, type(ex_).__name__, ex_)
     if not recs:
