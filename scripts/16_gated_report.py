@@ -47,11 +47,14 @@ def main():
     # per-region log_delta z, and whole_head delta vs theta z
     dz = az[az.feature == "log_delta"].pivot_table(index="bdsp_id", columns="region", values="z")
     tz = az[(az.feature == "log_theta") & (az.region == "whole_head")].groupby("bdsp_id").z.mean()
-    # temporal asymmetry z (standardized vs normals)
-    a = asym[["bdsp_id", "label", "asym_temporal_delta"]].dropna()
-    nm = a[a.label == "normal"].asym_temporal_delta
-    a["az"] = (a.asym_temporal_delta - nm.mean()) / (nm.std() + 1e-9)
-    asym_z = a.groupby("bdsp_id").az.mean()
+    # signed temporal asymmetry z per band (+ = LEFT), standardized vs normals -> drives the
+    # band-matched, antisymmetric side call (sign=side; |z|<deadzone=bilateral/unspecified).
+    asym_z = {}
+    for b in ("delta", "theta"):
+        col = f"asym_temporal_{b}"
+        nmb = asym[asym.label == "normal"][col]
+        asym_z[b] = ((asym.set_index("bdsp_id")[col] - nmb.mean()) / (nmb.std() + 1e-9)).to_dict()
+    SIDE_DEADZONE = 1.0    # |asym z| below this -> don't lateralize (report bilateral)
 
     sc = sc.set_index("bdsp_id")
     rows = []
@@ -66,33 +69,39 @@ def main():
             rows.append(rec); continue
         region_z = {r: dz.loc[bid, r] for r in REGION_LABEL if bid in dz.index and r in dz.columns
                     and np.isfinite(dz.loc[bid, r])}
-        az_t = asym_z.get(bid, 0.0)
-        # Tier 3: Morgoth heads decide focal vs generalized; our features localize region/side.
-        grow = gate.set_index("bdsp_id").loc[bid]
-        is_focal = float(grow.get("p_focal", 0)) >= float(grow.get("p_generalized", 0))
-        if is_focal and region_z:
-            topo = "focal"; loc = REGION_LABEL[max(region_z, key=region_z.get)]
-        else:
-            topo = "generalized"; loc = "generalized"
         whz = dz.loc[bid, "whole_head"] if bid in dz.index and "whole_head" in dz.columns else np.nan
         thz = tz.get(bid, np.nan)
+        # BAND first (so lateralization is band-matched). Default mixed unless clear single-band lead.
+        dz_, tz_ = (whz if np.isfinite(whz) else 0.0), (thz if np.isfinite(thz) else 0.0)
+        GAP = 2.0
+        if dz_ - tz_ >= GAP and tz_ < 1.0:
+            band_key, band = "delta", "delta slowing"
+        elif tz_ - dz_ >= GAP and dz_ < 1.0:
+            band_key, band = "theta", "theta slowing"
+        else:
+            band_key, band = "mixed", "mixed theta/delta slowing"
+        # band-matched signed temporal asymmetry (+ = left); mixed -> average of delta & theta
+        if band_key == "mixed":
+            masym = np.nanmean([asym_z["delta"].get(bid, np.nan), asym_z["theta"].get(bid, np.nan)])
+        else:
+            masym = asym_z[band_key].get(bid, np.nan)
+        masym = float(masym) if np.isfinite(masym) else 0.0
+        # Tier 3: Morgoth heads decide focal vs generalized; our features localize (lobe + band-matched side)
+        grow = gate.set_index("bdsp_id").loc[bid]
+        is_focal = float(grow.get("p_focal", 0)) >= float(grow.get("p_generalized", 0))
+        lobe = max(region_z, key=region_z.get).split("_", 1)[1] if region_z else None  # temporal / parasagittal
+        if is_focal:
+            topo = "focal"
+            side = "left" if masym >= SIDE_DEADZONE else ("right" if masym <= -SIDE_DEADZONE else None)
+            loc = f"{side} {lobe}" if (side and lobe) else (f"bilateral {lobe}" if lobe else "focal")
+        else:
+            topo = "generalized"; loc = "generalized"
         srow = sc.loc[bid] if bid in sc.index else None
         prev = float(srow.prevalence) if srow is not None and np.isfinite(srow.prevalence) else 0.0
         run = float(srow.longest_run_min) if srow is not None else float("nan")
         neps = int(srow.n_episodes) if srow is not None and np.isfinite(srow.n_episodes) else 0
-        # strongest slowing evidence from our features (regional delta or whole-head theta)
         best_z = max([z for z in region_z.values() if np.isfinite(z)] +
                      [z for z in (whz, thz) if np.isfinite(z)] + [0.0])
-        # band: pathological slowing is usually MIXED (theta+delta); reports say mixed ~74% of the
-        # time. Default to mixed; call a pure band only on clear single-band predominance.
-        dz_, tz_ = (whz if np.isfinite(whz) else 0.0), (thz if np.isfinite(thz) else 0.0)
-        GAP = 2.0
-        if dz_ - tz_ >= GAP and tz_ < 1.0:
-            band = "delta slowing"
-        elif tz_ - dz_ >= GAP and dz_ < 1.0:
-            band = "theta slowing"
-        else:
-            band = "mixed theta/delta slowing"
         # Morgoth gated it in -> always describe; severity floored to at least "mild"
         sev = ph.severity_word(max(best_z, 2.01))
         prevw = ph.prevalence_word(prev)
@@ -101,8 +110,8 @@ def main():
         if prev > 0:
             parts.append(f"present in {prev*100:.0f}% of segments")
         parts.append(f"peak {best_z:.1f} SD above age/stage-matched norms")
-        if np.isfinite(az_t) and abs(az_t) >= 2 and topo == "focal":
-            parts.append(f"left–right asymmetry {az_t:.1f} SD")
+        if topo == "focal" and abs(masym) >= SIDE_DEADZONE:
+            parts.append(f"{'L>R' if masym > 0 else 'R>L'} temporal {band_key} asymmetry {abs(masym):.1f} SD")
         if np.isfinite(run) and run > 0:
             parts.append(f"longest run {run:.1f} min over {neps} episodes")
         if srow is not None and getattr(srow, "only_in_sleep", False):

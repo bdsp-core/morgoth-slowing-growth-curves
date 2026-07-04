@@ -4,9 +4,9 @@ Gate: report slowing only if Morgoth P(slowing) >= 0.302.
 
 ## focal_slow (gated-in examples)
 
-- (age 50 F, P_slow=0.32, focal) Frequent mild left temporal mixed theta/delta slowing — present in 48% of segments; peak 2.0 SD above age/stage-matched norms; longest run 3.8 min over 4 episodes.
+- (age 50 F, P_slow=0.32, focal) Frequent mild bilateral temporal mixed theta/delta slowing — present in 48% of segments; peak 2.0 SD above age/stage-matched norms; longest run 3.8 min over 4 episodes.
 - (age 38 F, P_slow=0.88, generalized) Frequent mild generalized mixed theta/delta slowing — present in 19% of segments; peak 1.3 SD above age/stage-matched norms; longest run 0.7 min over 6 episodes; present only during sleep; accentuated in N1.
-- (age 71 M, P_slow=0.53, focal) Frequent mild left parasagittal mixed theta/delta slowing — present in 17% of segments; peak 2.3 SD above age/stage-matched norms; longest run 0.7 min over 4 episodes; accentuated in N3.
+- (age 71 M, P_slow=0.53, focal) Frequent mild left parasagittal mixed theta/delta slowing — present in 17% of segments; peak 2.3 SD above age/stage-matched norms; L>R temporal mixed asymmetry 1.3 SD; longest run 0.7 min over 4 episodes; accentuated in N3.
 - (age 71 M, P_slow=0.55, generalized) Occasional mild generalized mixed theta/delta slowing — present in 7% of segments; peak 1.1 SD above age/stage-matched norms; longest run 0.5 min over 2 episodes.
 - (age 81 F, P_slow=0.39, generalized) Abundant mild generalized mixed theta/delta slowing — present in 57% of segments; peak 1.5 SD above age/stage-matched norms; longest run 1.9 min over 8 episodes; present only during sleep; accentuated in N2.
 

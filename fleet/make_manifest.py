@@ -46,6 +46,19 @@ def main():
                 if len(picks) >= n:
                     break
     df = pd.DataFrame(picks)
+    # PRIORITY first-wave stratum: targeted focal-theta-temporal candidates (fixes the theta bottleneck).
+    cand = Path(__file__).resolve().parents[1] / "results" / "candidate_focal_theta_temporal.csv"
+    if cand.exists():
+        c = pd.read_csv(cand, dtype=str)
+        c["pid"] = c.BDSPPatientID.astype(str).str.replace(r"\.0$", "", regex=True)
+        c["date"] = pd.to_datetime(c.StartTime, errors="coerce").dt.strftime("%Y%m%d")
+        c = c.rename(columns={"SessionID_new": "SessionID"})
+        for col, v in [("rnorm", 0), ("rfoc", 1), ("rgen", 0)]:
+            c[col] = v
+        c = c.dropna(subset=["date", "BidsFolder"]).drop_duplicates(["SiteID", "pid", "date"])
+        c = c[[col for col in COLS if col in c.columns]]
+        df = pd.concat([c, df], ignore_index=True).drop_duplicates(["SiteID", "pid", "date"])
+        print(f"prepended {len(c)} focal-theta priority candidates")
     miss = [c for c in COLS if c not in df.columns]
     if miss:
         print(f"WARNING missing columns in metadata: {miss}")
