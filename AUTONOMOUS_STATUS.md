@@ -47,3 +47,9 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
     backfill gate); everything new gets all three outputs. Coverage ~130-150 overnight w/ gate.
   - Next: verify gate probs are sane on real recordings; then refit curves + rerun analysis on the
     expanded data; finalize manuscript/bdsp.io; build fleet package.
+- (cycle 4) Gate VALIDATED on real recording (abnormality prob 0.9997 for a focal recording; probs in
+  range). Fixed gate `subprocess` import; relaunched — new recordings get all 3 outputs. **Fleet launch
+  package built** (fleet/): Dockerfile, entrypoint, make_manifest.py (stratified, validated), batch_worker.py
+  (reuses validated process_one + S3 sync + .done resumability), launch_fleet.sh (ECR+Batch+budget),
+  stage_models.sh, README runbook. Prepared + locally validated; NOT run on AWS (no creds) — one-command
+  for Brandon on return. Next: refit curves + rerun analysis on expanded data; finalize manuscript/bdsp.io.
