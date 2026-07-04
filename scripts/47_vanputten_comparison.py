@@ -60,6 +60,8 @@ def main():
     asym = pd.read_parquet("data/derived/recording_asymmetry.parquet").drop_duplicates("bdsp_id").set_index("bdsp_id")
     nmA = asym[asym.label == "normal"].asym_temporal_delta
     ours["our_asym_z"] = (asym.asym_temporal_delta - nmA.mean()).abs() / (nmA.std() + 1e-9)  # magnitude
+    bz = pd.read_parquet("data/derived/bsi_features.parquet").bsi_z
+    ours["our_BSI_z"] = bz
     # --- Morgoth ---
     g = pd.read_parquet("data/derived/gate_probs.parquet").drop_duplicates("bdsp_id").set_index("bdsp_id")
 
@@ -75,6 +77,7 @@ def main():
         ("van Putten BSI", auroc(y_ab, df.BSI), auroc(y_f, foc.BSI), auroc(y_g, gen.BSI)),
         ("ours: DAR deviation (age/sex)", auroc(y_ab, df.our_DAR_z), auroc(y_f, foc.our_DAR_z), auroc(y_g, gen.our_DAR_z)),
         ("ours: |temporal asym| dev", auroc(y_ab, df.our_asym_z), auroc(y_f, foc.our_asym_z), auroc(y_g, gen.our_asym_z)),
+        ("ours: BSI deviation (age/sex)", auroc(y_ab, df.our_BSI_z), auroc(y_f, foc.our_BSI_z), auroc(y_g, gen.our_BSI_z)),
         ("Morgoth p_abnormal", auroc(y_ab, df.p_abnormal), auroc(y_f, foc.p_abnormal), auroc(y_g, gen.p_abnormal)),
         ("Morgoth p_focal", auroc(y_ab, df.p_focal), auroc(y_f, foc.p_focal), auroc(y_g, gen.p_focal)),
     ]

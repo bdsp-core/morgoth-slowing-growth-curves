@@ -39,6 +39,7 @@ def main():
     az = pd.read_parquet(DER / "adjusted_z.parquet")
     sc = pd.read_parquet(DER / "scores_v2.parquet")
     asym = pd.read_parquet(DER / "recording_asymmetry.parquet")
+    bsi_z = pd.read_parquet(DER / "bsi_features.parquet").bsi_z.to_dict() if (DER / "bsi_features.parquet").exists() else {}
     meta = pd.read_csv("metadata/cohort_metadata.csv")[["bdsp_id", "label", "age", "sex"]].drop_duplicates("bdsp_id")
 
     thr, J = calibrate_threshold(gate)
@@ -112,6 +113,9 @@ def main():
         parts.append(f"peak {best_z:.1f} SD above age/stage-matched norms")
         if topo == "focal" and abs(masym) >= SIDE_DEADZONE:
             parts.append(f"{'L>R' if masym > 0 else 'R>L'} temporal {band_key} asymmetry {abs(masym):.1f} SD")
+        bz = bsi_z.get(bid, np.nan)
+        if topo == "focal" and np.isfinite(bz) and bz >= 2:
+            parts.append(f"whole-brain asymmetry (BSI) {bz:.1f} SD above age-matched normal")
         if np.isfinite(run) and run > 0:
             parts.append(f"longest run {run:.1f} min over {neps} episodes")
         if srow is not None and getattr(srow, "only_in_sleep", False):
