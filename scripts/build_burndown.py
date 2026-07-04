@@ -153,11 +153,14 @@ $('elapsed').textContent = D.elapsed; $('failed').textContent = D.failed; $('tot
 const list = $('list');
 if(!D.cards.length){ list.innerHTML = '<div class="empty">No recordings completed yet.</div>'; }
 else { for(const c of D.cards.slice().reverse()){
-  const pct = c.seg_total ? Math.round(100*c.usable/c.seg_total) : 0;
+  // usable% only applies to the feature-extraction job; staging-only jobs omit it
+  const metric = c.seg_total
+    ? `${Math.round(100*c.usable/c.seg_total)}%<span style="color:var(--dim);font-weight:400"> usable</span>`
+    : `<span style="color:var(--accent)">staged ✓</span>`;
   const el = document.createElement('div'); el.className='rec';
   el.innerHTML = `<span class="dot" style="background:${LABC[c.label]||'var(--dim)'}"></span>`+
     `<span class="rid">${c.rid}</span>`+
-    `<span class="use">${pct}%<span style="color:var(--dim);font-weight:400"> usable</span></span>`+
+    `<span class="use">${metric}</span>`+
     `<span class="lab">${LABT[c.label]||''}</span>`;
   list.appendChild(el);
 }}
