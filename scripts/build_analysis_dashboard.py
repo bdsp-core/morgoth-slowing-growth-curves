@@ -10,7 +10,8 @@ from pathlib import Path
 import pandas as pd
 
 OUT = Path("results/analysis_dashboard.html")
-FIG_ORDER = ["age_auroc.png", "growth_curves_v2.pdf"]  # preferred order; others appended
+FIG_ORDER = ["age_auroc.png", "region_confusion.png", "region_f1.png", "side_confusion.png"]
+SKIP = {"age_auroc_by_stage.png"}                      # data-limited (staged subset 98.5% normal) — not shown
 
 
 def img(p: Path) -> str:
@@ -33,14 +34,15 @@ def main():
         if p.exists() and p.suffix == ".png":
             pngs.append(p)
     for p in sorted(figs_dir.glob("*.png")):
-        if p not in pngs:
+        if p not in pngs and p.name not in SKIP:
             pngs.append(p)
     figs_html = "".join(img(p) for p in pngs) or "<p class='dim'>No figures yet.</p>"
 
-    gate_md = Path("results/expansion_gate_validation.md")
-    gate_html = ""
-    if gate_md.exists():
-        gate_html = "<h2>Gate validation (new recordings)</h2><pre>" + gate_md.read_text() + "</pre>"
+    def section(md_path, title):
+        p = Path(md_path)
+        return f"<h2>{title}</h2><pre>{p.read_text()}</pre>" if p.exists() else ""
+    region_html = section("results/region_eval.md", "Region / side identification")
+    gate_html = section("results/expansion_gate_validation.md", "Gate validation (new recordings)")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(f"""<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -77,7 +79,18 @@ def main():
     ages (0.97–0.99); generalized climbs 0.88→0.96. Useful caveat for pediatric reporting.</div>
   {figs_html}
   {table_html(Path("results/age_auroc.csv"), "Age-band AUROC (table)")}
+  <div class="note"><b>Region/side localization — read the per-class metrics, not the headline.</b>
+    Overall region "accuracy" 0.92 and side 0.79 are inflated by majority classes (temporal ~92% of
+    located cases; bilateral ~83%): our statement predicts temporal/bilateral by default and does poorly
+    on frontal/parietal/occipital (F1≈0) and left/right (F1 0.35/0.24). Localization is a genuine
+    weakness to improve.</div>
+  {region_html}
   {gate_html}
+  <div class="note"><b>Sleep-stage breakout — pending balanced staged data.</b> The original cohort's
+    staged subset is 98.5% normal (staging was run only on the normative controls: 74 focal, 0
+    generalized), so a stage-stratified abnormal-vs-normal AUROC can't be computed on it. The overnight
+    ingestion stages <i>every</i> focal/gen/normal recording, so these curves populate from the balanced
+    ingested set (fully from the fleet).</div>
 </div>
 """)
     print(f"wrote {OUT} ({len(pngs)} figures)")
