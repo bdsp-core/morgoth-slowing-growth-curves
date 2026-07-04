@@ -48,7 +48,9 @@ def rclone(args):
     subprocess.run([RC] + args, check=True, capture_output=True)
 
 
-def select(n):
+def eligible():
+    """Full pool of ingestable recordings: report-labeled, 6-48 h, not already in the growth-curves
+    cohort. Returns the joined/filtered metadata frame (one row per recording)."""
     meta = pd.concat([pd.read_csv(f, low_memory=False) for f in sorted((SCRATCH / "eegmeta").glob("S000*_eeg_metadata*.csv"))])
     fnd = pd.concat([pd.read_csv(f, low_memory=False) for f in sorted((SCRATCH / "reports").glob("S000*_EEG__reports_findings.csv"))])
     fnd["pid"] = fnd.BDSPPatientID.astype(str).str.replace(r"\.0$", "", regex=True)
@@ -61,7 +63,11 @@ def select(n):
     j = meta.merge(fnd[["pid", "date", "rnorm", "rfoc", "rgen"]], on=["pid", "date"], how="inner")
     j = j[(j.dur_h > 6) & (j.dur_h < 48) & ((j.rnorm | j.rfoc | j.rgen) > 0)]
     cohort = set(pd.read_csv("metadata/cohort_metadata.csv").bdsp_id.str.replace(r"^S000\d", "", regex=True))
-    j = j[~j.pid.isin(cohort)]
+    return j[~j.pid.isin(cohort)]
+
+
+def select(n):
+    j = eligible()
     # balance: a few normal + focal + generalized
     picks = pd.concat([j[j.rnorm == 1].head(n // 2), j[j.rfoc == 1].head(n - n // 2), j[j.rgen == 1].head(2)]).drop_duplicates("pid").head(n)
     return picks
