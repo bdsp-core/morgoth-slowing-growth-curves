@@ -1,0 +1,104 @@
+"""Add Brain Symmetry Index (BSI) as one of OUR features, with age growth curves (overall + per stage).
+
+BSI (van Putten) = mean over homologous channel pairs & bands of |R-L|/(R+L). We compute it per recording
+(overall) and per (recording, sleep stage), build normal percentile growth curves vs age, and save the
+feature so it can be deviation-scored like the others. Figures named to match the dashboard convention.
+
+Overall BSI: from recording_features_py per-channel band powers.
+Per-stage BSI: from segment_features (per-channel, per-segment) joined to segment_stages, averaged to
+(recording, stage, channel) then BSI — normals are staged, which is what the growth curve needs.
+
+Writes data/derived/bsi_features.parquet, figures/curves/BSI__whole_head.png,
+figures/stage_curves/BSI__whole_head.png.
+Run: PYTHONPATH=src python scripts/48_bsi_growth.py
+"""
+from __future__ import annotations
+from pathlib import Path
+import numpy as np, pandas as pd
+import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+
+PAIRS = [("Fp1-F3", "Fp2-F4"), ("Fp1-F7", "Fp2-F8"), ("F7-T3", "F8-T4"), ("T3-T5", "T4-T6"),
+         ("F3-C3", "F4-C4"), ("C3-P3", "C4-P4"), ("T5-O1", "T6-O2"), ("P3-O1", "P4-O2")]
+BANDS = ["delta", "theta", "alpha", "beta"]
+CHS = sorted(set(c for p in PAIRS for c in p))
+AGE_BINS = list(range(0, 96, 5))
+
+
+def bsi_from_powers(pw):
+    """pw: DataFrame indexed by bdsp_id with columns (channel, band) of band power -> Series BSI."""
+    contribs = []
+    for L, R in PAIRS:
+        for b in BANDS:
+            if (L, b) in pw and (R, b) in pw:
+                contribs.append(np.abs(pw[(R, b)] - pw[(L, b)]) / (pw[(R, b)] + pw[(L, b)] + 1e-12))
+    return pd.concat(contribs, axis=1).mean(axis=1)
+
+
+def pct_curve(ax, age, val, label, color):
+    df = pd.DataFrame({"age": pd.to_numeric(age, errors="coerce"), "v": val}).dropna()
+    df = df[(df.age >= 0) & (df.age <= 95)]
+    df["ab"] = pd.cut(df.age, AGE_BINS)
+    g = df.groupby("ab", observed=True).v
+    mid = [iv.mid for iv in g.median().index]
+    ax.plot(mid, g.median().values, color=color, lw=2, label=label)
+    ax.fill_between(mid, g.quantile(.1).values, g.quantile(.9).values, color=color, alpha=0.12)
+
+
+def main():
+    rf = pd.read_parquet("data/derived/recording_features_py.parquet")
+    LB = [f"log_{b}" for b in BANDS]
+    meta = rf.groupby("bdsp_id").agg(age=("age", "first"), label=("label", "first"))
+    # overall BSI per recording
+    pw = {}
+    for ch in CHS:
+        r = rf[rf.region == ch].groupby("bdsp_id")[LB].mean()
+        for b in BANDS:
+            pw[(ch, b)] = np.exp(r[f"log_{b}"])
+    bsi = bsi_from_powers(pd.DataFrame(pw)).rename("bsi")
+    rec = meta.join(bsi, how="inner")
+    rec.to_parquet("data/derived/bsi_features.parquet")
+    print(f"overall BSI: {len(rec)} recordings; normal median {rec[rec.label=='normal'].bsi.median():.3f}, "
+          f"focal {rec[rec.label=='focal_slow'].bsi.median():.3f}")
+
+    # overall growth curve (normals)
+    nb = rec[rec.label == "normal"]
+    fig, ax = plt.subplots(figsize=(7, 4.4))
+    pct_curve(ax, nb.age, nb.bsi, "normal BSI (median, 10-90%)", "#4a90e2")
+    ax.set_xlabel("age (years)"); ax.set_ylabel("BSI"); ax.set_title("Brain Symmetry Index vs age (normal)")
+    ax.legend(); ax.grid(alpha=0.25)
+    Path("figures/curves").mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(); fig.savefig("figures/curves/BSI__whole_head.png", dpi=130); plt.close(fig)
+
+    # per-stage BSI (normals staged): segment_features x segment_stages
+    sf = pd.read_parquet("data/derived/segment_features.parquet",
+                         columns=["bdsp_id", "region", "segment", "label"] + LB)
+    ss = pd.read_parquet("data/derived/segment_stages.parquet", columns=["bdsp_id", "segment", "stage"])
+    if pd.api.types.is_numeric_dtype(ss.stage):
+        ss["stage"] = ss.stage.map({0: "W", 1: "N1", 2: "N2", 3: "N3", 4: "REM"})
+    sf = sf[sf.region.isin(CHS)].merge(ss, on=["bdsp_id", "segment"], how="inner")
+    agemap = meta.age.to_dict()
+    fig, ax = plt.subplots(figsize=(7.5, 4.6))
+    colors = {"W": "#f5a623", "N2": "#4a90e2", "N3": "#2ec4b6", "REM": "#e0568a"}
+    for stage, color in colors.items():
+        s = sf[sf.stage == stage]
+        pw = {}
+        for ch in CHS:
+            r = s[s.region == ch].groupby("bdsp_id")[LB].mean()
+            for b in BANDS:
+                pw[(ch, b)] = np.exp(r[f"log_{b}"])
+        if not pw:
+            continue
+        b = bsi_from_powers(pd.DataFrame(pw))
+        lab = sf.groupby("bdsp_id").label.first()
+        age = pd.Series({i: agemap.get(i) for i in b.index})
+        nmask = lab.reindex(b.index) == "normal"
+        pct_curve(ax, age[nmask.values], b[nmask.values], stage, color)
+    ax.set_xlabel("age (years)"); ax.set_ylabel("BSI (normal)")
+    ax.set_title("BSI vs age by sleep stage (normal)"); ax.legend(title="stage"); ax.grid(alpha=0.25)
+    Path("figures/stage_curves").mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(); fig.savefig("figures/stage_curves/BSI__whole_head.png", dpi=130); plt.close(fig)
+    print("wrote figures/curves/BSI__whole_head.png + figures/stage_curves/BSI__whole_head.png")
+
+
+if __name__ == "__main__":
+    main()
