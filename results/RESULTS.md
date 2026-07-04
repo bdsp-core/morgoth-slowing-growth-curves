@@ -93,3 +93,9 @@ per-recording for reproducibility, with pointers back to the source notes.
   1/f-dominated (~2.1 Hz for delta & mixed). Band call stays at the default-mixed z-logic (0.74 ≈ the
   74%-mixed report base rate; near ceiling for spectral-only). Further gains need aperiodic/FOOOF (P2).
   Morphology features (morphology_features.parquet) retained as candidate discrimination features.
+
+## Update (autonomous run): honest re-analysis
+- **Age-dependent gate AUROC** (results/age_auroc.csv): abnormal 0.79 (peds) → 0.95 (elderly); focal 0.97–0.99; gen 0.88→0.96.
+- **Stage-stratified AUROC** (results/age_auroc_by_stage.csv): after staging the previously-unstaged abnormals (scripts/36), whole-head deviation score is modest (0.44→0.70), age-dependent, similar across stages; whole-head dilutes focal.
+- **Region localization, honest** (results/region_supervised.md): raw region agreement 0.92 is temporal-majority inflation; macro-F1 — temporal-default 0.16, argmax 0.12, supervised 0.23 (best); temporal/frontal ok, parietal/occipital data-limited.
+- Manuscript (docs/manuscript_draft.md) §3.3/§3.5/§3.6/§4/§5 updated accordingly.
