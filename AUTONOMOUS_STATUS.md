@@ -59,3 +59,9 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
   rows; features physiologic (N3>W delta, 100% staged, no NaN); gate flags abnormality ~1.0 correctly.
   rel_delta 0.462 is expected for the focal-only prefix (drops once normals land). Full refit
   (curves/discrimination/calibration) deferred to next cycle when balanced F/G/N data has accumulated.
+- (cycle 6) Balanced set growing (focal 24 / normal 2 / gen 1 so far; interleave working). Built
+  scripts/32_gate_validation.py + results/expansion_gate_validation.md. PRELIMINARY gate calibration
+  (n=9): P(abnormal) abnormal-vs-normal AUC=1.00; p_focal focal-vs-rest AUC=0.93; p_generalized AUC=0.38
+  (only n=1 gen — underpowered, will strengthen). Gate looks well-calibrated on new recordings. Curve
+  refit + discrimination still await more gen/normal (accumulating). Next: rerun gate validation as data
+  grows; then refit + manuscript.
