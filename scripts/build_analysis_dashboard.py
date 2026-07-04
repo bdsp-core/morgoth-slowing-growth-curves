@@ -24,7 +24,7 @@ CHECKLIST = [
         ("done", "Growth curves: same features vs age, per sleep stage (W/N1/N2/N3/REM)"),
         ("done", "BSI (Brain Symmetry Index) added as a feature + age×stage growth curves"),
         ("done", "Feature-extraction validation (our Python vs prior features, r 0.89–0.95)"),
-        ("todo", "Homologous-asymmetry (delta AND theta) norms vs age — lateralization deviation"),
+        ("done", "Homologous-asymmetry (delta AND theta) norms vs age — lateralization deviation"),
     ]),
     ("Detection — whether / what", [
         ("done", "Abnormal-vs-normal AUROC, age-dependent (Morgoth)"),
@@ -46,7 +46,7 @@ CHECKLIST = [
     ]),
     ("Sleep-stage specificity", [
         ("done", "Stage-stratified abnormal-vs-normal detection, by age (whole-head deviation)"),
-        ("todo", "Stage-accentuation: which stage amplifies a case's pathological slowing"),
+        ("done", "Stage-accentuation: which stage amplifies a case's pathological slowing"),
     ]),
     ("Description quality", [
         ("done", "Report-text agreement (region/side/band), gated per-axis"),
@@ -56,7 +56,7 @@ CHECKLIST = [
         ("done", "Flip-consistency / left-right sign audit (=0)"),
         ("done", "Artifact-rejection validation (plan + local check)"),
         ("todo", "External / second-site validation (future)"),
-        ("todo", "Cross-site generalization (train S0001 / test S0002) — doable now"),
+        ("done", "Cross-site generalization (train S0001 / test S0002): AUROC 0.74-0.85"),
     ]),
     ("Comparison with prior work & empirical findings", [
         ("done", "Head-to-head vs van Putten metrics (DAR, DTABR, BSI) on report agreement"),
@@ -95,6 +95,11 @@ SECTIONS = [
     ("Sleep-stage specificity",
      "Does detection hold within each sleep stage, across age? (Secondary/robustness view.)",
      [(FIGD / "age_auroc_by_stage.png", "Abnormal-vs-normal AUROC within each sleep stage, by age, using a simple WHOLE-HEAD slowing-deviation score (staged abnormals + normals). Modest by design — whole-head dilutes focal slowing, so this understates the full regional model; it confirms the stage-normalized deviation separates abnormal within every stage, rising with age.")]),
+    ("Robustness & extra evaluations",
+     "Cross-site generalization, stage-accentuation, and asymmetry norms (pre-fleet completeness).",
+     [(FIGD / "crosssite.png", "Train on one site, test on the other: abnormal-vs-normal AUROC 0.74-0.85 (generalizes, with some site shift)."),
+      (FIGD / "stage_accentuation.png", "Among abnormal recordings, which sleep stage accentuates the slowing."),
+      (FIGD / "asym_norms.png", "Normal temporal homologous-asymmetry (delta & theta) vs age — norms for the lateralization deviation.")]),
     ("Comparison with prior methods (van Putten lineage)",
      "Head-to-head vs the standard published quantitative-slowing metrics, scored against the same report labels.",
      [(FIGD / "vanputten_comparison.png", "DAR, DTABR (Finnigan & van Putten 2013) and BSI (van Putten 2004/2007) vs our age/sex-normed deviations vs Morgoth. Raw metrics ~0.65–0.80; BSI is the best asymmetry baseline (focal 0.80). Our FULL deviation-LR (0.962 abnormal, see table) and Morgoth (0.92–0.99) dominate the single hand-crafted metrics — the value of age/sex/stage normalization + learning.")]),
