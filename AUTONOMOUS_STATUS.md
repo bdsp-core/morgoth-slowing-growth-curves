@@ -37,3 +37,13 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
   - **Overnight run launched**: 300 recordings, detached, multicore. Resumable if interrupted.
   - Still TODO: locate slowing-gate checkpoints for focal/gen/normal probs on new recordings;
     refit curves + rerun analysis on expanded data; finalize manuscript/bdsp.io; fleet package.
+- (cycle 3) Overnight run healthy (10 done, no OOM). **Gate wired end-to-end**:
+  - Located gate checkpoints in S3 (morgoth2/models/202605/morgoth/): NORMAL, SLOWING + FOC/GEN/NORMAL
+    EEG-level aggregators; downloaded to box.
+  - Validated gate plumbing on a test .mat (5 stages run; pred_EEG_level_{NORMAL,FOC,GEN}.csv).
+  - Integrated into the worker: each recording now also gets NORMAL+SLOWING window heads -> focal/gen/
+    normal EEG-level probs (10s step, recording-level), persisted to expansion/gate/<rid>.json.
+  - Relaunched worker WITH gate (300 target). ~10 early recordings are features+stages only (can
+    backfill gate); everything new gets all three outputs. Coverage ~130-150 overnight w/ gate.
+  - Next: verify gate probs are sane on real recordings; then refit curves + rerun analysis on the
+    expanded data; finalize manuscript/bdsp.io; build fleet package.
