@@ -65,7 +65,7 @@ pip install -q torch torchvision                      # Linux x86 PyPI wheel = C
 # our deps + morgoth2's runtime deps for inference (tableone added for the live Table 1 refresh)
 pip install -q numpy scipy pandas pyarrow pyyaml scikit-learn statsmodels pygam tableone \
     mne boto3 s3fs matplotlib seaborn pyedflib h5py tqdm \
-    einops "timm==1.0.11" tensorboardX mat73 hdf5storage pyhealth
+    einops "timm==1.0.11" tensorboardX mat73 hdf5storage pyhealth pytest
 python -c "import torch;assert torch.cuda.is_available(),'CUDA not visible!';print('  torch',torch.__version__,'CUDA OK:',torch.cuda.get_device_name(0))"
 
 echo ">>> [5/6] rclone + BDSP S3 remote 'bdsp:'"
