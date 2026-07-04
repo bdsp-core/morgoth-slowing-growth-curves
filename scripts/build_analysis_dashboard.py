@@ -10,10 +10,12 @@ from pathlib import Path
 import pandas as pd
 
 OUT = Path("results/analysis_dashboard.html")
-FIG_ORDER = ["age_auroc.png", "age_auroc_by_stage.png", "region_confusion_supervised.png",
-             "region_confusion_pred.png", "region_confusion.png", "region_f1.png",
-             "lateralization_roc.png", "side_confusion_pred.png", "side_confusion.png"]
-SKIP = set()
+FIG_ORDER = ["age_auroc.png", "age_auroc_by_stage.png",
+             "lateralization_roc.png", "lateralization_by_band.png",
+             "region_focal_gated.png", "generalized_ap.png"]
+# hide the superseded lumped/3-way figures (they conflated focal+generalized / L/R/bilateral)
+SKIP = {"side_confusion.png", "side_confusion_pred.png", "region_confusion.png", "region_f1.png",
+        "region_confusion_pred.png", "region_confusion_supervised.png"}
 
 
 def img(p: Path) -> str:
@@ -43,9 +45,9 @@ def main():
     def section(md_path, title):
         p = Path(md_path)
         return f"<h2>{title}</h2><pre>{p.read_text()}</pre>" if p.exists() else ""
-    region_html = (section("results/lateralization_gated.md", "Lateralization (focal-gated L vs R)")
-                   + section("results/region_supervised.md", "Region localization — supervised vs baselines")
-                   + section("results/region_eval.md", "Region / side identification (text-default)"))
+    region_html = (section("results/lateralization_gated.md", "Lateralization — focal-gated L vs R")
+                   + section("results/lateralization_by_band.md", "Lateralization — band-matched")
+                   + section("results/region_gated.md", "Region — focal lobe + generalized anterior/posterior"))
     gate_html = section("results/expansion_gate_validation.md", "Gate validation (new recordings)")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -83,11 +85,14 @@ def main():
     ages (0.97–0.99); generalized climbs 0.88→0.96. Useful caveat for pediatric reporting.</div>
   {figs_html}
   {table_html(Path("results/age_auroc.csv"), "Age-band AUROC (table)")}
-  <div class="note"><b>Region/side localization — read the per-class metrics, not the headline.</b>
-    Overall region "accuracy" 0.92 and side 0.79 are inflated by majority classes (temporal ~92% of
-    located cases; bilateral ~83%): our statement predicts temporal/bilateral by default and does poorly
-    on frontal/parietal/occipital (F1≈0) and left/right (F1 0.35/0.24). Localization is a genuine
-    weakness to improve.</div>
+  <div class="note"><b>Localization — decomposed and gated (not one lumped number).</b> Localization is
+    three distinct questions, each posed on the right sub-population:
+    <b>(1) Lateralization</b> — focal-gated, binary L-vs-R from signed band-matched asymmetry: <b>AUROC
+    0.87</b> (strong; theta slowing lateralized by theta asymmetry, delta by delta, both for mixed).
+    <b>(2) Focal lobe</b> — temporal is well-localized (F1 0.64); frontal modest; parietal/occipital
+    data-limited (rare). <b>(3) Generalized</b> has no side, but a real anterior-vs-posterior
+    (FIRDA/OIRDA) axis (AUROC ~0.66). The earlier "region 0.92 / side 0.79" headlines were majority-class
+    artifacts of lumping focal+generalized and L/R/bilateral together; those figures are removed.</div>
   {region_html}
   {gate_html}
   <div class="note"><b>Sleep-stage breakout — now real (oversight fixed).</b> The original pipeline had
