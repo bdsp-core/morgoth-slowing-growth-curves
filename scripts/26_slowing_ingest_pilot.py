@@ -11,7 +11,7 @@ in metadata/cohort_metadata.csv.
 Run: python scripts/26_slowing_ingest_pilot.py [N]   (default N=6)
 """
 from __future__ import annotations
-import os, sys, gc, subprocess, tempfile, shutil
+import os, sys, gc, json, time, subprocess, tempfile, shutil
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.io import savemat, loadmat
@@ -29,6 +29,19 @@ M2 = os.environ.get("MORGOTH2_DIR", str(SCRATCH / "morgoth2"))
 VENV = os.environ.get("PILOT_VENV", str(Path("~/Desktop/GithubRepos/morgoth-slowing-growth-curves/.venv/bin/python").expanduser()))
 DEVICE = os.environ.get("MORGOTH_DEVICE", "mps")                  # set to "cuda" on the cloud GPU box
 OUT = Path("data/derived"); STAGES = ["W", "N1", "N2", "N3", "REM"]
+
+
+PROG = OUT / "progress.jsonl"
+
+
+def _prog(**kw):
+    """Append one timestamped progress event (drives the burndown dashboard)."""
+    try:
+        OUT.mkdir(parents=True, exist_ok=True)
+        with open(PROG, "a") as fh:
+            fh.write(json.dumps({"t": time.time(), **kw}) + "\n")
+    except Exception:
+        pass
 
 
 def rclone(args):
@@ -75,6 +88,9 @@ def stage_dir(indir, outdir):
 def main(n=6):
     picks = select(n)
     print(f"selected {len(picks)} recordings: normal {picks.rnorm.sum()} foc {picks.rfoc.sum()} gen {picks.rgen.sum()}")
+    if PROG.exists():
+        PROG.unlink()                       # fresh burndown for this run
+    _prog(event="start", total=int(len(picks)), done=0)
     work = Path(tempfile.mkdtemp()); sin = work / "in"; sout = work / "out"; sin.mkdir(); sout.mkdir()
     recs = {}  # id -> dict(seg tensor rows, seg start/end, meta)
     for _, r in picks.iterrows():
@@ -111,11 +127,15 @@ def main(n=6):
             del data; gc.collect()
             local.unlink(missing_ok=True)  # drop raw
             print(f"  {rid}: {usable}/{total} usable ({reasons})")
+            _prog(event="done", rid=rid, done=len(recs), total=int(len(picks)),
+                  usable=usable, seg_total=total, label=recs[rid]["label"])
         except Exception as ex_:
             print("  FAIL", rid, type(ex_).__name__, ex_)
+            _prog(event="fail", rid=rid, done=len(recs), total=int(len(picks)), err=type(ex_).__name__)
     if not recs:
         print("no recordings ingested"); return
     print("staging", len(recs), "recordings...")
+    _prog(event="staging", done=len(recs), total=int(len(picks)))
     stage_dir(str(sin), str(sout))
     ncsv = len(list(sout.glob("*.csv")))
     print(f"  staging produced {ncsv} CSVs; ids expect {list(recs)[:2]}...; got {[p.stem for p in list(sout.glob('*.csv'))[:2]]}")
@@ -139,6 +159,8 @@ def main(n=6):
     df = pd.DataFrame(rows)
     df.to_parquet(OUT / "expansion_pilot_features.parquet")
     shutil.rmtree(work, ignore_errors=True)
+    _prog(event="finish", done=len(recs), total=int(len(picks)),
+          recordings=int(df.bdsp_id.nunique()), rows=int(len(df)))
     print(f"\nwrote {OUT}/expansion_pilot_features.parquet: {len(df)} rows, {df.bdsp_id.nunique()} recordings")
     wh = df[df.region == "whole_head"]
     print("stage dist:", wh.stage.value_counts().to_dict())
