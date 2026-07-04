@@ -59,7 +59,8 @@ def main():
     cards = [{"rid": e.get("rid", "?"), "label": e.get("label", ""),
               "usable": e.get("usable", 0), "seg_total": e.get("seg_total", 0),
               "min": round((e["t"] - t0) / 60.0, 1)}
-             for e in ev if e.get("event") == "done"]
+             for e in ev if e.get("event") == "done" and e.get("rid") and e.get("rid") != "?"]
+    cards = cards[-12:]                                 # keep the most-recent dozen
 
     def fmt_dur(s):
         s = int(s)
