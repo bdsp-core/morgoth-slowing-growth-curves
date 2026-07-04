@@ -64,6 +64,23 @@ def main():
                          "recall_L": round(recall_score(y[m], pred[m], pos_label=1), 3),
                          "recall_R": round(recall_score(y[m], pred[m], pos_label=0), 3)})
     tab = pd.DataFrame(rows)
+    # 4-curve ROC: overall + delta + theta + mixed
+    from sklearn.metrics import roc_curve
+    import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(5.4, 5.2))
+    colors = {"ALL": "#111", "delta": "#4a90e2", "theta": "#e0568a", "mixed": "#2ec4b6"}
+    for strat in ["ALL", "delta", "theta", "mixed"]:
+        m = np.ones(len(y), bool) if strat == "ALL" else (band == strat)
+        if m.sum() < 15 or len(np.unique(y[m])) < 2:
+            continue
+        fpr, tpr, _ = roc_curve(y[m], oof[m]); a = roc_auc_score(y[m], oof[m])
+        ax.plot(fpr, tpr, color=colors[strat], lw=2 if strat == "ALL" else 1.6,
+                label=f"{strat} (AUROC {a:.2f}, n={int(m.sum())})")
+    ax.plot([0, 1], [0, 1], "k:", lw=1)
+    ax.set_xlabel("FPR"); ax.set_ylabel("TPR"); ax.legend(loc="lower right", fontsize=8)
+    ax.set_title("Focal lateralization L vs R — overall + by reported band"); ax.grid(alpha=0.25)
+    from pathlib import Path as _P; _P("results/figs").mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(); fig.savefig("results/figs/lateralization_by_band_roc.png", dpi=130); plt.close(fig)
     out = ["# Band-conditioned antisymmetric lateralizer (focal, L vs R)\n",
            "Antisymmetric (flip-augmented, no-intercept) + dominant-band×asymmetry interactions; multi-band "
            "inputs; grouped CV. Per dominant-band stratum:\n",
