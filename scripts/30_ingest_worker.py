@@ -31,11 +31,52 @@ load_edf_referential = p26.load_edf_referential
 
 OUTDIR = Path("data/derived/expansion")
 FEAT, STG, PROV, DONE = OUTDIR / "features", OUTDIR / "stages", OUTDIR / "provenance", OUTDIR / "done"
-for d in (FEAT, STG, PROV, DONE):
+GATE = OUTDIR / "gate"
+for d in (FEAT, STG, PROV, DONE, GATE):
     d.mkdir(parents=True, exist_ok=True)
 COMMIT = os.environ.get("CODE_COMMIT", "unknown")
 MAX_GB = float(os.environ.get("EXPANSION_MAX_GB", "3.0"))
+RUN_GATE = os.environ.get("RUN_GATE", "1") == "1"        # focal/gen/normal Morgoth gate probs
+GATE_STEP = os.environ.get("GATE_STEP", "10")            # window step (s) for gate heads (recording-level agg)
 PROG = p26.OUT / "progress.jsonl"
+
+
+def run_gate(sin, sout, rid):
+    """Two-stage Morgoth gate on the recording's .mat (already in sin): NORMAL + SLOWING window heads
+    -> NORMAL/FOC_SLOWING/GEN_SLOWING EEG-level aggregators. Returns per-recording probabilities."""
+    def _win(ckpt, ds, outdir):
+        subprocess.run(["bash", "-lc",
+            f"cd {p26.M2} && OMP_NUM_THREADS=1 {p26.VENV} finetune_classification.py --abs_pos_emb "
+            f"--model base_patch200_200 --predict --task_model checkpoints/{ckpt} --dataset {ds} "
+            f"--data_format mat --sampling_rate 0 --already_format_channel_order no "
+            f"--already_average_montage no --allow_missing_channels yes --max_length_hour no "
+            f"--eval_sub_dir {sin} --eval_results_dir {outdir} --prediction_slipping_step_second {GATE_STEP} "
+            f"--polarity 1 --rewrite_results no --num_workers 0 --device {p26.DEVICE}"],
+            check=True, capture_output=True)
+
+    def _eeg(ckpt, ds, csvdir, resdir):
+        subprocess.run(["bash", "-lc",
+            f"cd {p26.M2} && OMP_NUM_THREADS=1 {p26.VENV} EEG_level_head.py --mode predict "
+            f"--task_model checkpoints/{ckpt} --dataset {ds} --test_csv_dir {csvdir} --result_dir {resdir}"],
+            check=True, capture_output=True)
+
+    pn, ps = f"{sout}/pred_NORMAL", f"{sout}/pred_SLOWING"
+    _win("NORMAL.pth", "NORMAL", pn);   _eeg("NORMAL_EEGlevel.pth", "NORMAL", pn, str(sout))
+    _win("SLOWING.pth", "SLOWING", ps)
+    _eeg("FOC_SLOWING_EEGlevel.pth", "FOC_SLOWING", ps, str(sout))
+    _eeg("GEN_SLOWING_EEGlevel.pth", "GEN_SLOWING", ps, str(sout))
+
+    def _p(tag):
+        f = Path(sout) / f"pred_EEG_level_{tag}.csv"
+        if f.exists():
+            d = pd.read_csv(f)
+            if len(d):
+                return float(d.probability.iloc[0]), int(d.pred_class.iloc[0])
+        return None, None
+    pnorm, cnorm = _p("NORMAL"); pfoc, cfoc = _p("FOC_SLOWING"); pgen, cgen = _p("GEN_SLOWING")
+    return {"normal_head_prob": pnorm, "normal_pred_class": cnorm,
+            "p_focal": pfoc, "focal_pred_class": cfoc,
+            "p_generalized": pgen, "generalized_pred_class": cgen, "gate_step_s": int(GATE_STEP)}
 
 
 def _prog(**kw):
@@ -86,6 +127,14 @@ def process_one(r, work):
     p26.stage_dir(str(sin), str(sout))
     scsv = sout / f"{rid}.csv"
     pred = pd.read_csv(scsv).pred_class.to_numpy() if scsv.exists() else None
+    # Morgoth gate (focal/gen/normal) on the same .mat, before it is dropped
+    gate = None
+    if RUN_GATE:
+        try:
+            gate = run_gate(sin, sout, rid)
+            (GATE / f"{rid}.json").write_text(json.dumps({"bdsp_id": rid, **gate}, indent=2))
+        except Exception as ge:
+            print(f"    gate FAIL {rid}: {type(ge).__name__}: {ge}")
     # map stages -> per (region,stage) aggregated features
     rows = []
     label = "normal" if r.rnorm else ("focal_slow" if r.rfoc else "general_slow")
@@ -108,7 +157,7 @@ def process_one(r, work):
         "processed_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "usable_segments": usable, "total_segments": total, "n_stage_windows": int(len(pred)) if pred is not None else 0,
         "age": float(r.AgeAtVisit) if pd.notna(r.AgeAtVisit) else None, "sex": str(r.SexDSC), "label": label,
-        "seconds": round(time.time() - t_start, 1)}, indent=2))
+        "gate": gate, "seconds": round(time.time() - t_start, 1)}, indent=2))
     (DONE / f"{rid}.done").touch()
     local.unlink(missing_ok=True)
     return dict(rid=rid, usable=usable, total=total, label=label)
