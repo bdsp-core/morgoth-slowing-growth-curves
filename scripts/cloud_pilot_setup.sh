@@ -23,6 +23,7 @@ if [ "${1:-setup}" = "run" ]; then
   source .venv/bin/activate
   export PILOT_VENV="$(command -v python)"
   export PYTHONPATH=src
+  export PYTHONUNBUFFERED=1                            # live progress when redirected to a log
   echo ">>> torch CUDA check:"; python -c "import torch;print('cuda',torch.cuda.is_available(),torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')"
   python scripts/26_slowing_ingest_pilot.py "$N"
   exit 0
