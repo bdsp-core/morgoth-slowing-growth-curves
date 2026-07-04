@@ -62,8 +62,8 @@ CHECKLIST = [
         ("done", "Head-to-head vs van Putten metrics (DAR, DTABR, BSI) on report agreement"),
         ("done", "Growth curves vs prior literature (Table T2 — John, Petersén, etc.)"),
         ("done", "Empirical: left-predominance of focal slowing, age-dependent (0.65→0.77)"),
-        ("todo", "Severity-grading agreement (our z/burden vs report adjectives)"),
-        ("todo", "Prevalence/persistence validation (%-segments, run-length vs report qualifiers)"),
+        ("weak", "Severity-grading agreement — DONE but WEAK (ρ≈-0.04): severity metric needs work"),
+        ("weak", "Prevalence vs report frequency — DONE, weak (ρ≈0.10)"),
     ]),
 ]
 
@@ -99,7 +99,8 @@ SECTIONS = [
      "Cross-site generalization, stage-accentuation, and asymmetry norms (pre-fleet completeness).",
      [(FIGD / "crosssite.png", "Train on one site, test on the other: abnormal-vs-normal AUROC 0.74-0.85 (generalizes, with some site shift)."),
       (FIGD / "stage_accentuation.png", "Among abnormal recordings, which sleep stage accentuates the slowing."),
-      (FIGD / "asym_norms.png", "Normal temporal homologous-asymmetry (delta & theta) vs age — norms for the lateralization deviation.")]),
+      (FIGD / "asym_norms.png", "Normal temporal homologous-asymmetry (delta & theta) vs age — norms for the lateralization deviation."),
+      (FIGD / "severity_prevalence.png", "Our peak-z / prevalence vs report severity/frequency adjectives. WEAK agreement (ρ≈-0.04 / 0.10) — quantitative severity does not yet match clinical grading; a genuine gap for future work.")]),
     ("Comparison with prior methods (van Putten lineage)",
      "Head-to-head vs the standard published quantitative-slowing metrics, scored against the same report labels.",
      [(FIGD / "vanputten_comparison.png", "DAR, DTABR (Finnigan & van Putten 2013) and BSI (van Putten 2004/2007) vs our age/sex-normed deviations vs Morgoth. Raw metrics ~0.65–0.80; BSI is the best asymmetry baseline (focal 0.80). Our FULL deviation-LR (0.962 abnormal, see table) and Morgoth (0.92–0.99) dominate the single hand-crafted metrics — the value of age/sex/stage normalization + learning.")]),
@@ -126,7 +127,7 @@ def checklist_html():
     for group, items in CHECKLIST:
         rows.append(f'<div class="ck-group"><h3>{group}</h3>')
         for st, txt in items:
-            mark = "✓" if st == "done" else "○"
+            mark = {"done":"✓","weak":"◐"}.get(st,"○")
             rows.append(f'<div class="ck {st}"><span class="mk">{mark}</span>{txt}</div>')
         rows.append("</div>")
     return "".join(rows)
@@ -161,7 +162,7 @@ def main():
  @media(max-width:640px){{.checklist{{columns:1}}}}
  .ck-group{{break-inside:avoid;margin-bottom:12px}} .ck-group h3{{color:var(--accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}}
  .ck{{font-size:.82rem;padding:2px 0;display:flex;gap:8px}} .ck .mk{{font-weight:700}}
- .ck.done .mk{{color:var(--accent)}} .ck.todo .mk{{color:var(--todo)}} .ck.todo{{color:var(--dim)}}
+ .ck.done .mk{{color:var(--accent)}} .ck.todo .mk{{color:var(--todo)}} .ck.todo{{color:var(--dim)}} .ck.weak .mk{{color:var(--todo)}}
 </style>
 <div class="wrap">
   <h1>Morgoth slowing — evaluation inventory</h1>
