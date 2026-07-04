@@ -79,3 +79,8 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
   (0.44->0.69), rises with age, all stages similar; whole-head dilutes focal (consistent w/ region
   finding). Added by-stage figure to analysis dashboard. Region: data-driven argmax predictor honest
   (16% acc) -> next: supervised region classifier. Burndown 'staged ✓' display fix shipped.
+- (cycle 9) SUPERVISED region classifier (scripts/39): macro-F1 0.234 — BEST of the three
+  (temporal-default 0.164, argmax 0.115). Temporal F1 0.54, frontal 0.32; parietal/occipital still poor
+  (rare, n~66) -> motivates region-stratified collection. All three region approaches now in dashboard,
+  honest. Stage AUROC re-run with more staged abnormals. Region localization = partially solved
+  (temporal/frontal ok), the rest needs targeted data.

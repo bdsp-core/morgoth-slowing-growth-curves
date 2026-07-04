@@ -10,8 +10,9 @@ from pathlib import Path
 import pandas as pd
 
 OUT = Path("results/analysis_dashboard.html")
-FIG_ORDER = ["age_auroc.png", "age_auroc_by_stage.png", "region_confusion_pred.png",
-             "region_confusion.png", "region_f1.png", "side_confusion_pred.png", "side_confusion.png"]
+FIG_ORDER = ["age_auroc.png", "age_auroc_by_stage.png", "region_confusion_supervised.png",
+             "region_confusion_pred.png", "region_confusion.png", "region_f1.png",
+             "side_confusion_pred.png", "side_confusion.png"]
 SKIP = set()
 
 
@@ -42,7 +43,8 @@ def main():
     def section(md_path, title):
         p = Path(md_path)
         return f"<h2>{title}</h2><pre>{p.read_text()}</pre>" if p.exists() else ""
-    region_html = section("results/region_eval.md", "Region / side identification")
+    region_html = (section("results/region_supervised.md", "Region localization — supervised vs baselines")
+                   + section("results/region_eval.md", "Region / side identification (text-default)"))
     gate_html = section("results/expansion_gate_validation.md", "Gate validation (new recordings)")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
