@@ -21,30 +21,66 @@ def _clean(name):
     return n
 
 
+def _uv_scale(unit):
+    """Physical-dimension string -> factor to microvolts."""
+    u = (unit or "").strip().lower()
+    if u in ("uv", "µv", "microvolt", "microvolts"):
+        return 1.0
+    if u in ("mv", "millivolt", "millivolts"):
+        return 1e3
+    if u in ("v", "volt", "volts"):
+        return 1e6
+    return 1.0                             # unknown -> assume already uV (EDF convention)
+
+
 def load_edf_referential(path, target_fs=TARGET_FS):
-    """Return (data (n_samp, 19), ch_names=CANON, fs=200). Missing canonical channels -> zeros
-    (extract's allow-missing behavior); raises if too few present."""
-    import mne
-    raw = mne.io.read_raw_edf(path, preload=True, verbose="ERROR")
-    if abs(raw.info["sfreq"] - target_fs) > 1e-3:
-        raw.resample(target_fs, verbose="ERROR")
-    # map cleaned (UPPERCASE) name -> canonical -> channel index (first occurrence)
-    up2canon = {c.upper(): c for c in CANON}
-    idx = {}
-    for i, c in enumerate(raw.ch_names):
-        canon = up2canon.get(_clean(c))
-        if canon and canon not in idx:
-            idx[canon] = i
-    present = [c for c in CANON if c in idx]
-    if len(present) < 15:
-        raise ValueError(f"only {len(present)}/19 referential channels in {path}")
-    X = raw.get_data()                    # (n_ch, n_samp) volts
-    n = X.shape[1]
-    out = np.full((n, len(CANON)), np.nan)
-    for j, c in enumerate(CANON):
-        if c in idx:
-            out[:, j] = X[idx[c]] * 1e6   # V -> uV
-    # fill any missing canonical channel with the mean of present (keeps bipolar derivations finite)
+    """Return (data (n_samp, 19) float32 uV, ch_names=CANON, fs=200).
+
+    Reads ONE channel at a time via pyedflib and resamples it to target_fs before moving on, so peak
+    memory is ~(one raw channel + the 19-channel float32 output) rather than the whole 30-50 ch file at
+    float64 (which OOMs 16 GB on multi-hour recordings). Missing canonical channels -> row-mean fill;
+    raises if too few present.
+    """
+    import pyedflib
+    from fractions import Fraction
+    from scipy.signal import resample_poly
+
+    f = pyedflib.EdfReader(str(path))
+    try:
+        labels = f.getSignalLabels()
+        fss = f.getSampleFrequencies()
+        up2canon = {c.upper(): c for c in CANON}
+        idx = {}                           # canonical -> signal index (first occurrence)
+        for i, lab in enumerate(labels):
+            canon = up2canon.get(_clean(lab))
+            if canon and canon not in idx:
+                idx[canon] = i
+        present = [c for c in CANON if c in idx]
+        if len(present) < 15:
+            raise ValueError(f"only {len(present)}/19 referential channels in {path}")
+
+        # reference output length from the first present channel
+        i0 = idx[present[0]]
+        n = int(round(f.getNSamples()[i0] * target_fs / fss[i0]))
+        out = np.full((n, len(CANON)), np.nan, dtype=np.float32)
+        for j, c in enumerate(CANON):
+            if c not in idx:
+                continue
+            i = idx[c]
+            x = f.readSignal(i).astype(np.float64) * _uv_scale(f.getPhysicalDimension(i))  # -> uV
+            if abs(fss[i] - target_fs) > 1e-3:
+                frac = Fraction(target_fs / fss[i]).limit_denominator(1000)
+                x = resample_poly(x, frac.numerator, frac.denominator)
+            if len(x) >= n:                # align all channels to n (truncate / edge-pad)
+                x = x[:n]
+            else:
+                x = np.pad(x, (0, n - len(x)), mode="edge")
+            out[:, j] = x.astype(np.float32)
+            del x
+    finally:
+        f._close()
+
+    # fill any missing canonical channel with the row-mean of present (keeps bipolar derivations finite)
     if len(present) < len(CANON):
         mean = np.nanmean(out, axis=1)
         for j, c in enumerate(CANON):
