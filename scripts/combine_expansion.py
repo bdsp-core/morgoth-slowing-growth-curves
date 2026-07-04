@@ -32,6 +32,12 @@ def main():
         OUT_PROV.parent.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(OUT_PROV, index=False)
         print(f"provenance: {len(rows)} recordings -> {OUT_PROV}")
+    gates = sorted((EXP / "gate").glob("*.json"))
+    if gates:
+        g = pd.DataFrame([json.loads(p.read_text()) for p in gates])
+        out = Path("results/expansion_gate_probs.csv")
+        g.to_csv(out, index=False)
+        print(f"gate probs: {len(g)} recordings -> {out}")
 
 
 if __name__ == "__main__":
