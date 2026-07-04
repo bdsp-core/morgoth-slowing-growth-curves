@@ -40,3 +40,6 @@ checkpoints_s3/
 fleet/*accessKeys*.csv
 *_accessKeys.csv
 .aws/
+
+# fleet operational scratch (transient)
+fleet/.*
