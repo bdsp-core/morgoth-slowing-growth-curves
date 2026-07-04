@@ -26,3 +26,14 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
 
 ## Log
 - (init) scaffolding created; pilot running with memory fix (1/8 done, no OOM).
+- (cycle 2) Pipeline hardened + validated end-to-end on the box:
+  - Fixed OOM root cause: bounded per-channel preprocess + preallocated bipolar (identical results).
+  - Chunked pyedflib loader (bit-exact vs mne, ~3GB peak vs OOM).
+  - **Robust resumable per-recording worker** (scripts/30): features + sleep stages + provenance,
+    .done markers. Validated 2 recordings incl. a 33h one (5385/8476 usable, 8 min).
+  - **Multicore** feature extraction (fork+COW, bit-identical; box load avg ~10 on 4 cores).
+  - **Stratified selection** (label × age-band round-robin) to fill sparse cells.
+  - Fixed staging: morgoth needs `pytest` (stray sklearn.tests import).
+  - **Overnight run launched**: 300 recordings, detached, multicore. Resumable if interrupted.
+  - Still TODO: locate slowing-gate checkpoints for focal/gen/normal probs on new recordings;
+    refit curves + rerun analysis on expanded data; finalize manuscript/bdsp.io; fleet package.
