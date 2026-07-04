@@ -29,6 +29,19 @@ if [ "${1:-setup}" = "run" ]; then
   exit 0
 fi
 
+if [ "${1:-setup}" = "worker" ]; then                   # robust, resumable per-recording ingestion
+  N="${2:-25}"
+  cd "$REPO"
+  mkdir -p data/derived results/figs
+  source .venv/bin/activate
+  export PILOT_VENV="$(command -v python)"
+  export PYTHONPATH=src PYTHONUNBUFFERED=1
+  export CODE_COMMIT="$(cat ~/CODE_COMMIT 2>/dev/null || echo unknown)"
+  echo ">>> torch CUDA check:"; python -c "import torch;print('cuda',torch.cuda.is_available())"
+  python scripts/30_ingest_worker.py "$N"
+  exit 0
+fi
+
 echo ">>> [1/6] system deps"
 sudo apt-get update -qq && sudo apt-get install -y -qq unzip git rsync python3.12-venv
 
