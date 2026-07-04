@@ -19,22 +19,25 @@ import pandas as pd
 _spec = importlib.util.spec_from_file_location("p30", str(Path(__file__).resolve().parents[1] / "scripts" / "30_ingest_worker.py"))
 p30 = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(p30)
 
-S3_OUT = os.environ["S3_OUT"].rstrip("/")
-IDX = int(os.environ.get("AWS_BATCH_JOB_ARRAY_INDEX", "0"))
-SIZE = int(os.environ.get("ARRAY_SIZE", os.environ.get("AWS_BATCH_JOB_ARRAY_SIZE", "1")))
+S3_OUT = os.environ["S3_OUT"].rstrip("/")   # rclone remote path, e.g. bdsp:bucket/prefix/expansion
+RC = os.environ.get("RCLONE_BIN", "rclone")  # BDSP-keyed remote handles read AND write (same bucket)
+# stride index/size: AWS Batch array vars, else plain spot-fleet FLEET_INDEX/FLEET_TOTAL
+IDX = int(os.environ.get("AWS_BATCH_JOB_ARRAY_INDEX", os.environ.get("FLEET_INDEX", "0")))
+SIZE = int(os.environ.get("ARRAY_SIZE", os.environ.get("AWS_BATCH_JOB_ARRAY_SIZE", os.environ.get("FLEET_TOTAL", "1"))))
 SUBS = [("features", ".parquet"), ("stages", ".csv"), ("provenance", ".json"), ("gate", ".json")]
 
 
 def s3_done(rid):
-    return subprocess.run(["aws", "s3", "ls", f"{S3_OUT}/done/{rid}.done"], capture_output=True).returncode == 0
+    r = subprocess.run([RC, "lsf", f"{S3_OUT}/done/{rid}.done"], capture_output=True, text=True)
+    return bool(r.stdout.strip())
 
 
 def upload(rid):
     for sub, ext in SUBS:
         f = p30.OUTDIR / sub / f"{rid}{ext}"
         if f.exists():
-            subprocess.run(["aws", "s3", "cp", "--only-show-errors", str(f), f"{S3_OUT}/{sub}/{rid}{ext}"], check=False)
-    subprocess.run(["bash", "-lc", f"echo done | aws s3 cp --only-show-errors - {S3_OUT}/done/{rid}.done"], check=False)
+            subprocess.run([RC, "copyto", str(f), f"{S3_OUT}/{sub}/{rid}{ext}"], check=False)
+    subprocess.run(["bash", "-lc", f"echo done | {RC} rcat {S3_OUT}/done/{rid}.done"], check=False)
 
 
 def main():

@@ -153,7 +153,7 @@ def process_one(r, work):
     if scsv.exists():
         shutil.copy(scsv, STG / f"{rid}.csv")             # persist sleep staging
     (PROV / f"{rid}.json").write_text(json.dumps({
-        "bdsp_id": rid, "source_edf": f"s3://bdsp-opendata-repository/EEG/{ep}", "code_commit": COMMIT,
+        "bdsp_id": rid, "source_edf": f"s3://{ep}", "code_commit": COMMIT,
         "processed_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "usable_segments": usable, "total_segments": total, "n_stage_windows": int(len(pred)) if pred is not None else 0,
         "age": float(r.AgeAtVisit) if pd.notna(r.AgeAtVisit) else None, "sex": str(r.SexDSC), "label": label,

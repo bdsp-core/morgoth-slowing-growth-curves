@@ -34,3 +34,9 @@ outputs/
 # model weights: keep out of git (they live on S3: morgoth2/models/202605/morgoth/)
 *.pth
 checkpoints_s3/
+
+# AWS credentials — never commit
+*accessKeys*.csv
+fleet/*accessKeys*.csv
+*_accessKeys.csv
+.aws/
