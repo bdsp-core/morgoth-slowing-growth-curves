@@ -18,7 +18,7 @@ Env:  same as scripts/26 (RCLONE_BIN, MORGOTH2_DIR, PILOT_VENV, MORGOTH_DEVICE, 
       CODE_COMMIT (provenance), EXPANSION_MAX_GB (size guard, default 3.0).
 """
 from __future__ import annotations
-import os, sys, gc, json, time, importlib.util, tempfile, shutil
+import os, sys, gc, json, time, subprocess, importlib.util, tempfile, shutil
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.io import savemat
