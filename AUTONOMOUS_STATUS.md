@@ -65,3 +65,12 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
   (only n=1 gen — underpowered, will strengthen). Gate looks well-calibrated on new recordings. Curve
   refit + discrimination still await more gen/normal (accumulating). Next: rerun gate validation as data
   grows; then refit + manuscript.
+- (cycle 7) Brandon pushed back on framing — corrected. Two OVERSIGHTS (not walls), with fixes now
+  executing (docs/staging_and_localization_plan.md):
+  * #3 stage coverage: staging the 7,463 original abnormals (2067 focal + 5396 gen) directly from
+    S3 segments_raw clips via scripts/36 (VERIFIED working, ~14/min, ~9h). Then scripts/34 gives a REAL
+    stage-stratified AUROC. Switched the box from EDF expansion (resumable) to this higher-value job.
+  * #4 region localization: plan = data-driven region predictor (max age/sex-adjusted deviation region,
+    not text-default) + region-stratified eval set (frontal 698/central 266/occipital 68/parietal 66
+    abnormals available). Fixes the temporal/bilateral majority-class artifact.
+  * Confusion matrices now ROW-NORMALIZED (proportions, not counts).
