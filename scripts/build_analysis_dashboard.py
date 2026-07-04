@@ -10,8 +10,9 @@ from pathlib import Path
 import pandas as pd
 
 OUT = Path("results/analysis_dashboard.html")
-FIG_ORDER = ["age_auroc.png", "region_confusion.png", "region_f1.png", "side_confusion.png"]
-SKIP = {"age_auroc_by_stage.png"}                      # data-limited (staged subset 98.5% normal) — not shown
+FIG_ORDER = ["age_auroc.png", "age_auroc_by_stage.png", "region_confusion_pred.png",
+             "region_confusion.png", "region_f1.png", "side_confusion_pred.png", "side_confusion.png"]
+SKIP = set()
 
 
 def img(p: Path) -> str:
@@ -86,11 +87,12 @@ def main():
     weakness to improve.</div>
   {region_html}
   {gate_html}
-  <div class="note"><b>Sleep-stage breakout — pending balanced staged data.</b> The original cohort's
-    staged subset is 98.5% normal (staging was run only on the normative controls: 74 focal, 0
-    generalized), so a stage-stratified abnormal-vs-normal AUROC can't be computed on it. The overnight
-    ingestion stages <i>every</i> focal/gen/normal recording, so these curves populate from the balanced
-    ingested set (fully from the fleet).</div>
+  <div class="note"><b>Sleep-stage breakout — now real (oversight fixed).</b> The original pipeline had
+    only staged the normal controls; we staged the abnormals directly from their raw clips (scripts/36),
+    so this curve now includes real staged focal+gen. It uses a simple whole-head 3-metric deviation
+    score (not the full model), so AUROC is modest (0.44→0.69) and rises with age — and the whole-head
+    average dilutes focal slowing, consistent with the localization finding. Strengthens as more
+    abnormals finish staging; the full/regional model does much better at the recording level.</div>
 </div>
 """)
     print(f"wrote {OUT} ({len(pngs)} figures)")

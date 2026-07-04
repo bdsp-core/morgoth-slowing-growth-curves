@@ -74,3 +74,8 @@ Single existing box only: ~$0.53/hr × ~24 h ≈ **$13**, bounded and known. **N
     not text-default) + region-stratified eval set (frontal 698/central 266/occipital 68/parietal 66
     abnormals available). Fixes the temporal/bilateral majority-class artifact.
   * Confusion matrices now ROW-NORMALIZED (proportions, not counts).
+- (cycle 8) STAGE OVERSIGHT FIXED: 380+ abnormals staged -> real stage-stratified AUROC (scripts/38)
+  now uses actual staged focal(226)+gen(430)+normals. Whole-head 3-metric deviation score: modest
+  (0.44->0.69), rises with age, all stages similar; whole-head dilutes focal (consistent w/ region
+  finding). Added by-stage figure to analysis dashboard. Region: data-driven argmax predictor honest
+  (16% acc) -> next: supervised region classifier. Burndown 'staged ✓' display fix shipped.
