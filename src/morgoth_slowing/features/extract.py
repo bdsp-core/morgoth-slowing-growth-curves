@@ -9,6 +9,7 @@ Pipeline: referential -> 18 bipolar (double-banana) -> 15-s segments (3000 samp 
 -> multitaper PSD per segment/channel -> 31 features (5 band powers + total + rel + ratios).
 """
 from __future__ import annotations
+import os
 import numpy as np
 from scipy.signal.windows import dpss
 
@@ -116,3 +117,40 @@ def extract(data, ch_names, fs=FS):
         freqs, psd = multitaper_psd(bip[s:e].T, fs)  # (18, n_freq)
         out.append(features_31(band_powers(freqs, psd)))
     return np.stack(out), segs                        # (n_seg, 18, 31)
+
+
+# ---- parallel per-segment features (multicore) --------------------------------------------------
+# The multitaper PSD per segment is the CPU bottleneck and each segment is independent. On Linux we
+# use a fork pool so workers inherit the bipolar array copy-on-write (no per-worker copy). Results are
+# bit-identical to the serial loop (same math, just distributed).
+_BIP_G = None
+_FS_G = None
+
+
+def _seg_worker(se):
+    s, e = se
+    fr, psd = multitaper_psd(_BIP_G[s:e].T, _FS_G)
+    return features_31(band_powers(fr, psd))
+
+
+def segment_features_parallel(bip, usable_se, fs=FS, n_workers=None):
+    """usable_se: list of (start,end) sample tuples for usable segments.
+    Returns list of feature arrays (n_ch,31), one per usable segment, in order.
+    n_workers defaults to all cores; falls back to serial for small inputs or n_workers==1."""
+    global _BIP_G, _FS_G
+    if n_workers is None:
+        n_workers = max(1, (os.cpu_count() or 1))
+    if n_workers <= 1 or len(usable_se) < 8:
+        return [_serial_feat(bip, s, e, fs) for s, e in usable_se]
+    import multiprocessing as mp
+    _BIP_G, _FS_G = bip, fs
+    try:
+        with mp.get_context("fork").Pool(n_workers) as pool:
+            return pool.map(_seg_worker, usable_se, chunksize=16)
+    finally:
+        _BIP_G = _FS_G = None
+
+
+def _serial_feat(bip, s, e, fs):
+    fr, psd = multitaper_psd(bip[s:e].T, fs)
+    return features_31(band_powers(fr, psd))

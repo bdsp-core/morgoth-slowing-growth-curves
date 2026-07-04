@@ -74,11 +74,9 @@ def process_one(r, work):
     bip = ex.to_bipolar(ex.preprocess(data, fs), chs)
     segidx = ex.segment_indices(bip.shape[0])
     mask, reasons = af.usable_mask(bip, segidx, fs)
-    feats = []
-    for i, (s, e) in enumerate(segidx):
-        if mask[i]:
-            fr, psd = ex.multitaper_psd(bip[s:e].T, fs)
-            feats.append((s, e, ex.features_31(ex.band_powers(fr, psd))))
+    usable_se = [(s, e) for i, (s, e) in enumerate(segidx) if mask[i]]
+    feat_arrs = ex.segment_features_parallel(bip, usable_se, fs)      # multicore (fork+COW)
+    feats = [(s, e, f) for (s, e), f in zip(usable_se, feat_arrs)]
     usable, total = int(mask.sum()), len(segidx)
     del bip, mask, segidx; gc.collect()
     # stage THIS recording
@@ -116,11 +114,33 @@ def process_one(r, work):
     return dict(rid=rid, usable=usable, total=total, label=label)
 
 
-def main(n=25):
-    picks = p26.select(n)
+AGE_BINS = [0, 2, 5, 12, 17, 29, 44, 59, 74, 120]
+
+
+def select_balanced(n):
+    """Round-robin across (primary label x age band) strata so sparse cells (pediatric, elderly,
+    generalized) get even coverage rather than prevalence-weighted. Excludes already-.done recordings."""
+    j = p26.eligible().copy()
+    j["plabel"] = np.where(j.rnorm == 1, "normal", np.where(j.rfoc == 1, "focal_slow", "general_slow"))
+    j["ageband"] = pd.cut(pd.to_numeric(j.AgeAtVisit, errors="coerce"), bins=AGE_BINS)
+    j["rid"] = j.SiteID.astype(str) + j.pid.astype(str) + "_" + j.date.astype(str)
     done_ids = {p.stem for p in DONE.glob("*.done")}
-    picks = picks[~picks.apply(lambda r: f"{r.SiteID}{r.pid}_{r.date}" in done_ids, axis=1)]
-    print(f"selected {len(picks)} recordings ({len(done_ids)} already done)")
+    j = j[~j.rid.isin(done_ids)]
+    groups = [g.reset_index(drop=True) for _, g in j.groupby(["plabel", "ageband"], observed=True)]
+    picks, gi = [], [0] * len(groups)
+    while len(picks) < n and any(gi[k] < len(groups[k]) for k in range(len(groups))):
+        for k in range(len(groups)):
+            if gi[k] < len(groups[k]):
+                picks.append(groups[k].iloc[gi[k]]); gi[k] += 1
+                if len(picks) >= n:
+                    break
+    return pd.DataFrame(picks), len(done_ids)
+
+
+def main(n=25):
+    picks, n_done = select_balanced(n)
+    print(f"selected {len(picks)} recordings ({n_done} already done)")
+    done_ids = {p.stem for p in DONE.glob("*.done")}
     _prog(event="start", total=int(len(picks)) + len(done_ids), done=len(done_ids))
     work = Path(tempfile.mkdtemp())
     n_ok = len(done_ids)
