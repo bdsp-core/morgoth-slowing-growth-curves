@@ -34,25 +34,33 @@ N_TAPERS = 7
 
 
 def preprocess(data, fs=FS, hp=0.5, notch=60.0):
-    """High-pass (remove drift that inflates delta) + notch (line noise). data (n_samp, n_ch)."""
+    """High-pass (remove drift that inflates delta) + notch (line noise). data (n_samp, n_ch).
+
+    Filters ONE channel at a time into a preallocated output, so peak memory is ~2x `data` instead of
+    the ~4x transient of a whole-array filtfilt (which OOMs 16 GB on multi-hour recordings).
+    Per-channel filtfilt is numerically identical to the axis-wise version.
+    """
     from scipy.signal import butter, filtfilt, iirnotch
-    x = data.T                                        # (n_ch, n_samp)
     b, a = butter(4, hp / (fs / 2), btype="high")
-    x = filtfilt(b, a, x, axis=-1)
-    for f0 in (60.0, 50.0):                            # US + intl line noise
-        if f0 < fs / 2:
-            bn, an = iirnotch(f0, 30, fs)
-            x = filtfilt(bn, an, x, axis=-1)
-    return x.T
+    notches = [iirnotch(f0, 30, fs) for f0 in (60.0, 50.0) if f0 < fs / 2]  # US + intl line noise
+    out = np.empty_like(data)
+    for c in range(data.shape[1]):
+        y = filtfilt(b, a, data[:, c])
+        for bn, an in notches:
+            y = filtfilt(bn, an, y)
+        out[:, c] = y
+    return out
 
 
 def to_bipolar(data, ch_names):
-    """data (n_samples, n_ch) referential -> (n_samples, 18) bipolar in BIPOLAR order."""
+    """data (n_samples, n_ch) referential -> (n_samples, 18) bipolar in BIPOLAR order.
+
+    Subtracts directly into a preallocated array (no list of 18 full-length temporaries)."""
     idx = {c: i for i, c in enumerate(ch_names)}
-    cols = []
-    for a, b in BIPOLAR:
-        cols.append(data[:, idx[a]] - data[:, idx[b]])
-    return np.stack(cols, axis=1)
+    out = np.empty((data.shape[0], len(BIPOLAR)), dtype=data.dtype)
+    for k, (a, b) in enumerate(BIPOLAR):
+        np.subtract(data[:, idx[a]], data[:, idx[b]], out=out[:, k])
+    return out
 
 
 def segment_indices(n_samples, seg=SEG_SAMPLES, step=SEG_STEP):
