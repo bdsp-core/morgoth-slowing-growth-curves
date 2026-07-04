@@ -49,8 +49,8 @@ def rclone(args):
 
 
 def select(n):
-    meta = pd.concat([pd.read_csv(f, low_memory=False) for f in (SCRATCH / "eegmeta").glob("S000*_eeg_metadata*.csv")])
-    fnd = pd.concat([pd.read_csv(f, low_memory=False) for f in (SCRATCH / "reports").glob("S000*_EEG__reports_findings.csv")])
+    meta = pd.concat([pd.read_csv(f, low_memory=False) for f in sorted((SCRATCH / "eegmeta").glob("S000*_eeg_metadata*.csv"))])
+    fnd = pd.concat([pd.read_csv(f, low_memory=False) for f in sorted((SCRATCH / "reports").glob("S000*_EEG__reports_findings.csv"))])
     fnd["pid"] = fnd.BDSPPatientID.astype(str).str.replace(r"\.0$", "", regex=True)
     fnd["date"] = pd.to_datetime(fnd["StartTime(EEG)"], errors="coerce").dt.strftime("%Y%m%d")
     hr = lambda c: fnd[c].astype(str).str.contains("report", case=False, na=False)
@@ -102,6 +102,16 @@ def main(n=6):
         try:
             rclone(["copy", f"bdsp:{ep}", str(work)])
             src = next(work.glob("*.edf")); src.rename(local)
+            # size guard: some recordings carry bogus (short) metadata durations but are actually
+            # multi-day -> their 200 Hz float32 array won't fit 16 GB. Skip in the pilot (the full
+            # wave handles these via time-chunking or a memory-scaled instance).
+            import pyedflib
+            _f = pyedflib.EdfReader(str(local)); _ns = _f.getNSamples(); _fs = _f.getSampleFrequencies(); _f._close()
+            est_gb = max(int(_ns[k] * 200.0 / _fs[k]) for k in range(len(_ns)) if _fs[k] > 0) * 19 * 4 / 1e9
+            if est_gb > 3.0:                                 # ~55 h @ 200 Hz, 19 ch, float32
+                print(f"  SKIP {rid}: ~{est_gb:.1f} GB @200Hz (multi-day) exceeds pilot memory budget")
+                _prog(event="skip", rid=rid, done=len(recs), total=int(len(picks)), est_gb=round(est_gb, 1))
+                local.unlink(missing_ok=True); continue
             data, chs, fs = load_edf_referential(str(local))
             data = data.astype(np.float32, copy=False)      # halve RAM (multi-hour EEGs OOM on 16 GB)
             bip = ex.to_bipolar(ex.preprocess(data, fs), chs)
