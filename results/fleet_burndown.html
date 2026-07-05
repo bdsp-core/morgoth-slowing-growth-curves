@@ -52,10 +52,11 @@
   </div>
 
   <div class="card"><h2>Burndown — recordings remaining</h2><canvas id="chart"></canvas></div>
+  <div class="card"><h2>Throughput — recordings / hour</h2><canvas id="ratechart"></canvas></div>
   <div class="card"><h2>Completed recordings</h2><div id="list"></div></div>
 </div>
 <script>
-const D = {"total": 13034, "done": 396, "remaining": 12638, "pct": 3, "elapsed": "2h 32m", "eta": "21h 5m", "rate_hr": 599.2, "status": "running", "asof": "2026-07-04 17:01", "series": [[0.0, 13034], [0.0, 13032], [34.91, 13023], [73.32, 12941], [75.08, 12937], [106.32, 12865], [137.36, 12791], [142.43, 12767], [151.58, 12659], [152.68, 12638]], "cards": [{"rid": "S0001111643054_20131017", "label": "general_slow", "usable": 3864, "seg_total": 3943, "min": 75.1}, {"rid": "S0001114433509_20120905", "label": "general_slow", "usable": 6246, "seg_total": 6297, "min": 106.3}, {"rid": "S0001115255254_20160701", "label": "normal", "usable": 2160, "seg_total": 3085, "min": 137.4}, {"rid": "S0002117026138_20180402", "label": "normal", "usable": 35, "seg_total": 758, "min": 142.4}, {"rid": "S0001115343112_20121128", "label": "focal_slow", "usable": 2436, "seg_total": 6056, "min": 151.6}, {"rid": "S0001116689199_20180908", "label": "normal", "usable": 2571, "seg_total": 2951, "min": 152.7}], "failed": 0};
+const D = {"total": 13034, "done": 474, "remaining": 12560, "pct": 4, "elapsed": "2h 36m", "eta": "16h 58m", "rate_hr": 740.0, "status": "running", "asof": "2026-07-04 17:05", "series": [[0.0, 13034], [0.0, 13032], [34.91, 13023], [73.32, 12941], [75.08, 12937], [106.32, 12865], [137.36, 12791], [142.43, 12767], [151.58, 12659], [152.68, 12638], [156.09, 12560]], "rate_series": [[34.91, 15.5], [73.32, 128.1], [75.08, 136.1], [106.32, 138.3], [137.36, 143.0], [142.43, 284.1], [151.58, 708.5], [152.68, 1140.7], [156.09, 1372.5]], "cards": [{"rid": "S0001111643054_20131017", "label": "general_slow", "usable": 3864, "seg_total": 3943, "min": 75.1}, {"rid": "S0001114433509_20120905", "label": "general_slow", "usable": 6246, "seg_total": 6297, "min": 106.3}, {"rid": "S0001115255254_20160701", "label": "normal", "usable": 2160, "seg_total": 3085, "min": 137.4}, {"rid": "S0002117026138_20180402", "label": "normal", "usable": 35, "seg_total": 758, "min": 142.4}, {"rid": "S0001115343112_20121128", "label": "focal_slow", "usable": 2436, "seg_total": 6056, "min": 151.6}, {"rid": "S0001116689199_20180908", "label": "normal", "usable": 2571, "seg_total": 2951, "min": 152.7}, {"rid": "S0001113808881_20130511", "label": "", "usable": 368, "seg_total": 5756, "min": 156.1}], "failed": 0};
 const $ = id => document.getElementById(id);
 const LABC = {normal:'var(--normal)', focal_slow:'var(--focal)', general_slow:'var(--gen)'};
 const LABT = {normal:'normal', focal_slow:'focal', general_slow:'gen'};
@@ -117,5 +118,39 @@ function draw(){
   // x label
   ctx.fillStyle='#8798b3'; ctx.fillText('minutes', W-pad.r-46, H-6);
 }
-draw(); window.addEventListener('resize', draw);
+// throughput chart (instantaneous recordings/hr per sample)
+const rcv = $('ratechart'), rctx = rcv && rcv.getContext('2d');
+function drawRate(){
+  if(!rcv) return;
+  const R = D.rate_series || [];
+  const dpr = window.devicePixelRatio||1, W = rcv.clientWidth, H = 200;
+  rcv.width = W*dpr; rcv.height = H*dpr; rctx.setTransform(dpr,0,0,dpr,0,0);
+  rctx.clearRect(0,0,W,H);
+  const pad = {l:40,r:12,t:12,b:24};
+  if(R.length < 1){ rctx.fillStyle='#8798b3'; rctx.font='12px ui-sans-serif';
+    rctx.fillText('collecting samples…', pad.l, H/2); return; }
+  const xmax = Math.max(1, R[R.length-1][0]);
+  const ymax = Math.max(10, Math.max.apply(null, R.map(p=>p[1]))*1.15);
+  const X = v => pad.l + (W-pad.l-pad.r)*(v/xmax);
+  const Y = v => pad.t + (H-pad.t-pad.b)*(1 - v/ymax);
+  rctx.strokeStyle='#233047'; rctx.fillStyle='#8798b3'; rctx.font='11px ui-sans-serif'; rctx.lineWidth=1;
+  for(let i=0;i<=2;i++){ const yv=ymax*i/2, y=Y(yv);
+    rctx.beginPath(); rctx.moveTo(pad.l,y); rctx.lineTo(W-pad.r,y); rctx.stroke();
+    rctx.fillText(Math.round(yv), 6, y+3); }
+  // area + line
+  const grad = rctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(74,144,226,.30)'); grad.addColorStop(1,'rgba(74,144,226,0)');
+  rctx.beginPath(); rctx.moveTo(X(R[0][0]),Y(R[0][1]));
+  for(const [x,y] of R){ rctx.lineTo(X(x),Y(y)); }
+  rctx.lineTo(X(R[R.length-1][0]),Y(0)); rctx.lineTo(X(R[0][0]),Y(0)); rctx.closePath();
+  rctx.fillStyle=grad; rctx.fill();
+  rctx.beginPath(); rctx.moveTo(X(R[0][0]),Y(R[0][1]));
+  for(const [x,y] of R){ rctx.lineTo(X(x),Y(y)); }
+  rctx.strokeStyle='#4a90e2'; rctx.lineWidth=2; rctx.stroke();
+  // dots at each sample
+  rctx.fillStyle='#4a90e2';
+  for(const [x,y] of R){ rctx.beginPath(); rctx.arc(X(x),Y(y),2.2,0,7); rctx.fill(); }
+  rctx.fillStyle='#8798b3'; rctx.fillText('minutes', W-pad.r-46, H-6);
+}
+draw(); drawRate(); window.addEventListener('resize', ()=>{draw(); drawRate();});
 </script>
