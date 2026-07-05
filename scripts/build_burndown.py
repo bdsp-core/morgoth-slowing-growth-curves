@@ -46,7 +46,16 @@ def main():
     failed = [e for e in ev if e.get("event") == "fail"]
 
     elapsed = max(1.0, (done_events[-1]["t"] if done_events else now) - t0)
-    rate = done / elapsed if done else 0.0                      # recordings / sec
+    # RECENT windowed rate (not cumulative) — a ramp/scale-up makes the lifetime average misleading.
+    WINDOW = 2700                                               # ~45 min
+    recent = [e for e in done_events if e["t"] >= (done_events[-1]["t"] if done_events else now) - WINDOW]
+    if len(recent) < 2 and len(done_events) >= 2:
+        recent = done_events[-2:]                               # fall back to last two points
+    if len(recent) >= 2:
+        dt = max(1.0, recent[-1]["t"] - recent[0]["t"])
+        rate = max(0.0, recent[-1].get("done", 0) - recent[0].get("done", 0)) / dt
+    else:
+        rate = done / elapsed if done else 0.0                  # recordings / sec
     remaining = max(0, total - done)
     eta_sec = remaining / rate if rate > 0 and not finished else 0
     status = "complete" if finished else ("staging" if staging else ("running" if done < total else "running"))
