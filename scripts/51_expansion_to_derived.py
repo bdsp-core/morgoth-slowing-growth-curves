@@ -52,8 +52,11 @@ def list_files(sub, ext):
 
 def read_parquet_any(path):
     if REMOTE:
-        for attempt in range(3):                          # retry transient empty/failed rclone cat
-            b = subprocess.run([RC, "cat", path], capture_output=True).stdout
+        for attempt in range(4):                          # retry transient empty/failed/HUNG rclone cat
+            try:
+                b = subprocess.run([RC, "cat", path], capture_output=True, timeout=90).stdout
+            except subprocess.TimeoutExpired:
+                b = b""                                    # treat a hung read as failed -> retry
             if b:
                 return pd.read_parquet(io.BytesIO(b))
         raise IOError(f"empty read after retries: {path}")
