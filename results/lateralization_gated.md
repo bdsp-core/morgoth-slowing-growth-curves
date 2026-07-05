@@ -1,26 +1,26 @@
 # Gated lateralization — LEFT vs RIGHT among focal recordings with a stated side
 
-n = 555 (left 408, right 147). Bilateral & generalized excluded.
+n = 1301 (left 785, right 516). Bilateral & generalized excluded.
 
 
 ## Single signed-asymmetry features (AUROC for left-vs-right)
 
-- asym_temporal_delta: AUROC 0.856
-- asym_parasagittal_delta: AUROC 0.801
-- asym_temporal_theta: AUROC 0.822
+- asym_temporal_delta: AUROC 0.882
+- asym_parasagittal_delta: AUROC 0.856
+- asym_temporal_theta: AUROC 0.828
 
 ## Supervised LR on all signed asymmetries (5-fold OOF)
 
-- **AUROC (left vs right) = 0.866**
+- **AUROC (left vs right) = 0.932**
 
-- accuracy 0.813, balanced accuracy 0.807
+- accuracy 0.873, balanced accuracy 0.872
 
 - confusion (rows=true L/R, cols=pred L/R):
 
 ```
         pred L  pred R
-true L     334      74
-true R      30     117
+true L     688      97
+true R      68     448
 ```
 
 
