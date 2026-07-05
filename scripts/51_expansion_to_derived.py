@@ -52,7 +52,11 @@ def list_files(sub, ext):
 
 def read_parquet_any(path):
     if REMOTE:
-        return pd.read_parquet(io.BytesIO(subprocess.run([RC, "cat", path], capture_output=True).stdout))
+        for attempt in range(3):                          # retry transient empty/failed rclone cat
+            b = subprocess.run([RC, "cat", path], capture_output=True).stdout
+            if b:
+                return pd.read_parquet(io.BytesIO(b))
+        raise IOError(f"empty read after retries: {path}")
     return pd.read_parquet(path)
 
 
@@ -73,17 +77,19 @@ def main():
         """Read one recording, return (rec_rows, stage_rows) — per-region + per-(region,stage) medians."""
         try:
             d = read_parquet_any(f)
+            if d.empty or not {"bdsp_id", "region", "stage"} <= set(d.columns):
+                print(f"  skip {os.path.basename(f)}: empty/missing cols"); return [], []
+            meta = {"bdsp_id": d["bdsp_id"].iloc[0], "age": d["age"].iloc[0],
+                    "sex": d["sex"].iloc[0], "label": d["label"].iloc[0]}
+            gr = d.groupby("region"); med = gr[have].median(); n = gr.size()
+            recs = [{**meta, "region": region, "n_segments": int(n[region]), **row.to_dict()}
+                    for region, row in med.iterrows()]
+            gs = d.groupby(["region", "stage"]); smed = gs[have].median(); sn = gs.size()
+            stages = [{**meta, "region": region, "stage": stage, "n_seg": int(sn[(region, stage)]), **row.to_dict()}
+                      for (region, stage), row in smed.iterrows()]
+            return recs, stages
         except Exception as e:
             print(f"  skip {os.path.basename(f)}: {e}"); return [], []
-        meta = {"bdsp_id": d["bdsp_id"].iloc[0], "age": d["age"].iloc[0],
-                "sex": d["sex"].iloc[0], "label": d["label"].iloc[0]}
-        gr = d.groupby("region"); med = gr[have].median(); n = gr.size()
-        recs = [{**meta, "region": region, "n_segments": int(n[region]), **row.to_dict()}
-                for region, row in med.iterrows()]
-        gs = d.groupby(["region", "stage"]); smed = gs[have].median(); sn = gs.size()
-        stages = [{**meta, "region": region, "stage": stage, "n_seg": int(sn[(region, stage)]), **row.to_dict()}
-                  for (region, stage), row in smed.iterrows()]
-        return recs, stages
 
     rec_rows, stage_rows = [], []
     workers = int(os.environ.get("REANALYZE_WORKERS", "24"))     # parallel S3 reads (I/O-bound)
