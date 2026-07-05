@@ -23,6 +23,7 @@ AUROCs. To make it exact in future runs, emit a per-segment index from scripts/3
 """
 from __future__ import annotations
 import glob, io, json, os, subprocess, sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -66,31 +67,31 @@ def main():
     if not feats:
         print(f"no feature parquets under {EXP}/features — nothing to do", file=sys.stderr); sys.exit(1)
     print(f"streaming {len(feats)} recordings from {EXP}/features  (remote={REMOTE})")
-    rec_rows, stage_rows = [], []
-    have = None
-    for i, f in enumerate(feats):
+    have = [c for c in FEAT if c in read_parquet_any(feats[0]).columns]   # probe schema once
+
+    def work(f):
+        """Read one recording, return (rec_rows, stage_rows) — per-region + per-(region,stage) medians."""
         try:
             d = read_parquet_any(f)
         except Exception as e:
-            print(f"  skip {os.path.basename(f)}: {e}"); continue
-        if have is None:
-            have = [c for c in FEAT if c in d.columns]
+            print(f"  skip {os.path.basename(f)}: {e}"); return [], []
         meta = {"bdsp_id": d["bdsp_id"].iloc[0], "age": d["age"].iloc[0],
                 "sex": d["sex"].iloc[0], "label": d["label"].iloc[0]}
-        # per-region median over this recording's segments
-        gr = d.groupby("region")
-        med = gr[have].median()
-        n = gr.size().rename("n_segments")
-        for region, row in med.iterrows():
-            rec_rows.append({**meta, "region": region, "n_segments": int(n[region]), **row.to_dict()})
-        # per-(region, stage) median
-        gs = d.groupby(["region", "stage"])
-        smed = gs[have].median(); sn = gs.size().rename("n_seg")
-        for (region, stage), row in smed.iterrows():
-            stage_rows.append({**meta, "region": region, "stage": stage,
-                               "n_seg": int(sn[(region, stage)]), **row.to_dict()})
-        if (i + 1) % 500 == 0:
-            print(f"  {i+1}/{len(feats)}")
+        gr = d.groupby("region"); med = gr[have].median(); n = gr.size()
+        recs = [{**meta, "region": region, "n_segments": int(n[region]), **row.to_dict()}
+                for region, row in med.iterrows()]
+        gs = d.groupby(["region", "stage"]); smed = gs[have].median(); sn = gs.size()
+        stages = [{**meta, "region": region, "stage": stage, "n_seg": int(sn[(region, stage)]), **row.to_dict()}
+                  for (region, stage), row in smed.iterrows()]
+        return recs, stages
+
+    rec_rows, stage_rows = [], []
+    workers = int(os.environ.get("REANALYZE_WORKERS", "24"))     # parallel S3 reads (I/O-bound)
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for i, (recs, stages) in enumerate(ex.map(work, feats)):
+            rec_rows.extend(recs); stage_rows.extend(stages)
+            if (i + 1) % 1000 == 0:
+                print(f"  {i+1}/{len(feats)}", flush=True)
 
     rf = pd.DataFrame(rec_rows)
     DER.mkdir(parents=True, exist_ok=True)
