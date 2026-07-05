@@ -68,6 +68,15 @@ def extract_side(text):
     return None
 
 
+def extract_band(text):
+    cl = _clauses(text)
+    if not cl:
+        return None
+    ctx = " ".join(cl)
+    hd, ht = bool(re.search(r"delta", ctx)), bool(re.search(r"theta", ctx))
+    return "mixed" if (hd and ht) else ("delta" if hd else ("theta" if ht else None))
+
+
 def extract_region(text):
     regs = []
     for c in _clauses(text):
@@ -81,8 +90,9 @@ def extract_region(text):
 def parse_full(text):
     d = parse_report(text)
     t = (text or "").lower()
-    d["side"] = extract_side(text)                        # v2 overrides the old side/region
+    d["side"] = extract_side(text)                        # v2 overrides the old side/region/band
     d["region"] = extract_region(text)
+    d["band"] = extract_band(text)
     d["report_normal"] = int(bool(re.search(r"\bnormal (eeg|study|awake)|this is a normal\b", t)) and
                              not re.search(r"abnormal", t))
     d["report_abnormal"] = int(bool(re.search(r"\babnormal\b", t)))
