@@ -27,9 +27,62 @@ _m = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_m)
 parse_report = _m.parse_report
 
 
+# --- improved laterality/region extraction (v2) --------------------------------------------------
+# The old parser (scripts/18 parse_report) restricted to sentences containing "slow", checked
+# bilateral/diffuse FIRST (so any diffuse comment hijacked an explicit side), and ignored electrode
+# names + R>L/L>R predominance. That dumped ~81% of slowing reports into "bilateral" and lost ~32k
+# clearly-sided reports. v2 scopes per slowing-clause, maps 10-20 electrodes to a side/region, honors
+# predominance, and lets a specific unilateral focal finding win over a diffuse background comment.
+L_ELEC = r"\b(fp1|f7|f3|t1|t3|t5|c3|p3|o1|a1)\b"
+R_ELEC = r"\b(fp2|f8|f4|t2|t4|t6|c4|p4|o2|a2)\b"
+_REGION_PATS = [("temporal", r"temporal|\b(t1|t2|t3|t4|t5|t6|f7|f8)\b"),
+                ("occipital", r"occipital|\b(o1|o2)\b"),
+                ("parietal", r"parietal|\b(p3|p4)\b"),
+                ("frontal", r"frontal|\b(fp1|fp2|f3|f4)\b"),
+                ("central", r"central|\b(c3|c4|cz)\b")]
+
+
+def _clauses(text):
+    return [s for s in re.split(r"[.;\n)]|\d\)", (text or "").lower()) if "slow" in s]
+
+
+def side_of(c):
+    if re.search(r"\br\s*>\s*l\b", c): return "right"
+    if re.search(r"\bl\s*>\s*r\b", c): return "left"
+    hasL = bool(re.search(r"\bleft\b", c) or re.search(L_ELEC, c))
+    hasR = bool(re.search(r"\bright\b", c) or re.search(R_ELEC, c))
+    diffuse = bool(re.search(r"\b(bilateral|diffuse|generali[sz]ed|both hemisph|bihemispheric|independent)\b", c))
+    if hasL and hasR: return "bilateral"
+    if hasL: return "left"
+    if hasR: return "right"
+    if diffuse: return "bilateral"
+    return None
+
+
+def extract_side(text):
+    sides = [s for s in (side_of(c) for c in _clauses(text)) if s]
+    uni = [s for s in sides if s in ("left", "right")]
+    if uni and len(set(uni)) == 1: return uni[0]         # consistent single side across findings
+    if uni: return "bilateral"                            # left AND right foci -> bilateral/multifocal
+    if sides: return "bilateral"
+    return None
+
+
+def extract_region(text):
+    regs = []
+    for c in _clauses(text):
+        for name, pat in _REGION_PATS:
+            if re.search(pat, c):
+                regs.append(name); break
+    if not regs: return None
+    return max(set(regs), key=regs.count)                # most-mentioned region across slowing clauses
+
+
 def parse_full(text):
     d = parse_report(text)
     t = (text or "").lower()
+    d["side"] = extract_side(text)                        # v2 overrides the old side/region
+    d["region"] = extract_region(text)
     d["report_normal"] = int(bool(re.search(r"\bnormal (eeg|study|awake)|this is a normal\b", t)) and
                              not re.search(r"abnormal", t))
     d["report_abnormal"] = int(bool(re.search(r"\babnormal\b", t)))
