@@ -56,7 +56,17 @@ def main():
             pw[(ch, b)] = np.exp(r[f"log_{b}"])
     bsi = bsi_from_powers(pd.DataFrame(pw)).rename("bsi")
     rec = meta.join(bsi, how="inner")
-    rec.to_parquet("data/derived/bsi_features.parquet")
+    # age-normalized deviation vs CLEAN normals (robust z: IQR/1.349), same convention as other
+    # deviation features; consumed by 47 (van Putten BSI-deviation row) and 16 (gated report).
+    bins = np.arange(0, 96, 5)
+    nm = rec[rec.label == "normal"].copy(); nm["ab"] = pd.cut(nm.age, bins)
+    st = nm.groupby("ab", observed=True).bsi.agg(
+        med="median", sig=lambda x: max((x.quantile(.75) - x.quantile(.25)) / 1.349, 1e-6))
+    rec["ab"] = pd.cut(rec.age, bins)
+    rec = rec.join(st, on="ab")
+    rec["bsi_z"] = (rec.bsi - rec["med"]) / rec["sig"]
+    rec = rec.drop(columns=["ab", "med", "sig"])
+    rec.reset_index().to_parquet("data/derived/bsi_features.parquet")   # bdsp_id as COLUMN + bsi + bsi_z
     print(f"overall BSI: {len(rec)} recordings; normal median {rec[rec.label=='normal'].bsi.median():.3f}, "
           f"focal {rec[rec.label=='focal_slow'].bsi.median():.3f}")
 
