@@ -43,3 +43,6 @@ fleet/*accessKeys*.csv
 
 # fleet operational scratch (transient)
 fleet/.*
+
+# original-abnormal staging CSVs (7464 files, backed up to S3 .../Growth_curves/original_abnormal_stages/)
+data/derived/original_abnormal_stages/
