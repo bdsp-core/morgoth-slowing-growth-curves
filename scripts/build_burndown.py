@@ -71,6 +71,16 @@ def main():
              for e in ev if e.get("event") == "done" and e.get("rid") and e.get("rid") != "?"]
     cards = cards[-12:]                                 # keep the most-recent dozen
 
+    # throughput series: instantaneous rate (recordings/hr) between consecutive samples
+    rate_series, prev = [], None
+    for e in done_events:
+        if prev is not None:
+            dt = e["t"] - prev["t"]
+            if dt > 30:                                 # ignore near-duplicate samples
+                r = max(0.0, e.get("done", 0) - prev.get("done", 0)) / dt * 3600.0
+                rate_series.append([round((e["t"] - t0) / 60.0, 2), round(r, 1)])
+        prev = e
+
     def fmt_dur(s):
         s = int(s)
         h, m = s // 3600, (s % 3600) // 60
@@ -82,7 +92,7 @@ def main():
         "elapsed": fmt_dur(elapsed), "eta": fmt_dur(eta_sec) if eta_sec else ("—" if finished else "estimating…"),
         "rate_hr": round(rate * 3600, 1), "status": status,
         "asof": time.strftime("%Y-%m-%d %H:%M", time.localtime(now)),
-        "series": series, "cards": cards, "failed": len(failed),
+        "series": series, "rate_series": rate_series, "cards": cards, "failed": len(failed),
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -144,6 +154,7 @@ TEMPLATE = r"""<meta name="viewport" content="width=device-width, initial-scale=
   </div>
 
   <div class="card"><h2>Burndown — recordings remaining</h2><canvas id="chart"></canvas></div>
+  <div class="card"><h2>Throughput — recordings / hour</h2><canvas id="ratechart"></canvas></div>
   <div class="card"><h2>Completed recordings</h2><div id="list"></div></div>
 </div>
 <script>
@@ -209,7 +220,41 @@ function draw(){
   // x label
   ctx.fillStyle='#8798b3'; ctx.fillText('minutes', W-pad.r-46, H-6);
 }
-draw(); window.addEventListener('resize', draw);
+// throughput chart (instantaneous recordings/hr per sample)
+const rcv = $('ratechart'), rctx = rcv && rcv.getContext('2d');
+function drawRate(){
+  if(!rcv) return;
+  const R = D.rate_series || [];
+  const dpr = window.devicePixelRatio||1, W = rcv.clientWidth, H = 200;
+  rcv.width = W*dpr; rcv.height = H*dpr; rctx.setTransform(dpr,0,0,dpr,0,0);
+  rctx.clearRect(0,0,W,H);
+  const pad = {l:40,r:12,t:12,b:24};
+  if(R.length < 1){ rctx.fillStyle='#8798b3'; rctx.font='12px ui-sans-serif';
+    rctx.fillText('collecting samples…', pad.l, H/2); return; }
+  const xmax = Math.max(1, R[R.length-1][0]);
+  const ymax = Math.max(10, Math.max.apply(null, R.map(p=>p[1]))*1.15);
+  const X = v => pad.l + (W-pad.l-pad.r)*(v/xmax);
+  const Y = v => pad.t + (H-pad.t-pad.b)*(1 - v/ymax);
+  rctx.strokeStyle='#233047'; rctx.fillStyle='#8798b3'; rctx.font='11px ui-sans-serif'; rctx.lineWidth=1;
+  for(let i=0;i<=2;i++){ const yv=ymax*i/2, y=Y(yv);
+    rctx.beginPath(); rctx.moveTo(pad.l,y); rctx.lineTo(W-pad.r,y); rctx.stroke();
+    rctx.fillText(Math.round(yv), 6, y+3); }
+  // area + line
+  const grad = rctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(74,144,226,.30)'); grad.addColorStop(1,'rgba(74,144,226,0)');
+  rctx.beginPath(); rctx.moveTo(X(R[0][0]),Y(R[0][1]));
+  for(const [x,y] of R){ rctx.lineTo(X(x),Y(y)); }
+  rctx.lineTo(X(R[R.length-1][0]),Y(0)); rctx.lineTo(X(R[0][0]),Y(0)); rctx.closePath();
+  rctx.fillStyle=grad; rctx.fill();
+  rctx.beginPath(); rctx.moveTo(X(R[0][0]),Y(R[0][1]));
+  for(const [x,y] of R){ rctx.lineTo(X(x),Y(y)); }
+  rctx.strokeStyle='#4a90e2'; rctx.lineWidth=2; rctx.stroke();
+  // dots at each sample
+  rctx.fillStyle='#4a90e2';
+  for(const [x,y] of R){ rctx.beginPath(); rctx.arc(X(x),Y(y),2.2,0,7); rctx.fill(); }
+  rctx.fillStyle='#8798b3'; rctx.fillText('minutes', W-pad.r-46, H-6);
+}
+draw(); drawRate(); window.addEventListener('resize', ()=>{draw(); drawRate();});
 </script>
 """
 
