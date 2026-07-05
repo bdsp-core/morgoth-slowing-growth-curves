@@ -22,3 +22,10 @@ Matched **11339 / 12379** cohort recordings to a report (EEG/HEEDB_Metadata). AU
 - band: agreement 0.737 on n=5196
 - side: agreement 0.525 on n=5377
 - region: agreement 0.873 on n=401
+
+## Part B — band/location from report TEXT (source: Box Brandon - PHI/Datasets/BDSP_deID/I0001-MGB/data_Unstructured/EEG_Reports_OtherSourceFiles/EEGs_And_Reports.csv)
+
+## band/location agreement (our generated statement vs report), where report states it
+- band: agreement 0.726 on n=5147
+- side: agreement 0.525 on n=5377
+- region: agreement 0.880 on n=401

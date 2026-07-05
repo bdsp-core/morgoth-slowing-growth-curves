@@ -2,8 +2,8 @@
 
 ## (A) Cross-site generalization (abnormal-vs-normal AUROC)
 
-- train S0001 → test S0002: **0.846**
-- train S0002 → test S0001: **0.737**
+- train S0001 → test S0002: **0.821**
+- train S0002 → test S0001: **0.665**
 
 ## (B) Stage-accentuation of pathological slowing
 
