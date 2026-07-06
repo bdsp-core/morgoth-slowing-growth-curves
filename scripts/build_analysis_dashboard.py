@@ -20,9 +20,10 @@ GROWTH_V2 = Path("figures/growth_v2")      # redesigned central per-stage/sex cu
 # --- curatable checklist: every evaluation the paper should include -------------------------------
 CHECKLIST = [
     ("Cohort & normative curves", [
-        ("done", "Table 1 — cohort characteristics (age/sex/label; live-updating)"),
-        ("done", "Growth curves: key features (rel δ, DAR, TAR, log δ) vs age"),
-        ("done", "Growth curves: same features vs age, per sleep stage (W/N1/N2/N3/REM)"),
+        ("done", "Table 1 — cohort characteristics (20,971 recs: 4,916 routine + 16,055 overnight)"),
+        ("done", "Growth curves: central per-stage, LMS/BCT, OMOP fractional age (N3 filled, ~15k/stage)"),
+        ("done", "Source-appropriate norms (wake=routine, sleep=overnight) — harmonization validated"),
+        ("done", "Sex ablation: sex dispensable (ΔAUROC ≤0.002) → sexes pooled"),
         ("done", "BSI (Brain Symmetry Index) added as a feature + age×stage growth curves"),
         ("done", "Feature-extraction validation (our Python vs prior features, r 0.89–0.95)"),
         ("done", "Homologous-asymmetry (delta AND theta) norms vs age — lateralization deviation"),
@@ -71,17 +72,29 @@ CHECKLIST = [
 # --- figures with captions, grouped by section ---------------------------------------------------
 SECTIONS = [
     ("Cohort & normative growth curves",
-     "The product itself: how normal EEG features vary with age, and how that differs by sleep stage. "
-     "Headline curves rebuilt on the central (C3/C4) region, per sleep stage, per sex, as standard "
-     "percentile growth charts — now including the overnight-EEG expansion that fills deep sleep (N3) "
-     "across the whole lifespan.",
-     [(GROWTH_V2 / "central_rel_delta_by_stage_sex.png",
-       "NORMATIVE GROWTH CURVES — relative delta, central (C3/C4), by sleep stage (rows) & sex (cols). "
-       "Layered percentile bands (p3–p97 / p10–p90 / p25–p75, darker toward the median). Built from the "
-       "report-normal overnight-EEG expansion (N grows as the run completes)."),
+     "The product itself: how normal EEG features vary with age, per sleep stage, as clinical percentile "
+     "growth charts. Built on 20,971 recordings (4,916 routine + 16,055 overnight) with OMOP fractional "
+     "ages. GAMLSS/LMS BCT fit with age-varying skewness. Sexes are POOLED (sex changes detection AUROC "
+     "by <=0.002 — see the ablation below). Norms are SOURCE-APPROPRIATE: wake from routine EEG, sleep "
+     "from overnight EEG, because the two sources are not freely poolable (harmonization panel below).",
+     [(GROWTH_V2 / "central_rel_delta_smooth.png",
+       "NORMATIVE GROWTH CURVES — relative delta, central (C3/C4), per sleep stage (sexes pooled). Solid = "
+       "GAMLSS/LMS median; dashed = model-free rolling median (sliding age-widening window) — they track "
+       "closely; bands p3–p97 / p10–p90 / p25–p75. Sleep (N2/N3/REM, ~15k each) from overnight EEG, wake "
+       "(W/N1) from routine EEG. N3 shows the textbook infant peak (~0.60 at 6mo–1y) → plateau → adult decline."),
+      (GROWTH_V2 / "source_harmonization_rel_delta.png",
+       "SOURCE HARMONIZATION — cohort (routine) vs expansion (overnight) rolling medians per stage. Adult "
+       "sleep agrees (~0 offset); pediatric sleep + wake diverge (routine sleep is rare/mis-staged). This is "
+       "why norms are source-appropriate rather than pooled."),
+      (GROWTH_V2 / "central_rel_delta_smooth_pooled.png",
+       "For contrast: NAIVE POOLED (both sources per stage). Wider, mixed bands — mixing routine alert-wake "
+       "with overnight drowsy-wake, and routine mis-staged sleep with real sleep. Not used for the norm."),
+      (GROWTH_V2 / "sex_sensitivity_rel_delta.png",
+       "SEX ABLATION — abnormality z under sex-conditional vs sex-pooled norms lie on y=x; ΔAUROC ≤0.002 on "
+       "the real TAR/DAR detector. Sex is dispensable → pooled."),
       (GROWTH_V2 / "topo_rel_delta_by_age_stage.png",
-       "Regional relative-delta across the head by age bin (columns) & stage (rows) — 18 bipolar channels "
-       "at electrode-pair midpoints. Frontal-central delta dominance, highest in infancy, declining with age."),
+       "Regional relative-delta across the head by age bin (columns) & stage (rows), per 10-20 electrode. "
+       "Frontal-predominant delta, highest in infancy across stages, declining with age; N3 highest."),
       (CURVE / "log_delta__whole_head.png", "log delta power vs age (whole head), normal percentile curve."),
       (CURVE / "log_theta__whole_head.png", "log theta power vs age (whole head) — paired with delta."),
       (CURVE / "DAR__whole_head.png", "Delta/alpha ratio (DAR) vs age (whole head)."),
