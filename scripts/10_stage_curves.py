@@ -30,16 +30,23 @@ def per_recording_stage(seg, stages):
 
 
 def main():
-    seg = pd.read_parquet(OUT / "segment_features.parquet",
-                          columns=["bdsp_id", "region", "segment"] + FEATURES)
-    seg = seg[seg.region.isin(REGIONS)]
-    stages = pd.read_parquet(OUT / "segment_stages.parquet")
-    rec = per_recording_stage(seg, stages)
-    rec = rec[rec.n_seg >= MIN_SEG]
-    meta = pd.read_csv("metadata/cohort_metadata.csv")[["bdsp_id", "age", "sex", "label"]].drop_duplicates("bdsp_id")
-    rec = rec.merge(meta, on="bdsp_id", how="left")
+    # Read the pre-aggregated (bdsp_id, region, stage) table (built by the fleet pipeline
+    # scripts/51, labels injected by scripts/53). Falls back to recomputing from segments if the
+    # segment tables are present locally. This avoids needing the ~100 GB segment_features.parquet.
+    srf = OUT / "stage_recording_features.parquet"
+    if srf.exists():
+        rec = pd.read_parquet(srf)
+    else:
+        seg = pd.read_parquet(OUT / "segment_features.parquet",
+                              columns=["bdsp_id", "region", "segment"] + FEATURES)
+        stages = pd.read_parquet(OUT / "segment_stages.parquet")
+        rec = per_recording_stage(seg[seg.region.isin(REGIONS)], stages)
+        meta = pd.read_csv("metadata/cohort_metadata.csv")[["bdsp_id", "age", "sex", "label"]].drop_duplicates("bdsp_id")
+        rec = rec.merge(meta, on="bdsp_id", how="left")
+        rec.to_parquet(srf)
+    if "n_seg" in rec.columns:
+        rec = rec[rec.n_seg >= MIN_SEG]
     rec = rec[rec.age.between(0, 120) & rec.sex.isin(["M", "F"])]
-    rec.to_parquet(OUT / "stage_recording_features.parquet")
 
     ages = np.arange(0, 91, 1.0)
     curves = []

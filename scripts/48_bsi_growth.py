@@ -79,30 +79,30 @@ def main():
     Path("figures/curves").mkdir(parents=True, exist_ok=True)
     fig.tight_layout(); fig.savefig("figures/curves/BSI__whole_head.png", dpi=130); plt.close(fig)
 
-    # per-stage BSI (normals staged): segment_features x segment_stages
-    sf = pd.read_parquet("data/derived/segment_features.parquet",
-                         columns=["bdsp_id", "region", "segment", "label"] + LB)
-    ss = pd.read_parquet("data/derived/segment_stages.parquet", columns=["bdsp_id", "segment", "stage"])
-    if pd.api.types.is_numeric_dtype(ss.stage):
-        ss["stage"] = ss.stage.map({0: "W", 1: "N1", 2: "N2", 3: "N3", 4: "REM"})
-    sf = sf[sf.region.isin(CHS)].merge(ss, on=["bdsp_id", "segment"], how="inner")
-    agemap = meta.age.to_dict()
+    # per-stage BSI (normals staged): computed from the pre-aggregated (recording, region, stage) table
+    # using the homologous L/R AGGREGATE-region pairs (temporal, parasagittal) — no per-channel segment
+    # table needed. Regional BSI (coarser than the 8-pair channel BSI but per-stage and label-clean).
+    AGG_PAIRS = [("L_temporal", "R_temporal"), ("L_parasagittal", "R_parasagittal")]
+    srf = pd.read_parquet("data/derived/stage_recording_features.parquet")
+    def stage_bsi(sub):
+        """sub: rows for one stage; return Series BSI per bdsp_id from L/R aggregate pairs & bands."""
+        wide = sub.pivot_table(index="bdsp_id", columns="region", values=LB)  # cols: (log_band, region)
+        contribs = []
+        for L, R in AGG_PAIRS:
+            for lb in LB:
+                if (lb, L) in wide and (lb, R) in wide:
+                    pl, pr = np.exp(wide[(lb, L)]), np.exp(wide[(lb, R)])
+                    contribs.append((np.abs(pr - pl) / (pr + pl + 1e-12)))
+        return pd.concat(contribs, axis=1).mean(axis=1) if contribs else pd.Series(dtype=float)
+    lab_by_id = srf.groupby("bdsp_id").label.first(); age_by_id = srf.groupby("bdsp_id").age.first()
     fig, ax = plt.subplots(figsize=(7.5, 4.6))
     colors = {"W": "#f5a623", "N2": "#4a90e2", "N3": "#2ec4b6", "REM": "#e0568a"}
     for stage, color in colors.items():
-        s = sf[sf.stage == stage]
-        pw = {}
-        for ch in CHS:
-            r = s[s.region == ch].groupby("bdsp_id")[LB].mean()
-            for b in BANDS:
-                pw[(ch, b)] = np.exp(r[f"log_{b}"])
-        if not pw:
+        b = stage_bsi(srf[srf.stage == stage])
+        if b.empty:
             continue
-        b = bsi_from_powers(pd.DataFrame(pw))
-        lab = sf.groupby("bdsp_id").label.first()
-        age = pd.Series({i: agemap.get(i) for i in b.index})
-        nmask = lab.reindex(b.index) == "normal"
-        pct_curve(ax, age[nmask.values], b[nmask.values], stage, color)
+        nmask = lab_by_id.reindex(b.index) == "normal"
+        pct_curve(ax, age_by_id.reindex(b.index)[nmask.values], b[nmask.values], stage, color)
     ax.set_xlabel("age (years)"); ax.set_ylabel("BSI (normal)")
     ax.set_title("BSI vs age by sleep stage (normal)"); ax.legend(title="stage"); ax.grid(alpha=0.25)
     Path("figures/stage_curves").mkdir(parents=True, exist_ok=True)
