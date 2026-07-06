@@ -71,6 +71,18 @@ CHECKLIST = [
 
 # --- figures with captions, grouped by section ---------------------------------------------------
 SECTIONS = [
+    ("Figure 1 — Keystone: normative slowing growth curves, by stage & feature",
+     "The foundation of the paper. Normative lifespan growth curves of the most discriminating EEG-slowing "
+     "features — rel_delta, and the two strongest normal-vs-abnormal discriminators from the regression "
+     "analyses, TAR (theta/alpha) and DAR (delta/alpha) — each as a percentile growth chart per sleep "
+     "stage. Central (C3/C4), overnight EEG (one consistent pipeline so features are directly comparable), "
+     "sexes pooled, GAMLSS/LMS BCT with age-varying skewness, ~15k recordings/stage.",
+     [(GROWTH_V2 / "keystone_growth_grid.png",
+       "KEYSTONE — rows = sleep stages (W/N1/N2/N3/REM), columns = features (rel_delta AUROC≈0.72, "
+       "TAR≈0.82, DAR≈0.79; AUROC = normal-vs-generalized-slowing discrimination from the age/sex-adjusted "
+       "deviation analysis). Solid = LMS median, dashed = model-free rolling median (they track closely), "
+       "shaded = p3–p97 / p10–p90 / p25–p75. Delta-based features peak in infancy (~6mo) and decline; the "
+       "ratio features (TAR/DAR) show sharper peaks and deeper mid-adult troughs — why they discriminate best.")]),
     ("Cohort & normative growth curves",
      "The product itself: how normal EEG features vary with age, per sleep stage, as clinical percentile "
      "growth charts. Built on 20,971 recordings (4,916 routine + 16,055 overnight) with OMOP fractional "
