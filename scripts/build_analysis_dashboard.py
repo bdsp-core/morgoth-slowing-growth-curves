@@ -15,6 +15,7 @@ OUT = Path("results/analysis_dashboard.html")
 FIGD = Path("results/figs")
 CURVE = Path("figures/curves")            # key features vs age
 SCURVE = Path("figures/stage_curves")     # key features vs age, per sleep stage
+GROWTH_V2 = Path("figures/growth_v2")      # redesigned central per-stage/sex curves + age topoplots
 
 # --- curatable checklist: every evaluation the paper should include -------------------------------
 CHECKLIST = [
@@ -70,8 +71,18 @@ CHECKLIST = [
 # --- figures with captions, grouped by section ---------------------------------------------------
 SECTIONS = [
     ("Cohort & normative growth curves",
-     "The product itself: how normal EEG features vary with age, and how that differs by sleep stage.",
-     [(CURVE / "log_delta__whole_head.png", "log delta power vs age (whole head), normal percentile curve."),
+     "The product itself: how normal EEG features vary with age, and how that differs by sleep stage. "
+     "Headline curves rebuilt on the central (C3/C4) region, per sleep stage, per sex, as standard "
+     "percentile growth charts — now including the overnight-EEG expansion that fills deep sleep (N3) "
+     "across the whole lifespan.",
+     [(GROWTH_V2 / "central_rel_delta_by_stage_sex.png",
+       "NORMATIVE GROWTH CURVES — relative delta, central (C3/C4), by sleep stage (rows) & sex (cols). "
+       "Layered percentile bands (p3–p97 / p10–p90 / p25–p75, darker toward the median). Built from the "
+       "report-normal overnight-EEG expansion (N grows as the run completes)."),
+      (GROWTH_V2 / "topo_rel_delta_by_age_stage.png",
+       "Regional relative-delta across the head by age bin (columns) & stage (rows) — 18 bipolar channels "
+       "at electrode-pair midpoints. Frontal-central delta dominance, highest in infancy, declining with age."),
+      (CURVE / "log_delta__whole_head.png", "log delta power vs age (whole head), normal percentile curve."),
       (CURVE / "log_theta__whole_head.png", "log theta power vs age (whole head) — paired with delta."),
       (CURVE / "DAR__whole_head.png", "Delta/alpha ratio (DAR) vs age (whole head)."),
       (CURVE / "TAR__whole_head.png", "Theta/alpha ratio (TAR) vs age (whole head)."),

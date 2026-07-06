@@ -8,21 +8,41 @@ cd "$(dirname "$0")/.."
 source .venv/bin/activate
 echo "=== FLEET FINALIZE $(date) ==="
 
-# 1. Terminate every fleet worker (belt-and-suspenders beyond self-termination). Pilot box is left up
-#    for the re-analysis step; terminate it manually when fully done (see RUNBOOK).
-IDS=$(aws ec2 describe-instances --profile fleet --region us-east-1 --cli-connect-timeout 15 --cli-read-timeout 40 \
-  --filters "Name=tag:fleet,Values=morgoth-slowing" "Name=instance-state-name,Values=pending,running" \
-  --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null | tr '\t' '\n' | grep -c '^i-' || true)
-LIVE=$(aws ec2 describe-instances --profile fleet --region us-east-1 --cli-connect-timeout 15 --cli-read-timeout 40 \
-  --filters "Name=tag:fleet,Values=morgoth-slowing" "Name=instance-state-name,Values=pending,running" \
+# Profile + the FULL set of fleet tags actually used by the scale scripts. NOTE (2026-07-06): the pilot
+# and on-demand scale scripts tag instances "morgoth-n3pilot" / "morgoth-n3ondemand" (NOT "morgoth-
+# slowing"), and there is no "fleet" AWS profile on the control machine — the working profile is
+# "stanford". The old finalize filtered on profile=fleet + tag=morgoth-slowing, so it matched NOTHING and
+# would have left the whole fleet billing. Keep this list in sync with fleet/scale_*.sh tags.
+PROFILE=stanford; REGION=us-east-1
+FLEET_TAGS="morgoth-slowing,morgoth-n3pilot,morgoth-n3ondemand"
+
+# 0. CANCEL spot requests first — otherwise spot capacity self-heals and relaunches terminated workers.
+SIRS=$(aws ec2 describe-spot-instance-requests --profile "$PROFILE" --region "$REGION" \
+  --filters "Name=state,Values=active,open" --query "SpotInstanceRequests[].SpotInstanceRequestId" \
+  --output text 2>/dev/null | tr '\t' '\n' | grep '^sir-' || true)
+if [ -n "$SIRS" ]; then
+  aws ec2 cancel-spot-instance-requests --profile "$PROFILE" --region "$REGION" \
+    --spot-instance-request-ids $SIRS --query 'length(CancelledSpotInstanceRequests)' --output text 2>&1
+  echo "cancelled spot requests (^)"
+else
+  echo "no active spot requests"
+fi
+
+# 1. Terminate every fleet worker (belt-and-suspenders beyond self-termination).
+LIVE=$(aws ec2 describe-instances --profile "$PROFILE" --region "$REGION" --cli-connect-timeout 15 --cli-read-timeout 40 \
+  --filters "Name=tag:fleet,Values=$FLEET_TAGS" "Name=instance-state-name,Values=pending,running" \
   --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null | tr '\t' '\n' | grep '^i-' || true)
 if [ -n "$LIVE" ]; then
-  echo "$LIVE" | xargs aws ec2 terminate-instances --profile fleet --region us-east-1 --instance-ids \
+  echo "$LIVE" | xargs aws ec2 terminate-instances --profile "$PROFILE" --region "$REGION" --instance-ids \
     --query 'length(TerminatingInstances)' --output text 2>&1
-  echo "terminated fleet workers"
+  echo "terminated fleet workers (^)"
 else
   echo "no fleet workers running (already drained)"
 fi
+
+# 1b. Kill any local self-heal / worker-topup loops that would otherwise relaunch capacity.
+pkill -f 'fleet_progress.py' 2>/dev/null && echo "killed fleet_progress topup loop" || true
+for s in scale_pilot scale_ondemand scale_full scale_elastic; do pkill -f "$s" 2>/dev/null || true; done
 
 # 2. Stop the local 10-min throughput sampler
 SP=$(cat fleet/.sampler_pid 2>/dev/null || true)

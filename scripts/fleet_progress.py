@@ -9,17 +9,22 @@ import csv, glob, json, os, subprocess, sys, time
 from pathlib import Path
 
 TOTAL = int(sys.argv[1]) if len(sys.argv) > 1 else 13034
-BASE = "bdsp:bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/expansion"
+BASE = os.environ.get("FLEET_S3_BASE",
+    "bdsp:bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/expansion")
 DONE_PREFIX = f"{BASE}/done/"
 GATE_PREFIX = f"{BASE}/gate/"
 PROV_PREFIX = f"{BASE}/provenance/"
-PROG = Path("data/derived/fleet_progress.jsonl")
-RC = os.path.expanduser("~/.local/bin/rclone")
+PROG = Path(os.environ.get("FLEET_PROG", "data/derived/fleet_progress.jsonl"))
+RC = os.environ.get("RCLONE_BIN", os.path.expanduser("~/.local/bin/rclone"))
 
 
 def bdsp_env():
-    f = glob.glob("/Users/mbwest/Desktop/GithubRepos/AWSKeys/bdsp_opendata_write_accessKeys.csv")[0]
-    r = list(csv.DictReader(open(f, encoding="utf-8-sig")))[0]
+    # If the BDSP write-key CSV isn't present, fall back to the ambient env (the rclone remote in
+    # FLEET_S3_BASE already carries its own keys, e.g. the `s3:` remote on this machine).
+    fs = glob.glob("/Users/mbwest/Desktop/GithubRepos/AWSKeys/bdsp_opendata_write_accessKeys.csv")
+    if not fs:
+        return dict(os.environ)
+    r = list(csv.DictReader(open(fs[0], encoding="utf-8-sig")))[0]
     e = dict(os.environ)
     e["AWS_ACCESS_KEY_ID"] = r["Access key ID"]; e["AWS_SECRET_ACCESS_KEY"] = r["Secret access key"]
     return e
