@@ -3,7 +3,10 @@
 Date: 2026-07-06. Everything below was found/fixed autonomously overnight; figures under `figures/growth_v2/`.
 
 ## TL;DR
-- Full data now in: **12,207 recordings** (4,916 routine cohort + 7,291 overnight expansion). **N3 normals: 7,474** across the lifespan (was ~2,415) — the fleet N3 fill succeeded.
+- Full data now in: **20,971 recordings** (4,916 routine cohort + 16,055 overnight expansion), OMOP
+  fractional ages 99.99% resolved. Source-appropriate sleep-stage curves are built on **N2=15,562,
+  N3=14,559, REM=14,411** recordings (was ~2,415 for N3) — the fleet N3 fill + full overnight union
+  delivered dense lifespan coverage; the LMS median tracks the model-free rolling median almost exactly.
 - Fixed 4 real bugs (below). The most consequential was a **cohort/expansion harmonization problem** (your N2 "bimodality") that makes naive pooling invalid.
 - Growth curves are now built **source-appropriately** (wake from routine EEG, sleep from overnight EEG) with a BCT/age-varying-skewness LMS fit. A pooled version is kept alongside for comparison.
 
@@ -63,14 +66,15 @@ Alternative you might prefer: keep two explicitly-separate reference sets ("rout
 - **Sliding-window rolling-median QC overlay** (dashed) on every curve — a model-free reference the LMS
   median should track (replaces crude fixed age bins; window widens with age in log-space).
 
-### 6. Data completeness — found ~2× more overnight data (rebuilding on it now)
+### 6. Data completeness — found ~2× more overnight data (DONE, rebuilt on all of it)
 The overnight features live under TWO S3 prefixes that are **mostly different recordings**:
 `.../Growth_curves/expansion/` (11,570) and `.../pilot_n3/` (7,321) — only 2,760 overlap, so the true
-union is **~16,131 unique overnight recordings**. I had initially rebuilt on pilot_n3 alone (7,321).
-A phase-2 rebuild on the **full union + cohort** is running now (`scripts/overnight_rebuild2.sh`).
-Site composition of the union: MGB (S0001 MGH + S0002 BWH) = 14,480 (90%), I0003 (a third site) = 1,651
-(10%). Since the routine cohort is MGB, this is MGB-consistent; the small I0003 slice can be dropped if you
-want a strict single-institution norm (say the word).
+union is **~16,131 unique overnight recordings** (16,055 aggregated cleanly). I initially rebuilt on
+pilot_n3 alone (7,321); the full-union rebuild is now complete (`scripts/overnight_rebuild2.sh`) →
+**20,971 total recordings**. Site composition of the overnight union: MGB (S0001 MGH + S0002 BWH) = 90%,
+I0003 (a third site) = 1,651 (10%). Since the routine cohort is MGB, this is MGB-consistent; the small
+I0003 slice can be dropped if you want a strict single-institution norm (say the word — it's a one-line
+site filter).
 
 ### 7. Validation of the finished analyses (7,321-set; full-set refreshes overnight)
 - **Discrimination (corrected TAR):** TAR normal-vs-general AUC **0.817** (R_parasagittal), 0.814
