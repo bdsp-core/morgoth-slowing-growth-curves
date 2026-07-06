@@ -21,9 +21,23 @@ from pathlib import Path
 import numpy as np, pandas as pd
 
 DER = Path("data/derived")
-lab = pd.read_parquet(DER / "labels_canonical.parquet")
-lab["lab_clean_normal"] = ((lab.lab_normal == 1) & (lab.lab_abnormal == 0) &
-                           (lab.lab_focal == 0) & (lab.lab_gen == 0)).astype(int)
+# Prefer the UNIFIED labels (scripts/60) — clean-normal + gen phys/path split. Fall back to canonical.
+if (DER / "labels_unified.parquet").exists():
+    u = pd.read_parquet(DER / "labels_unified.parquet")
+    lab = pd.DataFrame({
+        "bdsp_id": u.bdsp_id,
+        "lab_clean_normal": u.clean_normal.astype(int),
+        "lab_focal": u.has_focal_slow.astype(int),
+        # general_slow positive class = PATHOLOGIC generalized slowing only (physiologic drowsy/HV
+        # slowing is not a pathology label — this is the key correction from the unified labels).
+        "lab_gen": ((u.has_gen_slow == 1) & (u.gen_class == "pathologic")).astype(int),
+        "lab_abnormal": u.is_abnormal.astype(int),
+    })
+    print("using labels_unified (clean-normal + pathologic-gen)")
+else:
+    lab = pd.read_parquet(DER / "labels_canonical.parquet")
+    lab["lab_clean_normal"] = ((lab.lab_normal == 1) & (lab.lab_abnormal == 0) &
+                               (lab.lab_focal == 0) & (lab.lab_gen == 0)).astype(int)
 
 
 def corrected_label(r):

@@ -6,50 +6,50 @@ AUC of each feature's normal-referenced z for separating groups. 0.5 = no signal
 
 | feature | region | AUC (adj) | AUC (raw) | n |
 |---|---|---|---|---|
-| TAR | L_temporal | 0.719 | 0.652 | 5359 |
-| TAR | whole_head | 0.716 | 0.646 | 5359 |
-| TAR | L_parasagittal | 0.708 | 0.642 | 5359 |
-| TAR | R_temporal | 0.706 | 0.641 | 5359 |
-| TAR | R_parasagittal | 0.704 | 0.639 | 5359 |
-| log_theta | whole_head | 0.677 | 0.586 | 5359 |
-| |asym_ch_T3-T5_delta| | asym | 0.672 |  | 5359 |
-| DAR | L_temporal | 0.665 | 0.607 | 5359 |
-| log_theta | L_parasagittal | 0.661 | 0.572 | 5359 |
-| log_delta | whole_head | 0.658 | 0.571 | 5359 |
-| DAR | whole_head | 0.656 | 0.599 | 5359 |
-| log_theta | L_temporal | 0.656 | 0.571 | 5359 |
+| TAR | L_temporal | 0.724 | 0.665 | 9048 |
+| TAR | whole_head | 0.720 | 0.659 | 9048 |
+| TAR | R_temporal | 0.713 | 0.654 | 9048 |
+| TAR | L_parasagittal | 0.712 | 0.657 | 9048 |
+| TAR | R_parasagittal | 0.707 | 0.652 | 9048 |
+| DAR | L_temporal | 0.682 | 0.631 | 9048 |
+| log_theta | whole_head | 0.676 | 0.587 | 9048 |
+| DAR | whole_head | 0.675 | 0.625 | 9048 |
+| log_delta | whole_head | 0.674 | 0.588 | 9048 |
+| DAR | R_temporal | 0.668 | 0.618 | 9048 |
+| DAR | L_parasagittal | 0.663 | 0.615 | 9048 |
+| log_delta | L_temporal | 0.663 | 0.579 | 9048 |
 
 ## normal_vs_general
 
 | feature | region | AUC (adj) | AUC (raw) | n |
 |---|---|---|---|---|
-| TAR | R_parasagittal | 0.643 | 0.623 | 8454 |
-| TAR | whole_head | 0.641 | 0.619 | 8454 |
-| TAR | R_temporal | 0.638 | 0.617 | 8454 |
-| TAR | L_parasagittal | 0.638 | 0.617 | 8454 |
-| TAR | L_temporal | 0.638 | 0.617 | 8454 |
-| DAR | R_parasagittal | 0.600 | 0.585 | 8454 |
-| low_freq_rel | R_parasagittal | 0.599 | 0.581 | 8454 |
-| DAR | L_temporal | 0.599 | 0.583 | 8454 |
-| DAR | R_temporal | 0.599 | 0.582 | 8454 |
-| DAR | whole_head | 0.598 | 0.582 | 8454 |
-| low_freq_rel | whole_head | 0.597 | 0.580 | 8454 |
-| low_freq_rel | L_parasagittal | 0.596 | 0.578 | 8454 |
+| TAR | R_parasagittal | 0.817 | 0.765 | 6720 |
+| TAR | whole_head | 0.814 | 0.757 | 6720 |
+| TAR | L_parasagittal | 0.814 | 0.760 | 6720 |
+| TAR | L_temporal | 0.806 | 0.750 | 6720 |
+| TAR | R_temporal | 0.804 | 0.749 | 6720 |
+| DAR | L_temporal | 0.793 | 0.741 | 6720 |
+| DAR | R_parasagittal | 0.793 | 0.747 | 6720 |
+| DAR | whole_head | 0.793 | 0.742 | 6720 |
+| DAR | L_parasagittal | 0.790 | 0.742 | 6720 |
+| DAR | R_temporal | 0.790 | 0.738 | 6720 |
+| log_delta | whole_head | 0.742 | 0.640 | 6720 |
+| log_delta | L_parasagittal | 0.738 | 0.632 | 6720 |
 
 ## focal_vs_general
 
 | feature | region | AUC (adj) | AUC (raw) | n |
 |---|---|---|---|---|
-| log_theta | whole_head | 0.416 | 0.479 | 8779 |
-| log_delta | L_temporal | 0.416 | 0.475 | 8779 |
-| TAR | L_temporal | 0.417 | 0.467 | 8779 |
-| log_theta | L_temporal | 0.417 | 0.476 | 8779 |
-| log_delta | whole_head | 0.418 | 0.480 | 8779 |
-| TAR | whole_head | 0.426 | 0.478 | 8779 |
-| log_theta | L_parasagittal | 0.427 | 0.489 | 8779 |
-| TAR | L_parasagittal | 0.431 | 0.480 | 8779 |
-| log_theta | R_temporal | 0.431 | 0.489 | 8779 |
-| DAR | L_temporal | 0.431 | 0.474 | 8779 |
-| TAR | R_temporal | 0.432 | 0.482 | 8779 |
-| rel_delta | L_temporal | 0.433 | 0.470 | 8779 |
+| DAR | R_parasagittal | 0.649 | 0.650 | 5654 |
+| TAR | R_parasagittal | 0.641 | 0.645 | 5654 |
+| DAR | L_parasagittal | 0.641 | 0.640 | 5654 |
+| DAR | whole_head | 0.634 | 0.634 | 5654 |
+| DAR | R_temporal | 0.632 | 0.633 | 5654 |
+| TAR | L_parasagittal | 0.631 | 0.633 | 5654 |
+| TAR | whole_head | 0.626 | 0.629 | 5654 |
+| DAR | L_temporal | 0.620 | 0.620 | 5654 |
+| TAR | R_temporal | 0.619 | 0.623 | 5654 |
+| TAR | L_temporal | 0.606 | 0.609 | 5654 |
+| rel_delta | R_parasagittal | 0.606 | 0.602 | 5654 |
+| rel_delta | L_parasagittal | 0.598 | 0.593 | 5654 |
 

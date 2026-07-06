@@ -48,7 +48,7 @@ def main():
     A = feats.join(fr["region"], how="inner").dropna(subset=["region"])
     X = A.drop(columns="region").replace([np.inf, -np.inf], np.nan).fillna(0.0)
     y = A.region.to_numpy()
-    clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, class_weight="balanced", multi_class="multinomial", C=0.5))
+    clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, class_weight="balanced", C=0.5))
     oof = cross_val_predict(clf, X.values, y, cv=5)
     acc = accuracy_score(y, oof); mf1 = f1_score(y, oof, labels=FOCAL_REGIONS, average="macro", zero_division=0)
     p, rc, f1, sup = precision_recall_fscore_support(y, oof, labels=FOCAL_REGIONS, zero_division=0)
