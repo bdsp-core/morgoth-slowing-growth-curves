@@ -64,7 +64,7 @@ def main():
     print("n =", len(df), "| region mix:", df.region.value_counts().to_dict())
 
     clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, class_weight="balanced",
-                                                             multi_class="multinomial", C=0.5))
+                                                             C=0.5))
     oof = cross_val_predict(clf, X.values, y, cv=5)
     acc = accuracy_score(y, oof); mf1 = f1_score(y, oof, labels=REGIONS, average="macro", zero_division=0)
     p, rc, f1, sup = precision_recall_fscore_support(y, oof, labels=REGIONS, zero_division=0)

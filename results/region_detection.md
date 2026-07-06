@@ -4,11 +4,11 @@ For each region: AUROC separating recordings with slowing in that region from no
 
 | region    |   n_pos |   auroc |    lo |    hi |
 |:----------|--------:|--------:|------:|------:|
-| temporal  |    2327 |   0.715 | 0.699 | 0.727 |
-| frontal   |     514 |   0.668 | 0.643 | 0.693 |
-| central   |     337 |   0.657 | 0.627 | 0.684 |
-| parietal  |     128 |   0.764 | 0.721 | 0.803 |
-| occipital |     116 |   0.768 | 0.724 | 0.811 |
+| temporal  |    2415 |   0.705 | 0.693 | 0.718 |
+| frontal   |     509 |   0.668 | 0.643 | 0.692 |
+| central   |     244 |   0.696 | 0.663 | 0.733 |
+| parietal  |     120 |   0.742 | 0.7   | 0.785 |
+| occipital |     122 |   0.747 | 0.694 | 0.792 |
 
 
 _This is the clinically natural 'can we see region-X slowing at all?' question; unlike the multi-class lobe confusion it is not swamped by temporal predominance._
