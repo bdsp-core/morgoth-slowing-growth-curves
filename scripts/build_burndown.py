@@ -51,11 +51,13 @@ def main():
     recent = [e for e in done_events if e["t"] >= (done_events[-1]["t"] if done_events else now) - WINDOW]
     if len(recent) < 2 and len(done_events) >= 2:
         recent = done_events[-2:]                               # fall back to last two points
-    if len(recent) >= 2:
-        dt = max(1.0, recent[-1]["t"] - recent[0]["t"])
+    if len(recent) >= 2 and (recent[-1]["t"] - recent[0]["t"]) >= 60:
+        dt = recent[-1]["t"] - recent[0]["t"]                   # real measurement window (>=60s)
         rate = max(0.0, recent[-1].get("done", 0) - recent[0].get("done", 0)) / dt
+    elif done and elapsed >= 120:
+        rate = done / elapsed                                   # cumulative, only once >2 min in
     else:
-        rate = done / elapsed if done else 0.0                  # recordings / sec
+        rate = 0.0                                              # too early -> show "estimating…"
     remaining = max(0, total - done)
     eta_sec = remaining / rate if rate > 0 and not finished else 0
     status = "complete" if finished else ("staging" if staging else ("running" if done < total else "running"))

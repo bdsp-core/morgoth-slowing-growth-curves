@@ -161,11 +161,34 @@ fetches the latest worker from S3, sets env, runs it under a `timeout 216000` (6
 
 ## 8. Completion — auto-shutdown & results (`fleet/finalize.sh`)
 
-Triggered by `tick.sh` at completion. **Money safety net** — three independent layers ensure nothing runs
-forever:
+Triggered by `tick.sh` at completion. **Money safety net** — layers that ensure nothing runs forever:
 1. Each worker **self-terminates** when a full pass finds no new work.
 2. `timeout 216000` (60h) per-instance backstop, then `shutdown -h now` (terminate).
-3. `finalize.sh` **terminates every `tag:fleet=morgoth-slowing` instance** as a sweep, and stops the sampler.
+3. `finalize.sh` sweep: **cancels active spot requests first** (else spot self-heals and relaunches),
+   then terminates every instance tagged `fleet ∈ {morgoth-slowing, morgoth-n3pilot, morgoth-n3ondemand}`,
+   kills any local `fleet_progress.py` / `scale_*` top-up loops, and stops the sampler.
+
+> ⚠️ **Cost-safety history (2026-07-06):** the original finalize used `--profile fleet` + tag
+> `morgoth-slowing`, but the pilot/on-demand scale scripts actually tag `morgoth-n3pilot` /
+> `morgoth-n3ondemand`, and the working AWS profile is **`stanford`** (there is no `fleet` profile on the
+> control box). So the old sweep matched **nothing** and left 314 instances + 122 spot requests billing
+> after the run finished. Manual teardown that worked:
+> ```bash
+> P=stanford; R=us-east-1
+> # 1) cancel spot requests so nothing self-heals
+> aws ec2 describe-spot-instance-requests --profile $P --region $R --filters Name=state,Values=active,open \
+>   --query 'SpotInstanceRequests[].SpotInstanceRequestId' --output text | tr '\t' '\n' \
+>   | xargs aws ec2 cancel-spot-instance-requests --profile $P --region $R --spot-instance-request-ids
+> # 2) terminate all fleet-tagged instances
+> aws ec2 describe-instances --profile $P --region $R \
+>   --filters "Name=tag:fleet,Values=morgoth-n3pilot,morgoth-n3ondemand,morgoth-slowing" \
+>             "Name=instance-state-name,Values=pending,running" \
+>   --query 'Reservations[].Instances[].InstanceId' --output text | tr '\t' '\n' \
+>   | xargs aws ec2 terminate-instances --profile $P --region $R --instance-ids
+> # 3) kill local top-up loops
+> pkill -f fleet_progress.py; for s in scale_pilot scale_ondemand scale_full scale_elastic; do pkill -f $s; done
+> ```
+> Keep the finalize tag list in sync with `fleet/scale_*.sh` whenever tags change.
 
 `finalize.sh` then runs `fleet/reanalyze.sh` to regenerate the all-results dashboard from the full S3
 outputs. **The pilot box is left running** for that re-analysis — terminate it manually when fully done:
