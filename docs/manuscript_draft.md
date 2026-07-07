@@ -2,6 +2,8 @@
 
 *First-draft manuscript. Numbers are drawn from the project's results and methods documents; placeholders marked `[TBD: …]` indicate values not yet available in the source material and required before submission.*
 
+> **⚠️ MAJOR REVISION IN PROGRESS (2026-07-07).** This draft predates the overnight-expansion + recompute work and is out of date in several structural ways. Before the next rewrite, fold in: (a) the cohort now includes **~16,000 overnight recordings** and the **N3/deep-sleep gap is filled** (no longer "planned"); (b) norms are **sex-pooled** — conditioning on sex changes detection by ΔAUROC ≤0.002 (`scripts/74`); (c) growth curves use **GAMLSS/LMS (BCT, age-varying skewness)**, not ad-hoc kernel quantiles; (d) "normal" is the **union of both report-normal cohorts** (routine + overnight), justified because it costs no detection power (`results/union_normal_detection.md`), with a full routine-vs-overnight vigilance/population + pipeline-control analysis (`results/pipeline_control.md`); (e) **all recordings are now featurized by one identical pipeline** (the cohort recompute), so the "MATLAB unavailable / r=0.89–0.95" framing is replaced by a single reproducible extractor; (f) new **Figure 1 keystone** (growth curves × top features). All numbers below (AUROCs, Ns) will be refreshed on the fully-recomputed data. See `docs/status_2026-07-06.md` for the full change list and path to publication.
+
 **Target venue:** clinical neurophysiology / digital-medicine (e.g., *Clinical Neurophysiology*, *Brain Communications*, *npj Digital Medicine*), accompanied by an open-source Python package and a published per-recording label set.
 
 ---
