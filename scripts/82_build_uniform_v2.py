@@ -43,6 +43,9 @@ def aggregate(dirs, src):
 
 def main():
     coh = aggregate([COHORT_DIR], "cohort")
+    # the fleet rid is SiteID+pid_date (e.g. S0001111193161_20200601); the cohort's canonical bdsp_id
+    # (labels_unified, cohort_metadata) has NO date -> strip it so the label join + curves see the cohort.
+    coh["bdsp_id"] = coh.bdsp_id.astype(str).str.split("_").str[0]
     exp = aggregate(EXP_DIRS, "expansion")
     exp = exp[~exp.bdsp_id.isin(set(coh.bdsp_id))]                  # cohort wins on any overlap
     both = pd.concat([coh, exp], ignore_index=True)
