@@ -3,7 +3,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 B="s3:bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/cohort_recompute"
-P=stanford; R=us-east-1; TOTAL=4916; TARGET_DONE=4890
+P=stanford; R=us-east-1; TOTAL=11020; TARGET_DONE=10700
 teardown(){
   IDS=$(aws ec2 describe-instances --profile $P --region $R \
     --filters "Name=tag:fleet,Values=morgoth-cohort" "Name=instance-state-name,Values=pending,running" \
