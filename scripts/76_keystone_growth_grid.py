@@ -58,7 +58,10 @@ def fit_feature(df, feat):
 
 def main():
     df = pd.read_parquet(TABLE)
-    df = df[(df.clean_normal == True) & (df.src == "expansion")]      # overnight only, consistent pipeline
+    # UNION of both report-normal cohorts. Valid once BOTH cohorts are on the identical extract.py+Morgoth
+    # pipeline (the cohort recompute) — before that, use src=="expansion" only. The union is the broad,
+    # conservative clinical-normal (scripts/79 showed it costs no detection power).
+    df = df[df.clean_normal == True]
     nfig, nrow, ncol = len(FEATURES), len(STAGES), len(FEATURES)
     fig, axes = plt.subplots(nrow, ncol, figsize=(4.6 * ncol, 2.5 * nrow), squeeze=False)
     tg = A2T(np.logspace(np.log10(1/12), np.log10(90), 160))
