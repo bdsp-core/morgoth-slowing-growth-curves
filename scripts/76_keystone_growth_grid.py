@@ -93,7 +93,7 @@ def main():
                 ax.set_xlabel("age (years, log-scaled)", fontsize=8)
 
     fig.suptitle("Normative EEG-slowing growth curves across the lifespan, by sleep stage & feature\n"
-                 "central (C3/C4), overnight EEG, sexes pooled; GAMLSS/LMS BCT — solid median, dashed = "
+                 "central (C3/C4), union of both cohorts (routine+overnight, identical pipeline), sexes pooled; GAMLSS/LMS BCT — solid median, dashed = "
                  "model-free rolling median, bands p3–p97/p10–p90/p25–p75  (n≈15k/stage)", fontsize=12)
     fig.tight_layout(rect=[0.01, 0, 1, 0.96])
     out = Path("figures/growth_v2/keystone_growth_grid.png"); out.parent.mkdir(parents=True, exist_ok=True)
