@@ -57,6 +57,15 @@ def main():
         both = both.merge(lu, on="bdsp_id", how="left")
         both["clean_normal"] = both.clean_normal.where(both.src == "cohort", True)   # expansion assumed normal
         both["is_abnormal"] = both.is_abnormal.fillna(False)
+    # restore the SAVED OMOP fractional ages (no need to re-query OMOP); fall back to the fleet's integer
+    # AgeAtVisit only where a recording has no saved fractional age.
+    fa_path = "data/derived/fractional_age.parquet"
+    if Path(fa_path).exists():
+        fa = pd.read_parquet(fa_path)[["bdsp_id", "age_frac"]].drop_duplicates("bdsp_id")
+        both = both.merge(fa, on="bdsp_id", how="left")
+        both["age"] = both.age_frac.where(both.age_frac.notna(), both.age)
+        both = both.drop(columns="age_frac")
+        print(f"restored fractional ages for {both[both.bdsp_id.isin(set(fa.bdsp_id))].bdsp_id.nunique()} recordings")
     both.to_parquet(OUT)
     print(f"wrote {OUT}: {len(both)} rows, {both.bdsp_id.nunique()} recordings "
           f"(cohort {coh.bdsp_id.nunique()} + expansion {exp.bdsp_id.nunique()}) — ALL extract.py pipeline")
