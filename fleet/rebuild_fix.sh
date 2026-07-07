@@ -20,7 +20,6 @@ cn=d[d.clean_normal==True]
 print('clean_normal recordings by src:', cn.groupby('src').bdsp_id.nunique().to_dict())
 print('abnormal recordings:', d[d.is_abnormal==True].bdsp_id.nunique())
 "
-run env PYTHONPATH=src python3 scripts/71_omop_fractional_age.py   # retry OMOP (skips gracefully if tunnel down)
 run env PYTHONPATH=src python3 scripts/67_central_stage_growth.py rel_delta smooth pooled
 run env PYTHONPATH=src python3 scripts/67_central_stage_growth.py rel_delta smooth auto
 run env PYTHONPATH=src python3 scripts/76_keystone_growth_grid.py rel_delta,TAR,DAR
