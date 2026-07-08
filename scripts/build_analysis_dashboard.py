@@ -83,6 +83,18 @@ SECTIONS = [
        "deviation analysis). Solid = LMS median, dashed = model-free rolling median (they track closely), "
        "shaded = p3–p97 / p10–p90 / p25–p75. Delta-based features peak in infancy (~6mo) and decline; the "
        "ratio features (TAR/DAR) show sharper peaks and deeper mid-adult troughs — why they discriminate best.")]),
+    ("Figure 2 — Vigilance-matched detection (recomputed union data)",
+     "Detection of pathological slowing is vigilance-dependent, so the normative reference must be vigilance-"
+     "matched. A routine EEG is recorded under active alerting (genuine W/N1); overnight 'wake' is "
+     "unconstrained and often drowsy (physiologically high delta), which inflates the normal band and masks "
+     "slowing. Positives = routine abnormals; negatives = held-out routine clean-normals; the age-adjusted "
+     "whole-head deviation z is scored against three references (routine / overnight / union).",
+     [(GROWTH_V2 / "vigilance_matched_detection.png",
+       "Normal vs pathologic-generalized slowing, best whole-head feature per stage. The ROUTINE (alert) "
+       "reference detects best in W (0.85) and N1 (0.88, the single best stage); the OVERNIGHT (drowsy) "
+       "reference degrades detection in every stage (N1 0.88→0.79). Confirms that vigilance-matched norms — "
+       "not just age/sex-matched — are needed for detection; recovers the routine-cohort 0.81 and explains "
+       "why a naive union-norm score is weak.")]),
     ("Cohort & normative growth curves",
      "The product itself: how normal EEG features vary with age, per sleep stage, as clinical percentile "
      "growth charts. Built on 20,971 recordings (4,916 routine + 16,055 overnight) with OMOP fractional "
