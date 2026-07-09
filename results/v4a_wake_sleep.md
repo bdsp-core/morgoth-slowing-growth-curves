@@ -19,7 +19,7 @@ Four whole-head features, reported **even-handedly** (none was pre-registered as
 
 ## Within-subject contrast: (z_sleep - z_wake)
 
-A patient who is merely globally shifted (older/sicker) would have z_wake and z_sleep raised by the SAME amount, so their Δ(sleep-wake) would equal a control's. The anti-confound signal is therefore Δ_case **larger than** Δ_ctrl: cases gaining EXTRA deviation specifically in sleep.
+A patient merely globally shifted (older/sicker) would have z_wake and z_sleep raised by the SAME amount, so Δ(sleep-wake) would equal a control's. Δ_case **larger than** Δ_ctrl rules out that particular confound. **BUT Δ>0 is ALSO the stage-misclassification artifact's signature:** if the stager pulls a case's *slowest* wake segments into the sleep bin, the sleep bin holds the slowest material and the wake bin holds the remainder — mechanically producing z_sleep>z_wake in cases and not in controls. So the within-subject Δ does **not** by itself discriminate World 1 (real sleep slowing) from World 2 (misstaged slow wake). It weakens, not settles, the case. The misclassification section and the spindle test below are what actually adjudicate it.
 
 | feature | case z_wake->z_sleep | case Δ(sleep-wake) [Wilcoxon p, %>0] | ctrl z_wake->z_sleep | ctrl Δ(sleep-wake) [Wilcoxon p, %>0] |
 |---|---|---|---|---|
@@ -45,41 +45,56 @@ A patient who is merely globally shifted (older/sicker) would have z_wake and z_
 
 - median N2/N3 fraction: cases **0.512** vs controls **0.455** (Mann-Whitney p=2.33e-04). Cases have MORE staged sleep — suggestive, see caveat.
 
-**Check 2 — stager confidence (case side).** Among cases' stager-called N2/N3 segments: median p(Wake) = **0.051**, fraction with p(Wake)>=0.3 (ambiguous) = **0.6%**, fraction high-confidence p(assigned)>= 0.9 = **0.1%**. Re-run restricting cases' sleep to high-confidence segments only (controls unfiltered — see limitation):
+**Check 2 — stager confidence (case side).** The relevant confidence for 'slow wake misstaged as sleep' is p(sleep)=p(N2)+p(N3) — confidently NOT wake. Among cases' stager-called N2/N3 segments: median p(Wake) = **0.051**, fraction with p(Wake)>=0.3 (misstaging candidates) = **0.6%**, fraction confidently sleep p(N2+N3)>= 0.9 = **18.4%**. Re-run restricting cases' sleep to confident-sleep segments:
 
-| feature | AUROC case(all-sleep) vs ctrl | AUROC case(p>=0.9 sleep) vs ctrl | case median z_sleep (all -> hi-conf) |
+| feature | AUROC case(all-sleep) vs ctrl | AUROC case(p_sleep>=0.9) vs ctrl | case median z_sleep (all -> conf) |
 |---|---|---|---|
-| log_delta | 0.765 (n_case=679) | nan (n_case=0) | +0.627 -> +nan |
-| DAR | 0.789 (n_case=679) | nan (n_case=0) | +0.983 -> +nan |
+| log_delta | 0.765 (n_case=679) | 0.670 (n_case=189) | +0.627 -> +0.417 |
+| DAR | 0.789 (n_case=679) | 0.745 (n_case=189) | +0.983 -> +0.857 |
+*Interpretation is AMBIGUOUS.* This filter is asymmetric (controls are not filtered — their raw staging CSVs are gone) and keeps only ~18% of cases' sleep segments. Filtering only the case side should, if anything, trim the case tail and REDUCE the AUROC — which is exactly what is seen — so the attenuation does not cleanly implicate misstaging, and the survival does not cleanly exonerate it. Treat check 2 as weak.
 
-**Check 3 — temporal contiguity.** Real sleep comes in runs; a misstaged slow-wake segment is typically isolated. Restrict N2/N3 to segments inside a run of >= 8 consecutive same-stage segments (~2 min). Fraction of sleep segments that qualify: cases 21%, controls 30%.
+
+**Check 3 — temporal contiguity.** A misstaged slow-wake segment is typically isolated, so requiring N2/N3 to sit inside a run of >= 8 consecutive same-stage segments (~2 min) should drop it. Fraction qualifying: cases 21%, controls 30%.
 
 | feature | AUROC all-sleep | AUROC run-restricted (>=8 contiguous) | case median z_sleep (all -> run) |
 |---|---|---|---|
 | log_delta | 0.759 | 0.721 (n_case=217, n_ctrl=181) | +0.619 -> +0.522 |
 | DAR | 0.784 | 0.800 (n_case=217, n_ctrl=181) | +0.976 -> +0.957 |
+*Tempered:* this is symmetric (both groups) and the effect holds, but it is a WEAKER guard than it looks for a diffusely encephalopathic record — if the whole EEG is uniformly slow, the stager can emit long contiguous 'N2' runs, so run-length does not exclude misstaging in exactly the cases we most care about.
 
-**Check 4 — direction of effect (suggestive).** If cases' 'N2' were really misstaged slow wake, those segments should keep relatively preserved alpha/beta (bands the stager does not key on). Raw (unnormalized) medians within staged N2:
+
+**Check 4 — raw alpha in staged N2 — UNINFORMATIVE (do not read as reassurance).** Initially framed as: misstaged wake would keep preserved (high) alpha, so lower alpha in cases would argue against the artifact. **That reasoning is backwards.** The wake segments at risk of being misstaged as sleep are the *pathologically slow* ones, and pathological/encephalopathic wake has an ATTENUATED posterior dominant rhythm — i.e. LOW alpha. So low alpha in cases' staged N2 is exactly what misstaged pathological wake would produce. Reported for completeness only:
 
 | band | case | control | MWU p |
 |---|---|---|---|
 | log_alpha | +0.839 | +1.014 | 1.27e-03 |
 | log_beta | +0.968 | +0.895 | 6.18e-01 |
+cases' staged-N2 alpha (+0.84) is if anything LOWER than controls' (+1.01) — consistent with EITHER genuine sleep OR misstaged pathological wake. It does not discriminate.
 
-**Confound verdict.** High-confidence-sleep restriction: FAIL (case-vs-control AUROC stays >0.65 with cases' sleep purified). Contiguity restriction: PASS (both groups). Misclassification is therefore a live explanation for the effect.
+
+**Check 5 — conditional analysis: does z_sleep survive adjusting for z_wake?** Logistic case-vs-control on z_sleep, with/without z_wake; and z_sleep residualized on z_wake. This rules out a PURE GLOBAL SHIFT (uniform slowness captured by wake) but NOT the misstaging artifact (which removes slow material from the wake bin, so z_wake under-captures it).
+
+| feature | z_sleep coef (unadj -> adj for z_wake) [adj p] | AUROC of z_sleep residualized on z_wake | Spearman(z_wake,z_sleep) case / ctrl |
+|---|---|---|---|
+| log_delta | +1.25 -> +1.51 [p=1.6e-33] | 0.762 (MWU p=3.6e-49) | +0.32 / +0.59 |
+| DAR | +1.20 -> +1.32 [p=7.9e-38] | 0.763 (MWU p=1.2e-49) | +0.33 / +0.66 |
+The z_sleep coefficient stays positive and significant after adjusting for z_wake, and the wake-residualized z_sleep still separates cases from controls — so the sleep excess is NOT merely a global shift. Within cases, z_wake and z_sleep are only moderately correlated, meaning sleep carries information beyond overall slowness. **This does not exonerate the misstaging artifact** (see the logic above); it only removes the global-shift explanation.
 
 
-## Verdict
+**Confound section verdict.** Global-shift (check 5): EXCLUDED — sleep excess survives adjustment for z_wake. Misclassification: **NOT excluded by checks 1-4.** Check 1 shows cases have more staged sleep; checks 2-4 are individually weak or ambiguous for the reasons stated. None of these can distinguish real N2 slowing from slow wake misclassified as N2. **A decisive test requires an independent, delta-free marker that the segment is truly N2 — a sleep spindle** (see the spindle test section).
+
+
+## Verdict — SUGGESTIVE, NOT ESTABLISHED
 
 **Pre-specified falsification:** cases' sleep z ~= 0 and indistinguishable from held-out controls on every feature -> the reader's silence about sleep was correct and our sleep detections are noise.
 
-**The falsification is NOT met.** All four features reported even-handedly. Group-level (cases' z_sleep clearly above controls'): **3 of 4** (log_delta, TAR, DAR). Within-subject anti-confound (Δ(sleep-wake) larger in cases than controls, ruling out a global shift): **2 of 4** (log_delta, DAR). TAR separates at the group level but its within-subject gap matches controls' (Δ -0.291 case vs -0.228 ctrl) — a global carry-over, not a sleep-specific gain. `low_freq_rel` is **fully null** (AUROC 0.510, MWU p=5.72e-01).
+**The falsification is NOT met** as a raw effect. All four features reported even-handedly. Group-level (cases' z_sleep above controls'): **3 of 4** (log_delta, TAR, DAR): log_delta AUROC 0.759, DAR 0.784, TAR 0.693. `low_freq_rel` is **fully null** (AUROC 0.510, MWU p=5.72e-01). Within-subject Δ(sleep-wake) larger in cases than controls for log_delta/DAR — but as noted, **Δ>0 is also the misstaging artifact's signature**, so it is not decisive.
 
-**HYPOTHESIS NOT SUPPORTED.** For `log_delta`: cases' median z_sleep = +0.619 vs controls' +0.019 (AUROC 0.759), within-subject Δ(sleep-wake) = +0.473 in cases vs -0.019 in controls. For `DAR`: AUROC 0.784. Crucially, purifying cases' sleep to high-confidence segments (AUROC nan log_delta / nan DAR) and to contiguous sleep runs (AUROC 0.721 / 0.800) does NOT collapse the separation — so the sleep elevation is not an artifact of slow-wake being misstaged as sleep.
+**What the confound checks did and did not settle.** The conditional analysis (check 5) EXCLUDES a pure global shift: the sleep excess survives adjustment for z_wake (z_sleep coef stays positive and significant; wake-residualized z_sleep AUROC 0.762 log_delta / 0.763 DAR). But the STAGE-MISCLASSIFICATION artifact is NOT excluded: checks 1-4 are individually weak or ambiguous (check 1 shows cases have MORE staged sleep; check 2 is asymmetric; check 3 fails for uniformly-slow records; check 4 points the wrong way). None can separate real N2 slowing from pathologically slow WAKE misclassified as N2 — because the same delta that defines our signal is what the stager uses to call sleep.
 
-**On `low_freq_rel` (a limitation, stated as a hypothesis, not a dismissal).** The relative composite (delta+theta)/total is fully null here (AUROC 0.510) and is weak in WAKE too (case z_wake +0.058). A plausible reason — NOT verified in this script beyond the descriptive observation that clean-normal N3 low_freq_rel sits at median 0.63 against a hard cap of 1.0 — is that a bounded relative measure saturates in N2/N3 and loses headroom for excess sleep delta, while unbounded absolute log-delta and delta/alpha ratio retain it. This is consistent with the standing finding that relative low-frequency power is a weak detector, but it remains a hypothesis; the honest statement is that one of four features does not show the effect.
+**Therefore the status is SUGGESTIVE, NOT ESTABLISHED.** We do NOT claim 'World 1 supported'. The decisive test is spindle-verified N2: restrict both groups to N2 segments containing a detected sleep spindle (an independent, delta-free physiologic marker that the stage is truly N2 — used here to VALIDATE THE STAGE, not to infer slowing), and re-run. If the case-vs-control sleep elevation survives on spindle-verified N2, the hypothesis is established (World 1); if it collapses, it was the artifact (World 2). That test needs raw signal and is run in `scripts/95b_v4a_spindle_check.py`; its result is appended below under 'Spindle-verified N2'.
 
-**Interpretation.** On the two features that pass both the within-subject and the misclassification checks, recordings the reader called slow in WAKE (reports never mentioning sleep) still sit above stage/age-matched normals in N2/N3, and the excess is not explained by cohort composition, by a global shift, or by slow wake being misstaged as sleep. This supports World 1 (the reader's silence about sleep understated real deviation) over World 2 (false positives) — for log_delta and DAR. It is not universal across features (low_freq_rel null; TAR is a group-level carry-over).
+**On `low_freq_rel` (a limitation stated as a hypothesis).** The relative composite (delta+theta)/total is fully null (AUROC 0.510) and weak in WAKE too (case z_wake +0.058). A plausible but UNVERIFIED reason is that a bounded relative measure saturates in N2/N3 (clean-normal N3 median 0.63 vs a hard cap of 1.0) and loses headroom for excess sleep delta, while unbounded absolute log-delta and delta/alpha ratio retain it. It remains a hypothesis; the honest statement is that one of four features does not show the effect.
 
-**Residual caveats.** (1) Operationalization is `report never says a sleep word in a slowing clause`; a reader may have intended a wake-slowing sentence to cover sleep. (2) Control-side stager confidence could not be filtered (raw normal staging CSVs absent), so check 2 is one-sided; check 3 (symmetric) is the stronger guard. (3) `DAR` controls drift to about -0.3 in sleep (alpha collapses in N2/N3); `log_delta` controls stay ~0 across stages, which is why it is the cleaner witness. (4) Cases are abnormal for some reason and slowing may travel with it; the within-subject contrast addresses the cohort confound but not the possibility that the unnamed sleep deviation is a different abnormality than the named wake slowing.
+**Residual caveats.** (1) Operationalization is `report never says a sleep word in a slowing clause`; a reader may have intended a wake-slowing sentence to cover sleep. (2) Control-side stager confidence could not be filtered (raw normal staging CSVs absent). (3) Cases are abnormal for some reason and slowing may travel with it. (4) The whole result rests on a stager that keys sleep depth on the very delta we measure — which is why the spindle test, not any delta-based check, is the adjudicator.
 

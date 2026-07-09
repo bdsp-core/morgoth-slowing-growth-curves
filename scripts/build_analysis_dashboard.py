@@ -163,7 +163,14 @@ SECTIONS = [
      [(FIGD / "vanputten_comparison.png", "DAR, DTABR (Finnigan & van Putten 2013) and BSI (van Putten 2004/2007) vs our age/sex-normed deviations vs Morgoth. Raw metrics ~0.65–0.80; BSI is the best asymmetry baseline (focal 0.80). Our FULL deviation-LR (0.962 abnormal, see table) and Morgoth (0.92–0.99) dominate the single hand-crafted metrics — the value of age/sex/stage normalization + learning.")]),
 ]
 
-CAP_MD = [("results/occasion_human_ceiling.md",
+CAP_MD = [("results/occasion_model_vs_experts.md",
+           "★★ PHASE A/B — our score vs 18 experts on 100 unseen EEGs (external test set). "
+           "Generalized AUROC 0.903; two pre-registered predictions FAILED (see P3, P5)."),
+          ("results/nested_cv_detection.md",
+           "Nested CV: the published per-stage AUROCs survive; optimism ≈ 0.000"),
+          ("results/moe_band_vs_ours.md",
+           "★ Band determination is near-chance (κ 0.01–0.07): our focal 'agreement' IS the always-delta baseline"),
+          ("results/occasion_human_ceiling.md",
            "★ THE HUMAN CEILING — 100 EEGs, 18 experts (OccasionNoise). Slowing is the least reliable "
            "judgment experts make; an expert does not reproduce their own slowing call."),
           ("results/ea_irr_and_recalibration.md",
