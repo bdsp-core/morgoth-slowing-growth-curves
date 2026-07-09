@@ -84,7 +84,7 @@ The z_sleep coefficient stays positive and significant after adjusting for z_wak
 **Confound section verdict.** Global-shift (check 5): EXCLUDED — sleep excess survives adjustment for z_wake. Misclassification: **NOT excluded by checks 1-4.** Check 1 shows cases have more staged sleep; checks 2-4 are individually weak or ambiguous for the reasons stated. None of these can distinguish real N2 slowing from slow wake misclassified as N2. **A decisive test requires an independent, delta-free marker that the segment is truly N2 — a sleep spindle** (see the spindle test section).
 
 
-## Verdict — SUPPORTED for routine-length recordings (EDF <= 250 MB) — below the >=60/60 target (spindle-verified DAR AUROC 0.86 [0.78,0.92], n=58/66)
+## Verdict — ESTABLISHED for routine-length recordings (EDF <= 250 MB) (spindle-verified DAR AUROC 0.84 [0.79,0.90], n=88/123)
 
 **Pre-specified falsification:** cases' sleep z ~= 0 and indistinguishable from held-out controls on every feature -> the reader's silence about sleep was correct and our sleep detections are noise.
 

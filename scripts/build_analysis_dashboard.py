@@ -189,8 +189,9 @@ SECTIONS = [
      [(GROWTH_V2 / "v4a_wake_sleep.png",
        "Cases (report names slowing, silent on sleep) vs held-out clean-normal controls. Paired wake->sleep "
        "deviation per recording, plus the misclassification-robustness panels. On spindle-verified N2 the "
-       "elevation is UNDIMINISHED: DAR AUROC 0.856 [0.782,0.919], log_delta 0.832 [0.751,0.904] -- "
-       "statistically identical to all-N2 on the same recordings. low_freq_rel is fully null (0.510).")]),
+       "elevation is UNDIMINISHED: log_delta AUROC 0.854 [0.797,0.905], DAR 0.844 [0.787,0.896] (88 cases / "
+       "123 controls) -- statistically identical to all-N2 on the SAME recordings (0.853 / 0.841). Verifying "
+       "that the sleep is real does not erode the effect. low_freq_rel is fully null (0.510).")]),
 
     ("Figure S1 — Severity is a null result",
      "Our score does not recover the reader's mild/moderate/marked adjective under any of 168 feature x "
