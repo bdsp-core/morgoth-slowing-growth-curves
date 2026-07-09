@@ -79,13 +79,30 @@ This converts "same value or more" from an assertion into a measured result.
 
 ## V4. The "adds-value" analyses — what they mean, in plain terms
 
-The whole paper turns on one reframing. We are **not** trying to reproduce the clinical report. If we merely
-reproduced it, we would be a slower, more expensive neurophysiologist. We are claiming something different:
-that a stage-aware normative model sees real slowing that a human reader **systematically does not name** —
-and that it is most valuable exactly where human reading is weakest. V4a–c are the three ways to test that
-claim, and none of them requires new labels.
+**First, correct a bad framing.** An earlier draft of this section said that perfectly reproducing the clinical
+report would make us "a slower, more expensive neurophysiologist." That is backwards. A system that reproduced
+the report perfectly would be **enormously valuable**: automatic, near-instant, free at the margin, perfectly
+consistent, and available at 3 a.m. in a hospital with no neurophysiologist on staff. Automation at scale *is*
+a primary clinical value proposition, and the paper should say so plainly.
 
-### The problem all three solve
+The real difficulty is **measurement**, not value:
+
+1. **The report is a noisy standard, so agreement with it is bounded by its own reliability.** Published
+   inter-rater kappa for background abnormality/slowing is roughly 0.4–0.6. Our band agreement of 0.74 is
+   therefore uninterpretable in isolation: it could be *at* the human ceiling (a major result) or far below it
+   (a weak one). We cannot tell, because we have never measured the ceiling. That is what V2 (MOE) is for, and
+   why "equal value" is currently not merely unproven but **unfalsifiable**.
+
+2. **Agreement metrics actively penalize being right.** If we correctly flag N2 slowing that the reader never
+   attempted to assess, an agreement metric scores it as our false positive. Optimizing agreement therefore
+   trains a model to *inherit the reader's blind spots*. Agreement alone cannot distinguish a better instrument
+   from a better mimic.
+
+So the paper needs two distinct kinds of evidence: **(i)** agreement with the report, referenced to the human
+ceiling (V2, V3); and **(ii)** evidence that our *disagreements* are right rather than wrong (V4a, V4b).
+Neither V4a nor V4b requires new labels.
+
+### The problem V4a and V4b solve
 
 When our model calls a recording abnormal and the report calls it normal, there are two possible worlds and no
 gold standard to tell them apart:
@@ -95,6 +112,13 @@ gold standard to tell them apart:
 
 Every "we detect what reports under-report" claim in the literature quietly assumes World 1. V4a and V4b are
 designed to *distinguish* them.
+
+**A standing risk to guard against.** We arrived at the "we see what the reader misses" framing in the same
+week we discovered that we cannot reproduce the reader's severity grade (V1). Those two facts must be kept
+apart. The under-reporting hypothesis has to earn its keep with a **pre-specified, falsifiable** prediction —
+V4a's sleep-stage z, which can come out at zero — and must not become a consolation story for a null result.
+If V4a fails, the honest conclusion is that we are a good detector with an uncalibrated description, and we
+say exactly that.
 
 ---
 
@@ -156,8 +180,10 @@ it. V4a and V4b are what convert the hint into evidence.
 
 ---
 
-Together, V4a–c support the reframing: *not "reproduce the report," but "a stage-aware normative complement
-that is most valuable exactly where expert reading is weakest."* Note the honest tension with V1: we cannot
+Together, V4a–c support the claim that the system is **a stage-aware normative complement that is most
+valuable exactly where expert reading is weakest** — on top of, not instead of, the value of automating the
+read at all. Reproducing the report is worth a great deal; the point is that agreement with the report cannot
+by itself *measure* whether we have done so, nor credit us when we are right and the reader is not. Note the honest tension with V1: we cannot
 grade severity the way a reader does, and we are simultaneously claiming to see what the reader misses. Both
 can be true — a thermometer does not reproduce "feels feverish," and is still worth having — but the paper
 must say so plainly rather than let the reader assume we do both.
