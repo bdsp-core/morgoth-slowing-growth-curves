@@ -39,22 +39,40 @@ is not a normalization artifact.
 
 ---
 
-## V2. The human ceiling — use the **MOE dataset** (experts already marked slowing)
+## V2. The human ceiling — **DATA LOCATED AND MEASURED** (2026-07-09)
 
-**Why it is indispensable.** We report agreement *with the report* (band 0.74, side 0.87). We have never
-established what **two neurophysiologists agree on with each other**. Published inter-rater κ for background
-abnormality/slowing is modest (~0.4–0.6). If experts agree at 0.7 on band, our 0.74 is *at the human ceiling*
-— a major claim. Without this anchor, "equal value" is not merely unproven, it is **unfalsifiable**.
+Two Box datasets supply it. Full exploration, numbers, and plan: **`docs/human_ceiling_plan.md`**.
 
-**Plan.** Use the **MOE dataset**, in which multiple experts already marked slowing, to compute:
-- pairwise inter-rater agreement / Cohen's–Fleiss κ for: slowing present/absent, focal vs generalized, band,
-  side, and severity grade;
-- the **expert-vs-consensus** ceiling (each rater vs the majority of the others);
-- our model vs the same consensus, scored identically.
+- **OccasionNoise** — 100 EEGs (EDF, 20ch, 200 Hz, ~50 min; age/sex in the EDF patient field), **18 experts**,
+  recording-level votes for focal/generalized x epileptiform/non-epileptiform, **plus a Part I / Part II
+  re-read by 15 raters** (within-rater test-retest), plus a signed-report category per EEG.
+- **MoE** — 1,000 + 962 events, 18 experts, **band-resolved** focal/gen slowing. Rounds are *disjoint event
+  batches* (zero shared event ids), so no within-rater estimate here. Rater coverage 7-1,000 events.
 
-**The headline becomes:** *"our agreement with the consensus read is X, against an expert-vs-consensus ceiling
-of Y"* — which is the only defensible form of the comparative claim.
-*(Needed: location/format of the MOE annotations and the mapping from MOE recordings to `bdsp_id`.)*
+**The ceiling, measured.** Slowing is the least reliable thing experts judge:
+
+| axis | Fleiss κ (between) | expert-vs-consensus balanced acc | within-rater κ (re-read) |
+|---|---|---|---|
+| Focal **epileptiform** | 0.585 | — | 0.716 |
+| **Focal slowing** | **0.373** | **0.801** (se .703, sp .899) | **0.563** |
+| Generalized **epileptiform** | 0.739 | — | 0.832 |
+| **Generalized slowing** | **0.450** | **0.809** (se .735, sp .884) | **0.642** |
+
+Band agreement is worse still (MoE pairwise Cohen κ): focal-delta 0.352, **focal-theta 0.087**,
+gen-delta 0.323, gen-theta 0.317. And on EEGs whose **signed report** said focal non-epileptiform, only
+**50.8%** of experts marked focal slowing (generalized: 64.4%).
+
+**Consequences.**
+1. Our detection AUROC (0.848 W / 0.875 N1) must be restated as agreement **against a ceiling of ~0.80
+   balanced accuracy**, measured on the same data. Phase A of the ceiling plan does exactly this: run our
+   unchanged pipeline on the 100 EDFs as a true **external test set**, and overlay each expert as an operating
+   point on our ROC.
+2. The V1 **severity null is partly a ceiling effect** — experts agree on band at κ ≈ 0.09-0.35 and do not
+   reproduce their own slowing call (κ 0.56-0.64). This must be argued with these numbers, not asserted.
+3. **New graded target:** the *consensus proportion* (fraction of 18 experts who saw slowing) is a human,
+   quantitative measure of **conspicuity**. Testing our z against it may honestly recover a severity-like axis.
+   Pre-register the prediction first (see the standing risk in V4).
+4. `bwestove` is one of the MoE raters. Disclose, and exclude that rater from validating this system.
 
 ---
 
