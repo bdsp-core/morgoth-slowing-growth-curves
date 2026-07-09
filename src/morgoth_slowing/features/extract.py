@@ -13,6 +13,11 @@ import os
 import numpy as np
 from scipy.signal.windows import dpss
 
+# numpy>=2 removed np.trapz in favour of np.trapezoid. Band power is a trapezoid integral of the PSD;
+# aliasing the old name keeps every caller and every prior result bit-identical.
+if not hasattr(np, "trapz"):          # pragma: no cover
+    np.trapz = np.trapezoid
+
 # 18 bipolar derivations as (anode, cathode) referential channel names (double banana)
 BIPOLAR = [
     ("Fp1", "F7"), ("F7", "T3"), ("T3", "T5"), ("T5", "O1"),

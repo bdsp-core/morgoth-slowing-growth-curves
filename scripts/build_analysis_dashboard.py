@@ -163,7 +163,20 @@ SECTIONS = [
      [(FIGD / "vanputten_comparison.png", "DAR, DTABR (Finnigan & van Putten 2013) and BSI (van Putten 2004/2007) vs our age/sex-normed deviations vs Morgoth. Raw metrics ~0.65–0.80; BSI is the best asymmetry baseline (focal 0.80). Our FULL deviation-LR (0.962 abnormal, see table) and Morgoth (0.92–0.99) dominate the single hand-crafted metrics — the value of age/sex/stage normalization + learning.")]),
 ]
 
-CAP_MD = [("results/table1.md", "Table 1 — Cohort characteristics (recomputed union data)"),
+CAP_MD = [("results/occasion_human_ceiling.md",
+           "★ THE HUMAN CEILING — 100 EEGs, 18 experts (OccasionNoise). Slowing is the least reliable "
+           "judgment experts make; an expert does not reproduce their own slowing call."),
+          ("results/ea_irr_and_recalibration.md",
+           "★ Expert-algorithm IRR vs expert-expert IRR, and honest (leave-one-out) recalibration of the gate"),
+          ("results/moe_human_ceiling.md",
+           "★ MoE — band-resolved expert agreement on slowing (κ 0.09–0.38); the ceiling for our band claim"),
+          ("results/detection_pairing_sensitivity.md",
+           "Detection survives the borrowed-report bug (all AUROCs within bootstrap CI)"),
+          ("results/severity_prevalence_recalibrated.md",
+           "Severity vs the reader's adjective — a NULL result (ρ = 0.05, n.s.)"),
+          ("results/severity_axis_sweep.md",
+           "168-combination sweep: no feature/statistic recovers the severity adjective"),
+          ("results/table1.md", "Table 1 — Cohort characteristics (recomputed union data)"),
           ("results/vanputten_comparison.md", "Comparison vs prior methods (van Putten) — table"),
           ("results/lateralization_by_band.md", "Lateralization — band-matched detail"),
           ("results/region_detection.md", "Per-region detection (table)"),

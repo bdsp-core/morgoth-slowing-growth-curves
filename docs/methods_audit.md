@@ -186,3 +186,22 @@ inter-rater ceiling (MOE study, `docs/validation_plan.md` V2).
 4. **Feature/stage selection is not nested.** Report a nested-CV AUROC.
 5. **Severity is null** and the human ceiling is unmeasured (V2/MOE).
 6. **PDR is never measured** from the signal, though it is plausibly the axis the reader actually grades on.
+
+---
+
+## 12. Environment notes (Phase A, local staging)
+
+Running the original stager (`ss_hm_1.pth`) locally required three changes, all recorded here because they
+affect reproducibility:
+
+1. **`np.trapz` shim in `features/extract.py`.** numpy ≥ 2 removed `np.trapz`. Band power is a trapezoid
+   integral of the PSD; `np.trapz = np.trapezoid` keeps every caller and every prior result bit-identical.
+   Without it, *all* feature extraction fails — silently caught per-recording in some scripts.
+2. **`timm` pinned to 0.9.16.** `morgoth2/utils.py` imports `timm.optim.nadam.Nadam`, removed in timm 1.0.
+3. **`pyhealth` shimmed** (scratchpad `shims/pyhealth/metrics.py`). It does not build on Python 3.14 and its
+   metric functions are never called on the `--predict` path. The shim raises if one ever is.
+
+`ss_hm_1.pth` (70,116,218 B) was recovered from
+`box:Brandon - DeID/0_People/ChenXiSun/ChenXiSun/Morgoth2/Models/SLEEP_staging/`.
+It is **not** `SLEEPPSG.pth` (70,118,138 B) in the opendata bucket — different files. The fleet bucket
+`s3://bdsp-brandon-morgoth-slowing` that formerly held it no longer exists.
