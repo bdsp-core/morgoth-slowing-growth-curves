@@ -15,6 +15,7 @@ Run: PYTHONPATH=src python scripts/84_vigilance_matched_detection.py
 """
 from __future__ import annotations
 from pathlib import Path
+import os
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
@@ -52,6 +53,16 @@ def main():
     lu = pd.read_parquet("data/derived/labels_unified.parquet")[
         ["bdsp_id", "has_focal_slow", "gen_class"]].drop_duplicates("bdsp_id")
     w = d[(d.region == REGION) & d.age.between(0, 100)].merge(lu, on="bdsp_id", how="left")
+
+    # SENSITIVITY (scripts/88): 17.2% of routine recordings carry a report broadcast from a sibling study of
+    # the same patient, so their text-derived label terms may describe a different EEG. CLEAN_PAIR=1 keeps
+    # only routine recordings that own the report written about them.
+    if os.environ.get("CLEAN_PAIR") == "1":
+        cp = pd.read_parquet("data/derived/report_pairing.parquet")
+        good = set(cp[cp.clean_pair == True].bdsp_id)
+        before = w.bdsp_id.nunique()
+        w = w[(w.src != "cohort") | (w.bdsp_id.isin(good))]
+        print(f"[CLEAN_PAIR] recordings: {before:,} -> {w.bdsp_id.nunique():,}")
 
     # split routine clean-normals into reference-train (70%) and test-negatives (30%)
     rn_ids = w[(w.src == "cohort") & (w.clean_normal == True)].bdsp_id.unique()
