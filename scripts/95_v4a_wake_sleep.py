@@ -58,7 +58,50 @@ SLEEP_WORD = re.compile(r"(sleep|drows|somnolen|\bn2\b|\bn3\b|stage 2|stage 3)")
 rng = np.random.default_rng(0)
 
 
+POP = "routine-length recordings (EDF <= 250 MB)"
+HANDOFF = Path("data/derived"); HANDOFF.mkdir(parents=True, exist_ok=True)
+
+
+def spindle_verdict():
+    """Derive the top-line verdict from the spindle sub-study rather than hard-coding it.
+
+    scripts/95 used to print 'SUGGESTIVE, NOT ESTABLISHED' unconditionally while scripts/95b wrote the
+    real verdict, so re-running 95 alone silently reverted the paper's conclusion. Same rule as 95b:
+    ESTABLISHED iff the spindle-verified AUROC's bootstrap CI excludes chance AND >=60 usable per arm.
+    """
+    p = Path("data/derived/v4a_spindle_results.parquet")
+    if not p.exists():
+        return "SPINDLE TEST NOT RUN (no data/derived/v4a_spindle_results.parquet)"
+    d = pd.read_parquet(p)
+    d = d[d.status == "ok"].dropna(subset=["z_sp_DAR"])
+    nC = int((d.group == "case").sum()); nK = int((d.group == "control").sum())
+    if nC < 5 or nK < 5:
+        return "SPINDLE TEST UNDERPOWERED"
+    y = (d.group == "case").astype(int).values; x = d.z_sp_DAR.values
+    a = roc_auc_score(y, x)
+    rng = np.random.default_rng(0); bs = []
+    for _ in range(2000):
+        j = rng.choice(len(y), len(y), replace=True)
+        if 0 < y[j].sum() < len(j):
+            bs.append(roc_auc_score(y[j], x[j]))
+    lo, hi = np.percentile(bs, [2.5, 97.5])
+    stat = f"spindle-verified DAR AUROC {a:.2f} [{lo:.2f},{hi:.2f}], n={nC}/{nK}"
+    if lo > 0.5 and nC >= 60 and nK >= 60:
+        return f"ESTABLISHED for {POP} ({stat})"
+    if lo > 0.5:
+        return f"SUPPORTED for {POP} — below the >=60/60 target ({stat})"
+    return f"NOT SUPPORTED ({stat})"
+
+
 def report_flags():
+    """Cached (scripts/100) if available: two booleans, no raw text, no scratchpad needed."""
+    _c = Path("data/derived/v4a_report_flags.parquet")
+    if _c.exists():
+        return pd.read_parquet(_c)
+    return _report_flags_from_text()
+
+
+def _report_flags_from_text():
     """One row per (bdsp_id, date): names_slowing, mentions_sleep_slowing. Text NEVER written/printed."""
     rows = []
     for ch in pd.read_csv(SC, usecols=["SiteID", "BDSPPatientID", "StartTime", "reports", "impression"],
@@ -143,25 +186,37 @@ def per_recording(seg, feat, ref, grid):
 
 # ---- confound-check helpers -------------------------------------------------------------------
 def abn_probs_for(df_seg):
-    """For CASE whole_head segments, attach the stager's per-class probabilities from the abnormal staging
-    CSVs (scratchpad). Uses the SAME centre-window mapping as scripts/87 (verified identical to the stage
-    labels): segment i -> window int((14i+7.5)/5). Returns df_seg + abn_pred, p_wake, p_assigned."""
+    """Attach the stager's per-class probabilities to CASE whole_head segments.
+
+    Prefers the PHI-free cache (data/derived/abn_stage_probs.parquet, scripts/100) so this figure
+    regenerates without the scratchpad; falls back to the raw staging CSVs if the cache is absent.
+    Returns df_seg + abn_pred, p_wake, p_assigned (empty frame if neither source exists)."""
+    cache = Path("data/derived/abn_stage_probs.parquet")
+    if cache.exists():
+        pr = pd.read_parquet(cache)
+        return df_seg.merge(pr, on=["bdsp_id", "segment"], how="inner")
     out = []
     for bid, g in df_seg.groupby("bdsp_id"):
         files = glob.glob(f"{ABN}/{bid}_*.csv")
         if not files:
             continue
         try:
-            c = pd.read_csv(files[0], usecols=[f"class_{k}_prob" for k in range(5)] + ["pred_class"])
+            d = pd.read_csv(files[0])
         except Exception:
             continue
-        pred = c.pred_class.to_numpy(); probs = c[[f"class_{k}_prob" for k in range(5)]].to_numpy()
-        i = g.segment.to_numpy(); wi = ((14.0 * i + 7.5) / 5.0).astype(int); ok = wi < len(pred)
+        pc = sorted(c for c in d.columns if c.startswith("class_") and c.endswith("_prob"))
+        if "pred_class" not in d or not pc:
+            continue
+        P, pred = d[pc].to_numpy(), d.pred_class.to_numpy()
+        wi = ((14.0 * g.segment.to_numpy() + 7.5) / 5.0).astype(int)
+        ok = wi < len(pred)
         gg = g[ok].copy(); w = wi[ok]
-        gg["abn_pred"] = pred[w]; gg["p_wake"] = probs[w, 0]; gg["p_assigned"] = probs[w, pred[w]]
-        gg["p_sleep"] = probs[w, 2] + probs[w, 3]     # confidently-NOT-wake (N2+N3); adjacent-stage split is
-        out.append(gg)                                #   irrelevant to the "slow wake misstaged as sleep" concern
-    return pd.concat(out) if out else None
+        gg["abn_pred"] = pred[w].astype(int)
+        gg["p_wake"] = P[w, 0]
+        gg["p_assigned"] = P[w, pred[w].astype(int)]
+        out.append(gg)
+    return pd.concat(out, ignore_index=True) if out else df_seg.iloc[0:0].assign(
+        abn_pred=np.nan, p_wake=np.nan, p_assigned=np.nan)
 
 
 def run_flags(df, min_run=RUNMIN):
@@ -471,6 +526,8 @@ def main():
     L.append("| feature | AUROC case(all-sleep) vs ctrl | AUROC case(p_sleep>=0.9) vs ctrl | case median z_sleep (all -> conf) |")
     L.append("|---|---|---|---|")
     for f in ART:
+        if f not in hc:
+            continue
         a0, a1 = hc[f]["all"], hc[f]["hi"]
         L.append(f"| {f} | {a0['auc']:.3f} (n_case={a0['n_case']}) | {a1['auc']:.3f} (n_case={a1['n_case']}) | "
                  f"{a0['med_case']:+.3f} -> {a1['med_case']:+.3f} |")
@@ -536,7 +593,7 @@ def main():
 
     # ---- verdict -----------------------------------------------------------------------------
     lfr = res["low_freq_rel"]
-    L.append("\n## Verdict — SUGGESTIVE, NOT ESTABLISHED\n")
+    L.append(f"\n## Verdict — {spindle_verdict()}\n")
     L.append("**Pre-specified falsification:** cases' sleep z ~= 0 and indistinguishable from held-out controls "
              "on every feature -> the reader's silence about sleep was correct and our sleep detections are "
              "noise.\n")
@@ -583,8 +640,8 @@ def main():
     grp_df = pd.DataFrame({"bdsp_id": list(case_ids) + list(control_ids),
                            "group": ["case"] * len(case_ids) + ["control"] * len(control_ids)})
     grp_df = grp_df.merge(lu[["bdsp_id", "age"]], on="bdsp_id", how="left")
-    grp_df.to_parquet(scratch / "v4a_groups.parquet")
-    np.savez(scratch / "v4a_ref_n2.npz", grid=grid,
+    grp_df.to_parquet(HANDOFF / "v4a_groups.parquet")
+    np.savez(HANDOFF / "v4a_ref_n2.npz", grid=grid,
              **{f"mus_{f}": refs[f].get((REGION, "N2"), (np.full_like(grid, np.nan),) * 2)[0] for f in ART},
              **{f"sds_{f}": refs[f].get((REGION, "N2"), (np.full_like(grid, np.nan),) * 2)[1] for f in ART})
     # per-recording z_sleep/z_wake (log_delta, DAR) for the representativeness check in scripts/95b
@@ -592,7 +649,7 @@ def main():
     for f in ART:
         recz = recz.merge(rec[f][["z_wake", "z_sleep"]].rename(
             columns={"z_wake": f"zwake_{f}", "z_sleep": f"zsleep_{f}"}), left_on="bdsp_id", right_index=True, how="left")
-    recz.to_parquet(scratch / "v4a_recz.parquet")
+    recz.to_parquet(HANDOFF / "v4a_recz.parquet")
     print(f"wrote {scratch/'v4a_groups.parquet'}, v4a_ref_n2.npz, v4a_recz.parquet for the spindle test")
 
     # ---- figure --------------------------------------------------------------------------------
