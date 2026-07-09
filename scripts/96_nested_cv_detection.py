@@ -46,30 +46,40 @@ FI = {f: i for i, f in enumerate(FEATURES)}
 
 
 def normal_z_multi(vals, ages, ref_vals, ref_ages, bw=BW):
-    """Age-kernel normal-referenced z for ALL features at once (weights depend only on age -> computed once
-    per test row, reused across features). Matches scripts/84 normal_z per feature: per-feature the reference
-    is restricted to rows with finite age and finite feature value, and needs summed kernel weight >= 5.
-    vals (n,F), ages (n,), ref_vals (m,F), ref_ages (m,) -> z (n,F)."""
-    n, F = vals.shape
-    z = np.full((n, F), np.nan)
+    """Age-kernel normal-referenced z for ALL features at once, matching scripts/84 normal_z per feature
+    (per-feature the reference is restricted to rows with finite age and finite feature value, and the summed
+    kernel weight must be >= 5). Fully vectorized: the weight matrix W[i,j]=exp(-.5((ref_age_j-age_i)/bw)^2)
+    is F-independent, so per-feature statistics are BLAS matrix products. vals (n,F), ref_vals (m,F) -> z (n,F).
+    A slow per-feature fallback preserves exact masking if the reference has NaNs (this data has none)."""
     ra = np.asarray(ref_ages, float)
     rv = np.asarray(ref_vals, float)
     age_ok = np.isfinite(ra)
-    rv_fin = np.isfinite(rv)                      # (m,F)
+    ai = np.where(np.isfinite(ages), ages, 0.0)
+    W = np.exp(-0.5 * ((ra[None, :] - ai[:, None]) / bw) ** 2)      # (n,m)
+    W[~np.isfinite(ages), :] = 0.0
+    W[:, ~age_ok] = 0.0
+    if np.isfinite(rv).all():                                       # fast path (no ref NaNs)
+        sw = W.sum(1)                                               # (n,) same across features
+        denom = np.where(sw > 0, sw, 1.0)[:, None]
+        mu = (W @ rv) / denom                                       # (n,F)
+        ex2 = (W @ (rv * rv)) / denom
+        sd = np.sqrt(np.maximum(ex2 - mu * mu, 1e-9))
+        z = (vals - mu) / sd
+        bad = (sw < 5)[:, None] | ~np.isfinite(vals)
+        z[bad] = np.nan
+        return z
+    n, F = vals.shape                                              # slow faithful fallback
+    z = np.full((n, F), np.nan)
+    rv_fin = np.isfinite(rv)
     rv0 = np.where(rv_fin, rv, 0.0)
-    for i in range(n):
-        if not np.isfinite(ages[i]):
-            continue
-        wt = np.exp(-0.5 * ((ra - ages[i]) / bw) ** 2)
-        wt = np.where(age_ok, wt, 0.0)
-        We = wt[:, None] * rv_fin                 # (m,F) per-feature effective weights (NaN ref -> 0)
-        sw = We.sum(0)                            # (F,)
-        denom = np.where(sw > 0, sw, 1.0)
-        mu = (We * rv0).sum(0) / denom
-        var = (We * (rv0 - mu) ** 2).sum(0) / denom
-        sd = np.sqrt(np.maximum(var, 1e-9))
-        good = (sw >= 5) & np.isfinite(vals[i])
-        z[i, good] = (vals[i, good] - mu[good]) / sd[good]
+    for f in range(F):
+        We = W * rv_fin[:, f]
+        sw = We.sum(1); denom = np.where(sw > 0, sw, 1.0)
+        mu = (We @ rv0[:, f]) / denom
+        ex2 = (We @ (rv0[:, f] ** 2)) / denom
+        sd = np.sqrt(np.maximum(ex2 - mu * mu, 1e-9))
+        good = (sw >= 5) & np.isfinite(vals[:, f])
+        z[good, f] = (vals[good, f] - mu[good]) / sd[good]
     return z
 
 

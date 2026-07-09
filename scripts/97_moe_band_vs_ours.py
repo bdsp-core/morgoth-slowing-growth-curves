@@ -118,12 +118,14 @@ def our_band_calls(feat: pd.DataFrame) -> pd.DataFrame:
     out = feat[["event"]].copy()
     # generalized: whole_head
     out["gen_band"] = np.where(feat["whole_head__rel_delta"] > feat["whole_head__rel_theta"], "delta", "theta")
-    # focal: most-slowed lobe (max low_freq_rel), then delta-vs-theta there
+    # focal: most-slowed lobe (max low_freq_rel), then delta-vs-theta there.
+    # NaN-safe: a lobe whose band-power validity filter dropped every channel has NaN low_freq_rel and
+    # must never be selected (1 event); map NaN -> -inf before argmax.
     lfr = feat[[f"{r}__low_freq_rel" for r in LOBES]].values
-    sel = np.array(LOBES)[np.argmax(lfr, axis=1)]
+    k = np.argmax(np.where(np.isnan(lfr), -np.inf, lfr), axis=1)
+    sel = np.array(LOBES)[k]
     rd = np.array([feat[f"{r}__rel_delta"].values for r in LOBES]).T
     rt = np.array([feat[f"{r}__rel_theta"].values for r in LOBES]).T
-    k = np.argmax(lfr, axis=1)
     focal_rd = rd[np.arange(len(k)), k]
     focal_rt = rt[np.arange(len(k)), k]
     out["focal_region"] = sel
@@ -362,8 +364,11 @@ def main():
         alt[kind] = compute_kind(kind, calls.loc[aged_mask, band_col].values, D, T, raters, boot=False)
 
     # --- distribution of our own band calls (sanity: are we degenerate?) ---
-    gen_mix = calls["gen_band"].value_counts(normalize=True).to_dict()
-    foc_mix = calls["focal_band"].value_counts(normalize=True).to_dict()
+    def mix(s):
+        return {k: round(v, 3) for k, v in s.value_counts(normalize=True).to_dict().items()}
+    gen_mix, foc_mix = mix(calls["gen_band"]), mix(calls["focal_band"])
+    gen_mix_alt = mix(calls.loc[aged_mask, "gen_band_alt"])
+    foc_mix_alt = mix(calls.loc[aged_mask, "focal_band_alt"])
 
     # ============================== write report ==============================
     L = []
