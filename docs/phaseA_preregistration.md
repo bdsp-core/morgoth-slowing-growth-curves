@@ -100,3 +100,65 @@ paper claims detection only.
   now-deleted fleet bucket. If a substitute is used, it must first be validated by re-staging recordings whose
   fleet stages we still hold and demonstrating agreement; the agreement figure is reported alongside Phase A.
   If agreement is poor, Phase A is invalid and must wait for the original checkpoint.
+
+---
+
+## AMENDMENT — 2026-07-09, after two corrections from MBW
+
+**Disclosure of what was known when this amendment was written.** Predictions P1–P7 above were fixed before
+any expert label was touched. This amendment was written **after** running `scripts/92` on *Morgoth's*
+predictions (which ship with OccasionNoise), i.e. after seeing the achievable AUROC and the expert κ
+distribution on this task — but **before** our own normative score has been computed on a single one of these
+EEGs. P8–P10 are therefore weaker evidence than P1–P7 and are labelled as such.
+
+### Correction 1 — an earlier claim of mine was simply wrong
+
+I wrote: *"We cannot plausibly be better than two experts agree with each other."* **False.** If each expert is
+(latent truth + noise), two experts compound two error sources while an accurate algorithm carries one.
+Classical test theory: the correlation of two parallel noisy measures equals the reliability, whereas the
+correlation of a *perfect* measure with a noisy one equals √reliability. An algorithm at the latent truth
+should score **κ_ae ≈ √κ_ee**. Expert errors are correlated (shared training, shared blind spots such as
+under-calling sleep slowing), which inflates κ_ee and makes √κ_ee a **conservative** target.
+
+This is already demonstrated: recalibrated Morgoth reaches κ_ae = 0.471 vs κ_ee = 0.403 on focal slowing
+(Δ = +0.068, 95% CI +0.014 to +0.136). `results/ea_irr_and_recalibration.md`.
+
+**The residual, legitimate concern is different and survives:** our reported band agreement of 0.74 was
+computed against *report text*, with *our own extractor*, on a single report per recording. That number may be
+measuring how well we parse the report's band word. The fix is not to distrust 0.74 for being high — it is to
+recompute band agreement against the **MoE per-expert band labels**, where there is no text extractor in the
+loop.
+
+- **P8 (weak).** Our stage-matched score, thresholded leave-one-out, will reach κ_ae ≥ the median κ_ee for
+  generalized slowing (0.450–0.500). **Fails if κ_ae < κ_ee − 0.05.**
+- **P9 (weak).** Neither Morgoth nor our score will reach the attenuation benchmark √κ_ee (0.635 focal,
+  0.707 generalized), i.e. neither is at the latent truth. **Fails if either exceeds it.**
+
+### Correction 2 — expert agreement is not the truth criterion for a measurement
+
+"Relative delta in wake is at the 95th percentile for this age" is a **measurement**, true or false
+independent of whether any expert noticed it. Norms make it so. Expert agreement therefore validates
+**concordance and communication**, not correctness, and it cannot be the criterion by which the *description*
+axis is judged.
+
+Consequence, fixed now: agreement analyses are reported as **concordance with human perception**, and the
+description's validity rests on measurement properties instead — test–retest of our own score, dose–response,
+and convergent validity (V4b). **This does not resurrect V1.** The severity null stands exactly as written:
+we do not reproduce the reader's adjective. What changes is only the interpretation of *why that was ever the
+target*, and §3.4b is not softened.
+
+### Correction 3 — evaluate the system we can build, not its default settings
+
+Morgoth's shipped threshold gives near-perfect specificity and poor sensitivity. Recalibration is part of
+building the system, so it is done and reported, with every threshold fitted leave-one-out:
+
+| | shipped | LOO Platt @0.5 | LOO Youden | avg expert |
+|---|---|---|---|---|
+| focal slowing (bal-acc) | 0.714 | 0.780 | **0.845** | 0.815 |
+| generalized slowing (bal-acc) | 0.667 | 0.747 | **0.814** | 0.808 |
+
+- **P10 (weak).** Applying the same LOO recalibration to our normative score will raise its balanced accuracy
+  by ≥ 0.05 over a naive z > 2 cut. **Fails if the gain is < 0.02.**
+
+Recalibration cannot change AUROC. Any comparison to experts at an operating point must state which threshold
+was used and how it was chosen; a threshold chosen on the evaluation data is reported as optimistic.
