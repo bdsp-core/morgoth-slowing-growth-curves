@@ -26,13 +26,14 @@ rho = 0.077 (p = 3.3e-6, n = 3,626) — significant, clinically negligible.
 Bonferroni (0.05/168 = 3.0e-4; best p = 6.8e-4) and has the **wrong sign**. Raw ~= z (0.159 vs 0.179), so it
 is not a normalization artifact.
 
-**Two live hypotheses, not separable with these data.**
-- *Wrong axis.* Clinicians grade diffuse slowing chiefly by **posterior dominant rhythm frequency** (8-9 Hz
-  mild, 6-7 moderate, <5 severe). We never measure PDR. A regex extraction of PDR Hz from report text was
-  **invalid** (non-monotonic: mild 6.98, moderate 9.09, marked 7.29 Hz; it captured slowing and photic-driving
-  frequencies). **Next step: measure PDR from the signal** — occipital peak frequency in eyes-closed wake —
-  and test it as the severity axis. This is a real analysis, not a regex.
-- *Unreliable adjective.* Cannot be assessed without the inter-rater ceiling (V2).
+**Explanation, now measured (V2).** The adjective is attached to a judgement of **low reliability**: an
+independent panel of 18 electroencephalographers agrees on slowing at Fleiss κ 0.373 (focal) / 0.450
+(generalized), and a reader re-reading the *same* EEG reproduces their own call at κ 0.563 / 0.642. Band
+agreement is worse (κ 0.09-0.38). A measurement cannot correlate strongly with a rating that noisy.
+
+*(Retracted: an earlier version of this document hypothesised that clinicians grade diffuse slowing by
+posterior dominant rhythm frequency. MBW: wrong. PDR grading and slowing grading are separate tasks, reported
+separately. PDR is out of scope and must not be used to infer slowing.)*
 
 **Consequence for the paper.** We claim detection (AUROC 0.85-0.88) and dose-response across report strata
 (rho 0.50-0.55). We **do not** claim severity grading. Manuscript SS3.4b and SS5 now say so explicitly.
@@ -166,11 +167,14 @@ detections are noise. That is a real risk of failure, which is what makes the te
 
 **V4b — convergent validity for the "excess" detections.**
 
-*The design.* Take report-**normal** recordings that we score in the **top decile** of sleep-stage deviation —
-our putative missed abnormalities. Ask whether they also look abnormal on markers we **did not use to select
-them**. Selection used delta/theta relative power; the independent markers are things like Morgoth's
-p(abnormal), an attenuated or slowed posterior dominant rhythm, reduced sleep spindles and K-complexes, and
+*The design.* Take report-**normal** recordings that we score in the **top decile** of sleep-stage deviation --
+our putative missed abnormalities. Ask whether they also look abnormal on evidence we **did not use to select
+them**: Morgoth's p(abnormal); the judgement of the independent expert panel where such recordings exist; and
 enrichment for downstream clinical outcomes if linkable.
+
+**Not PDR, and not spindles/K-complexes.** An earlier version proposed those as convergent markers. They are
+*separate findings*, graded and reported separately from slowing; using them to infer slowing is a category
+error (MBW). They are also report-derived here, hence contaminated by the broadcast defect (V5).
 
 *The logic.* No single marker is a gold standard. But if a group chosen purely for high sleep delta *also*
 turns out to have slower PDR and fewer spindles and higher p(abnormal), that **concordance across
