@@ -77,33 +77,90 @@ This converts "same value or more" from an assertion into a measured result.
 
 ---
 
-## V4. The "adds value" analyses (clarification — feasible today, no new labels)
+## V4. The "adds-value" analyses — what they mean, in plain terms
 
-The claim that we detect slowing the reader *under-reports* is currently only a hint (in the dose-response,
-recordings called abnormal **without slowing named** still deviate by ≈ +0.4 SD). Three concrete analyses turn
-that hint into evidence, all using data already in hand:
+The whole paper turns on one reframing. We are **not** trying to reproduce the clinical report. If we merely
+reproduced it, we would be a slower, more expensive neurophysiologist. We are claiming something different:
+that a stage-aware normative model sees real slowing that a human reader **systematically does not name** —
+and that it is most valuable exactly where human reading is weakest. V4a–c are the three ways to test that
+claim, and none of them requires new labels.
 
-**V4a — Within-subject wake → sleep test.**
-Reports systematically under-declare slowing *in sleep* (it is hard to judge "how much delta is too much" in
-N2/N3 by eye). Take recordings whose report flags abnormality **in wake only** and which contain scored sleep.
-Compute the stage-specific deviation z in W and in N2/N3 for each. If the abnormality is truly present in
-sleep and merely unnamed, those recordings should show **elevated sleep-stage z relative to clean-normals of
-the same age and stage**, despite the report never mentioning sleep slowing. This is a **within-subject**
-comparison, so it cannot be explained by patient-level confounding. Sign: sleep z > 0 and > matched controls.
+### The problem all three solve
 
-**V4b — Convergent validity for the "excess" detections.**
-Take report-**normal** recordings with **high sleep-stage deviation** (top decile). If these are true
-abnormalities the reader missed — rather than model noise — they should also look abnormal on **independent**
-markers we did not use to select them: higher Morgoth p(abnormal); absent/attenuated posterior dominant
-rhythm; reduced sleep spindles / K-complexes; and enrichment for downstream clinical outcomes if linkable.
-Concordance across independent markers is what makes an "excess detection" credible without a gold standard.
+When our model calls a recording abnormal and the report calls it normal, there are two possible worlds and no
+gold standard to tell them apart:
 
-**V4c — Dose-response across report strata.** ✅ **Done** (Figure 3): z rises 0 → +0.4 → +1.4 across
-clean-normal → abnormal-without-slowing-named → abnormal-with-slowing-named. V4a and V4b are the two
-remaining legs of the same argument.
+- **World 1 (we add value):** the slowing is really there, and the reader did not mention it.
+- **World 2 (we are broken):** the slowing is not there, and we are producing false positives.
 
-Together V4a–c support the reframing: *not "reproduce the report", but "a stage-aware normative complement
-that is most valuable exactly where expert reading is weakest."*
+Every "we detect what reports under-report" claim in the literature quietly assumes World 1. V4a and V4b are
+designed to *distinguish* them.
+
+---
+
+**V4a — the within-subject wake→sleep test.** *(now runnable for the first time)*
+
+*The clinical premise.* Deciding "is there too much delta in N2?" by eye is genuinely hard, because N2 and N3
+are **supposed** to be full of delta. There is no memorized normal value for it. Readers therefore comment on
+wake slowing and stay largely silent about sleep slowing — not because sleep slowing is absent, but because
+the judgment is unreliable and rarely attempted.
+
+*The design.* Take recordings whose report names slowing **without ever mentioning sleep**, and which contain
+scored sleep. For each one, compute the deviation z separately in W and in N2/N3, each against its own
+**stage- and age-matched** normal curve. If the pathology really is present in sleep and merely unnamed, these
+recordings should sit **above** clean-normals of the same age *in the sleep stages too*, despite the report
+saying nothing about sleep.
+
+*Why it is convincing.* The comparison lives **inside one recording**. We are not comparing sick people to
+healthy people, so it cannot be explained away by the patients being older, sicker, or medicated. We are
+asking whether the same brain the reader called slow in wake also deviates in sleep, where the reader was
+silent. **What would falsify it:** if sleep z ≈ 0, the reader's silence was correct, and our sleep-stage
+detections are noise. That is a real risk of failure, which is what makes the test worth running.
+
+*Newly possible:* this needs sleep stages for **abnormal** recordings, which did not exist until
+`scripts/87_build_abnormal_stages.py` (313,446 segment-stages over 7,408 abnormal recordings).
+
+---
+
+**V4b — convergent validity for the "excess" detections.**
+
+*The design.* Take report-**normal** recordings that we score in the **top decile** of sleep-stage deviation —
+our putative missed abnormalities. Ask whether they also look abnormal on markers we **did not use to select
+them**. Selection used delta/theta relative power; the independent markers are things like Morgoth's
+p(abnormal), an attenuated or slowed posterior dominant rhythm, reduced sleep spindles and K-complexes, and
+enrichment for downstream clinical outcomes if linkable.
+
+*The logic.* No single marker is a gold standard. But if a group chosen purely for high sleep delta *also*
+turns out to have slower PDR and fewer spindles and higher p(abnormal), that **concordance across
+independently-derived measurements** is what makes "we found something real" credible. If instead they look
+exactly like normals on all of them, our excess detections are model noise and we should say so.
+
+*Two caveats that must be stated when this is run.*
+1. **Morgoth is report-calibrated**, so it partially inherits the same reader blind spots and is not a fully
+   independent witness. It is supporting evidence, not proof.
+2. **PDR / spindle / K-complex flags in `data/findings/` are derived from report text**, which is subject to
+   the broadcast defect in V5 and to the very under-reporting we are trying to demonstrate. Using them as
+   "independent" evidence is close to circular. **These markers must be measured from the signal**, not read
+   off the report. (Measuring PDR from the signal is separately needed for V1.)
+
+---
+
+**V4c — dose-response across report strata.** ✅ **Done** (Figure 3): median z rises monotonically
+**−0.11 → +0.43 → +1.49** across clean-normal → abnormal-with-no-slowing-named → abnormal-with-slowing-named
+(Spearman ρ = 0.50–0.55).
+
+The middle stratum is the point. Recordings the reader called abnormal *without naming slowing* already
+deviate by ≈ +0.4 SD. That is the first quantitative hint of World 1: slowing that was present but unstated.
+It is a hint, not proof, because those recordings are abnormal for *some* reason and slowing may travel with
+it. V4a and V4b are what convert the hint into evidence.
+
+---
+
+Together, V4a–c support the reframing: *not "reproduce the report," but "a stage-aware normative complement
+that is most valuable exactly where expert reading is weakest."* Note the honest tension with V1: we cannot
+grade severity the way a reader does, and we are simultaneously claiming to see what the reader misses. Both
+can be true — a thermometer does not reproduce "feels feverish," and is still worth having — but the paper
+must say so plainly rather than let the reader assume we do both.
 
 ---
 
