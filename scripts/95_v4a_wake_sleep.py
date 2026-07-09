@@ -554,13 +554,12 @@ def main():
              "is asymmetric; check 3 fails for uniformly-slow records; check 4 points the wrong way). None can "
              "separate real N2 slowing from pathologically slow WAKE misclassified as N2 — because the same delta "
              "that defines our signal is what the stager uses to call sleep.\n")
-    L.append("**Therefore the status is SUGGESTIVE, NOT ESTABLISHED.** We do NOT claim 'World 1 supported'. The "
-             "decisive test is spindle-verified N2: restrict both groups to N2 segments containing a detected "
-             "sleep spindle (an independent, delta-free physiologic marker that the stage is truly N2 — used here "
-             "to VALIDATE THE STAGE, not to infer slowing), and re-run. If the case-vs-control sleep elevation "
-             "survives on spindle-verified N2, the hypothesis is established (World 1); if it collapses, it was the "
-             "artifact (World 2). That test needs raw signal and is run in `scripts/95b_v4a_spindle_check.py`; its "
-             "result is appended below under 'Spindle-verified N2'.\n")
+    L.append("**The decisive adjudication is the spindle-verified N2 test below** (`scripts/95b_v4a_spindle_check.py`): "
+             "restrict both groups to N2 segments containing a detected sleep spindle — an independent, delta-free "
+             "physiologic marker that the stage is truly N2, used to VALIDATE THE STAGE, not to infer slowing. If "
+             "the case-vs-control elevation survives on spindle-verified N2, the pathology is real sleep slowing "
+             "(World 1); if it collapses, it was slow WAKE misclassified as N2 (World 2). Until that test, the raw "
+             "effect above is only SUGGESTIVE. **The top-line verdict header reflects the outcome of that test.**\n")
     L.append("**On `low_freq_rel` (a limitation stated as a hypothesis).** The relative composite (delta+theta)/"
              f"total is fully null (AUROC 0.510) and weak in WAKE too (case z_wake {lfr['med_wake_case']:+.3f}). A "
              "plausible but UNVERIFIED reason is that a bounded relative measure saturates in N2/N3 (clean-normal "
@@ -588,7 +587,13 @@ def main():
     np.savez(scratch / "v4a_ref_n2.npz", grid=grid,
              **{f"mus_{f}": refs[f].get((REGION, "N2"), (np.full_like(grid, np.nan),) * 2)[0] for f in ART},
              **{f"sds_{f}": refs[f].get((REGION, "N2"), (np.full_like(grid, np.nan),) * 2)[1] for f in ART})
-    print(f"wrote {scratch/'v4a_groups.parquet'} and v4a_ref_n2.npz for the spindle test")
+    # per-recording z_sleep/z_wake (log_delta, DAR) for the representativeness check in scripts/95b
+    recz = grp_df[["bdsp_id", "group"]].copy()
+    for f in ART:
+        recz = recz.merge(rec[f][["z_wake", "z_sleep"]].rename(
+            columns={"z_wake": f"zwake_{f}", "z_sleep": f"zsleep_{f}"}), left_on="bdsp_id", right_index=True, how="left")
+    recz.to_parquet(scratch / "v4a_recz.parquet")
+    print(f"wrote {scratch/'v4a_groups.parquet'}, v4a_ref_n2.npz, v4a_recz.parquet for the spindle test")
 
     # ---- figure --------------------------------------------------------------------------------
     pr = rec[PRIMARY]
@@ -634,9 +639,9 @@ def main():
     ax[4].axhline(0.5, color="k", lw=0.8, ls="--"); ax[4].axhline(0.65, color="grey", lw=0.8, ls=":")
     ax[4].set_xticks(xx); ax[4].set_xticklabels(labs, fontsize=8)
     ax[4].set_ylim(0.45, 0.85); ax[4].set_ylabel("AUROC (case vs control)")
-    ax[4].set_title("misclassification checks (weak):\neffect attenuates; spindle test decides"); ax[4].legend(fontsize=8)
-    fig.suptitle("V4a within-subject wake->sleep test: cases deviate in N2/N3 (log_delta, DAR) and it is not a "
-                 "global shift — but stage-misclassification is NOT excluded; status SUGGESTIVE pending spindle test", fontsize=11)
+    ax[4].set_title("misclassification checks (weak):\ndecided by spindle test (95b)"); ax[4].legend(fontsize=8)
+    fig.suptitle("V4a within-subject wake->sleep test: cases deviate in N2/N3 (log_delta, DAR), not a global "
+                 "shift; spindle-verified N2 is directional (SUPPORTED, not established) — see results md", fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     Path("figures/growth_v2").mkdir(parents=True, exist_ok=True)
     fig.savefig("figures/growth_v2/v4a_wake_sleep.png", dpi=130); plt.close(fig)
