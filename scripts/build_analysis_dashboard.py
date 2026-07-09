@@ -95,6 +95,15 @@ SECTIONS = [
        "reference degrades detection in every stage (N1 0.88→0.79). Confirms that vigilance-matched norms — "
        "not just age/sex-matched — are needed for detection; recovers the routine-cohort 0.81 and explains "
        "why a naive union-norm score is weak.")]),
+    ("Figure 3 — Dose-response: the deviation score tracks clinical severity",
+     "The central validity claim: our age-adjusted deviation is not merely correlated with the expert call, "
+     "it is a CALIBRATED severity measure. Scored in N1 against the routine (alert) norm.",
+     [(GROWTH_V2 / "dose_response.png",
+       "Median deviation z rises monotonically across report strata: clean-normal ≈ 0 (well calibrated) → "
+       "abnormal with no slowing named +0.4 → abnormal with slowing named +1.4 (Spearman ρ 0.50–0.55, "
+       "p≈0; Kruskal p≈0), consistently across log-delta, TAR and DAR. Note the middle stratum: recordings "
+       "called abnormal WITHOUT slowing named still deviate (+0.4), the signature of slowing the reader did "
+       "not name — the basis of the 'detects what reports miss' hypothesis.")]),
     ("Cohort & normative growth curves",
      "The product itself: how normal EEG features vary with age, per sleep stage, as clinical percentile "
      "growth charts. Built on 20,971 recordings (4,916 routine + 16,055 overnight) with OMOP fractional "
@@ -154,7 +163,8 @@ SECTIONS = [
      [(FIGD / "vanputten_comparison.png", "DAR, DTABR (Finnigan & van Putten 2013) and BSI (van Putten 2004/2007) vs our age/sex-normed deviations vs Morgoth. Raw metrics ~0.65–0.80; BSI is the best asymmetry baseline (focal 0.80). Our FULL deviation-LR (0.962 abnormal, see table) and Morgoth (0.92–0.99) dominate the single hand-crafted metrics — the value of age/sex/stage normalization + learning.")]),
 ]
 
-CAP_MD = [("results/vanputten_comparison.md", "Comparison vs prior methods (van Putten) — table"),
+CAP_MD = [("results/table1.md", "Table 1 — Cohort characteristics (recomputed union data)"),
+          ("results/vanputten_comparison.md", "Comparison vs prior methods (van Putten) — table"),
           ("results/lateralization_by_band.md", "Lateralization — band-matched detail"),
           ("results/region_detection.md", "Per-region detection (table)"),
           ("results/region_gated.md", "Region — focal lobe + generalized A/P (tables)"),
