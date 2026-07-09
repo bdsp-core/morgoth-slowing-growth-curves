@@ -22,6 +22,10 @@ import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 SC = ("/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
       "543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/moe/occ")
 ALERT = ["W", "N1"]
+# Pre-specified primary scores (docs/phaseA_preregistration.md). NOT chosen on these data.
+PRIMARY = {"generalized": "gen_combo_WN1_routine", "focal": "foc_asym_TAR_routine"}
+# expert-vs-consensus operating point, from results/occasion_human_ceiling.md
+EXPERT_PT = {"generalized": (0.735, 0.884), "focal": (0.703, 0.899)}   # (sens, spec)
 GEN, FOC = "whole_head", ["L_temporal", "R_temporal", "L_parasagittal", "R_parasagittal"]
 rng = np.random.default_rng(0)
 
@@ -153,18 +157,23 @@ def main():
         out.append("| score | AUROC [95% CI] | n |")
         out.append("|---|---|---|")
         cols = [c for c in S.columns if c.startswith("gen_" if nm == "generalized" else "foc_")]
-        best, bestauc = None, -1
+        aucs, best, bestauc = {}, None, -1
         for c in cols:
-            s = S.loc[idx, c].values.astype(float)
-            a, lo, hi, n = auc_ci(y.values, s)
+            sv = S.loc[idx, c].values.astype(float)
+            a, lo, hi, n = auc_ci(y.values, sv)
+            aucs[c] = a
             if np.isfinite(a):
-                out.append(f"| `{c}` | {a:.3f} [{lo:.3f}, {hi:.3f}] | {n} |")
+                tag = " **(pre-specified primary)**" if c == PRIMARY[nm] else ""
+                out.append(f"| `{c}`{tag} | {a:.3f} [{lo:.3f}, {hi:.3f}] | {n} |")
                 if "routine" in c and a > bestauc and "allstage" not in c:
                     best, bestauc = c, a
-        res[nm] = (best, bestauc, y, idx)
+        out.append(f"\n*Best-on-test is `{best}` ({bestauc:.3f}); it was selected using these labels and is "
+                   f"therefore OPTIMISTIC. All pre-registered verdicts below use the pre-specified primary "
+                   f"`{PRIMARY[nm]}` ({aucs[PRIMARY[nm]]:.3f}).*")
+        res[nm] = (PRIMARY[nm], aucs[PRIMARY[nm]], y, idx, aucs, best, bestauc)
 
         # LOO-recalibrated operating point (P10) for the prespecified primary score
-        prim = "gen_combo_WN1_routine" if nm == "generalized" else "foc_asym_TAR_routine"
+        prim = PRIMARY[nm]
         if prim in S.columns:
             s = S.loc[idx, prim].values.astype(float)
             m = np.isfinite(s)
@@ -209,32 +218,65 @@ def main():
                 out.append(f"- P7 (exceeds the report-adjective severity ρ = 0.050; fails if ≤ 0.15): "
                            f"{'HOLDS' if rho>0.15 else 'FAILS'}")
 
-    # ---- pre-registered verdicts
+    # ---- pre-registered verdicts (ALL on pre-specified primaries; no test-set selection)
     out.append("\n## Pre-registered predictions\n")
-    gb, ga, _, _ = res["generalized"]; fb, fa, _, _ = res["focal"]
-    out.append(f"- **P1** generalized AUROC 0.85–0.93 (fails <0.80): best routine W/N1 score `{gb}` = "
-               f"**{ga:.3f}** → {'HOLDS' if 0.85<=ga<=0.93 else ('FAILS' if ga<0.80 else 'PARTIAL')}")
-    out.append(f"- **P2** focal AUROC 0.70–0.85 and < generalized: `{fb}` = **{fa:.3f}** → "
+    gb, ga, gy, gidx, gaucs, gbest, gbestauc = res["generalized"]
+    fb, fa, fy, fidx, faucs, fbest, fbestauc = res["focal"]
+    out.append(f"- **P1** generalized AUROC 0.85–0.93 (fails <0.80): `{gb}` = **{ga:.3f}** → "
+               f"{'HOLDS' if 0.85<=ga<=0.93 else ('FAILS' if ga<0.80 else 'PARTIAL (above range)')}")
+    out.append(f"- **P2** focal AUROC 0.70–0.85 and clearly < generalized: `{fb}` = **{fa:.3f}** → "
                f"{'FAILS (focal ≥ generalized)' if fa>=ga else ('HOLDS' if 0.70<=fa<=0.85 else 'PARTIAL')}")
-    out.append(f"- **P4** we should not beat Morgoth's focal AUROC ({morgoth_auc['focal']:.3f}): "
-               f"ours {fa:.3f} → {'HOLDS' if fa<=morgoth_auc['focal'] else 'FAILS'}")
-    for nm, key in [("generalized", "gen_combo_WN1_routine")]:
-        y = tgt[nm].reindex(S.index).dropna(); idx = y.index
-        wn1 = S.loc[idx, key].astype(float)
-        alls = S.loc[idx, "gen_TAR_allstage_routine"].astype(float)
-        a1 = auc_ci(y.values, wn1.values)[0]; a2 = auc_ci(y.values, alls.values)[0]
-        out.append(f"- **P5** W/N1-restricted ({a1:.3f}) should beat all-stage ({a2:.3f}) for generalized → "
-                   f"{'HOLDS' if a1>a2 else 'FAILS'}  *(the experts read the whole study, so a failure here is "
-                   f"an honest reading, not a bug)*")
+
+    # P3: does the mean expert operating point lie below our ROC?
+    for nm in ["generalized", "focal"]:
+        c, a, y, idx = res[nm][0], res[nm][1], res[nm][2], res[nm][3]
+        sv = S.loc[idx, c].values.astype(float); m = np.isfinite(sv)
+        fpr, tpr, _ = roc_curve(y.values[m], sv[m])
+        ese, esp = EXPERT_PT[nm]
+        our_tpr = float(np.interp(1 - esp, fpr, tpr))       # our sensitivity at the expert's specificity
+        out.append(f"- **P3** ({nm}) at the mean expert's specificity ({esp:.3f}) our sensitivity is "
+                   f"**{our_tpr:.3f}** vs the expert's {ese:.3f} → "
+                   f"{'our ROC passes ABOVE the mean expert point' if our_tpr>ese else 'the mean expert point lies ABOVE our ROC'}"
+                   + (" → HOLDS" if (nm=='generalized' and our_tpr>ese) else (" → FAILS" if nm=='generalized' else "")))
+
+    out.append(f"- **P4** we should not beat Morgoth's focal AUROC ({morgoth_auc['focal']:.3f}): ours "
+               f"{fa:.3f} (primary) / {fbestauc:.3f} (best-on-test) → "
+               f"{'HOLDS' if max(fa,fbestauc)<=morgoth_auc['focal'] else 'FAILS'}")
+
+    # P5: like-for-like, per feature — W/N1-restricted vs all-stage (each segment vs its OWN stage norm)
+    out.append("\n**P5 — W/N1 restriction vs all-stage, like-for-like (routine reference):**\n")
+    out.append("| feature | W/N1-restricted | all-stage | winner |"); out.append("|---|---|---|---|")
+    pairs = [("TAR", "gen_TAR_W_routine", "gen_TAR_allstage_routine"),
+             ("log_delta", "gen_logdelta_N1_routine", "gen_log_delta_allstage_routine")]
+    p5_wins = 0
+    for feat, a_, b_ in pairs:
+        va, vb = gaucs.get(a_, np.nan), gaucs.get(b_, np.nan)
+        w = "W/N1" if va > vb else ("all-stage" if vb > va else "tie")
+        p5_wins += int(va > vb)
+        out.append(f"| {feat} | {va:.3f} | {vb:.3f} | {w} |")
+    out.append(f"\n- **P5** predicted W/N1 beats all-stage for generalized slowing → "
+               f"**{'HOLDS' if p5_wins==len(pairs) else 'FAILS'}** "
+               f"({p5_wins}/{len(pairs)} features). The all-stage score already compares every segment to "
+               f"*its own stage's* norm, so discarding sleep buys nothing here — and the experts read the whole "
+               f"study. **What does matter is the REFERENCE POPULATION**, below.")
+
+    # the routine-vs-union contrast: the actual vigilance-matching claim
+    out.append("\n**The vigilance-matched REFERENCE is what carries the effect** (same scores, "
+               "routine-alert vs union normals):\n")
+    out.append("| score | routine (alert) ref | union ref | Δ |"); out.append("|---|---|---|---|")
+    for base in ["gen_TAR_W", "gen_logdelta_N1", "gen_combo_WN1", "gen_TAR_allstage", "gen_log_delta_allstage"]:
+        r_, u_ = gaucs.get(base + "_routine", np.nan), gaucs.get(base + "_union", np.nan)
+        if np.isfinite(r_) and np.isfinite(u_):
+            out.append(f"| `{base}` | {r_:.3f} | {u_:.3f} | **{r_-u_:+.3f}** |")
 
     # ---- figure: ROC with each expert overlaid
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
     for ax_, nm in zip(axes, ["generalized", "focal"]):
         y = tgt[nm].reindex(S.index).dropna(); idx = y.index
-        c = res[nm][0]
+        c = PRIMARY[nm]
         s = S.loc[idx, c].values.astype(float); m = np.isfinite(s)
         fpr, tpr, _ = roc_curve(y.values[m], s[m])
-        ax_.plot(fpr, tpr, lw=2, label=f"ours: {c}\nAUROC {res[nm][1]:.3f}")
+        ax_.plot(fpr, tpr, lw=2, label=f"ours (pre-specified): {c}\nAUROC {res[nm][1]:.3f}")
         E = experts[nm].reindex(idx).values[m]
         for i in range(E.shape[1]):
             oth = np.delete(E, i, axis=1)
