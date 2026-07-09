@@ -1,0 +1,188 @@
+# Methods audit — what is verified, what is assumed, what is broken
+
+Written 2026-07-09 after discovering that the EEG↔report pairing was wrong. Every claim below is tagged:
+
+- **[VERIFIED]** — checked against the data, with the check named.
+- **[ASSUMED]** — relied upon but never checked. These are where the next bug lives.
+- **[BROKEN]** / **[FIXED]** — known defect, and its current status.
+
+---
+
+## 1. Data sources
+
+| # | Source | Grain | Used for |
+|---|---|---|---|
+| 1 | `s3:bdsp-opendata-repository/EEG/bids/.../*.edf` | one file per EEG session | raw signal |
+| 2 | `EEGs_And_Reports.csv` (scratchpad only, never committed) | one row per EEG, **report joined at patient level** | free-text report, severity/frequency adjectives |
+| 3 | `data/findings/S000*_EEG__reports_findings.csv` | one row per EEG (`StartTime(EEG)`) | diagnosis flags: `normal`, `abnormal`, `foc slowing`, `gen slowing` |
+| 4 | `metadata/cohort_metadata.csv` | 12,379 recordings | our recording table |
+| 5 | `data/derived/fractional_age.parquet` | one row per patient | fractional age at EEG (OMOP) |
+
+---
+
+## 2. Recording identity — a real weakness
+
+`bdsp_id = SiteID + BDSPPatientID`. This identifies a **patient at a site, not a recording.**
+
+- **[VERIFIED]** `cohort_metadata.csv`: 12,379 rows, **12,027 unique `bdsp_id`**, 12,024 unique patients.
+  352 patients contributed ≥2 recordings.
+- **[BROKEN]** `channel_stage_features.parquet` and `segment_features.parquet` are keyed on `bdsp_id` **with no
+  date**, so those 352 patients' recordings are collapsed into one row. `scripts/82_build_uniform_v2.py`
+  explicitly strips the date (`bdsp_id.str.split("_").str[0]`) to make the label join succeed.
+- **[BROKEN]** Nearly every analysis calls `labels_unified.drop_duplicates("bdsp_id")`, which silently keeps
+  the *first* recording's labels and discards the second's.
+- **Impact:** ≤ 2.8% of the cohort (352/12,379). Not yet fixed. It must either be fixed (promote the key to
+  `bdsp_id + eeg_datetime` end-to-end) or those patients dropped.
+
+---
+
+## 3. EEG ↔ report matching — this was wrong, and is now only *mostly* right
+
+**What the file actually is.** `EEGs_And_Reports.csv` is an EEG × report cross-join performed **at the patient
+level** upstream, before we ever received it.
+
+- **[VERIFIED]** 217,227 distinct EEGs; each carries **at most one** `OrderID` (max = 1).
+- **[VERIFIED]** Only **65,233 distinct reports**. **35.9% of `OrderID`s are stamped onto more than one EEG**
+  (mean 2.89 EEGs per report, **max 170**).
+- **[VERIFIED]** **53.4%** of `(patient, date)` rows carry report text **byte-identical** (md5) to another row
+  for the same patient. Median report length 2,433 characters — this is not clinical copy-forward.
+
+**How it was caught.** The reader's *own* severity adjective agreed across a patient's consecutive studies
+**97% of the time (ρ = 0.95, n = 5,226 pairs)**. No clinical rating is that reliable. The text was xeroxed.
+
+**What the original bug was, and what the "fix" actually fixed.**
+
+1. *Original:* joined report to EEG on **patient only** → an arbitrary report per patient.
+2. *First fix:* joined on **`(bdsp_id, date)`** → selects the row bearing this recording's own StartTime.
+   This is necessary but **not sufficient**: the row is right, the *text inside it* may describe a different
+   study of that patient.
+3. *Current repair* (`scripts/88_report_pairing_audit.py`): a report belongs to the EEG **nearest it in time**.
+   `clean_pair` = this EEG's `OrderID` is claimed by no other EEG, **or** this EEG is that report's
+   nearest-in-time owner.
+   - **[VERIFIED]** 10,255 / 12,379 recordings (**82.8%**) are cleanly paired.
+   - **[VERIFIED]** 2,124 (**17.2%**) carry a **borrowed** report, or none at all.
+   - Written to `data/derived/report_pairing.parquet` (`clean_pair` column). **Filter on it.**
+
+**[ASSUMED] — the honest caveat.** The nearest-in-time rule is a **heuristic, not a guarantee.** For reports
+owned by exactly one EEG, `|time_diff|` has median **14.2 h** and p90 **203 h** — this is an *order-to-study*
+offset, and it is loose. A definitive mapping requires a true report↔study key from BDSP, which we do not
+have. Until then, `clean_pair` should be read as "probably the right report," not "certainly."
+
+---
+
+## 4. Labels — partially contaminated, but detection survives
+
+- **[VERIFIED]** Diagnosis flags come from source #3, keyed on `StartTime(EEG)`, and are **largely per-EEG**:
+  only **34.5%** of multi-study patients have identical flag-vectors across their studies (a pure broadcast
+  would be ~100%).
+- **[VERIFIED]** But source #3 is *also* an EEG × report join: `DeidentifiedName(Reports)` is reused across up
+  to **17** EEG dates (25.5% of reports). It is contaminated too, just less.
+- **[BROKEN → BOUNDED]** `scripts/60_build_unified_labels.py:123` defines
+  `is_abnormal = (abn_flag | text_abnormal)` and `has_focal_slow = (foc_flag | foc_text)`, so contaminated
+  **text** leaks into the labels through the `text_*` terms.
+- **[VERIFIED] Sensitivity test** (`results/detection_pairing_sensitivity.md`): re-running the primary
+  detection analysis on cleanly-paired recordings only moves every AUROC **inside its bootstrap CI**
+  (W 0.848→0.847; N1 0.875→0.872; N2 0.791→0.787; N3 0.758→0.749; REM 0.825→0.830).
+
+  *Why detection survives but severity does not:* a borrowed report belongs to the **same patient**, and
+  abnormal-vs-normal status is stable across that patient's studies, so the **binary** label usually survives
+  the swap. **Severity varies study to study, so it does not.**
+
+---
+
+## 5. Features — one pipeline, verified
+
+- **[FIXED]** Originally two pipelines (cohort = precomputed MATLAB `.mat`; expansion = `extract.py`). Only
+  `rel_delta` had been calibrated across them; the **alpha band differed**, so `TAR`/`DAR` were never
+  cross-comparable. Both cohorts have since been **recomputed through `extract.py`** (27,022 recordings).
+- **[VERIFIED]** Pipeline control (`scripts/78_pipeline_control.py`) ran `extract.py` on the *same* routine
+  EDFs as their `.mat`: `rel_delta` bias −0.016; `rel_alpha` −0.049; `DAR` +0.29; `TAR` −0.25.
+- **[VERIFIED]** Channels identical across sources (C3/C4 central montage).
+- **[FIXED]** `TAR` was read from `.mat` index 17 (θ/β). It is index **16** (θ/α), confirmed against the
+  file's own `feature_names`.
+- **[VERIFIED]** Band edges (`extract.py`): δ 1–4, θ 4–7, α 8–13, β 13–30, γ 30–45, total 0.5–45 Hz.
+  **Note the 7–8 Hz gap** — deliberate, but it means "θ" excludes 7–8 Hz.
+
+---
+
+## 6. Sleep stages
+
+- **[VERIFIED]** Canonical mapping (`scripts/26:167`): stager emits 5-s windows; feature segment *i* spans
+  samples `[2800i, 2800i+3000)` @200 Hz → centre `14i+7.5` s → window `int((14i+7.5)/5)`.
+  `pred_class` 0–4 → W/N1/N2/N3/REM.
+- **[FIXED]** Stages existed only for the 4,990 **normal** recordings. `scripts/87_build_abnormal_stages.py`
+  now builds them for the abnormals (313,446 segment-stages over 7,408 recordings) so both groups are staged
+  **by the same code**.
+- **[VERIFIED]** Abnormal stage mix: W 44.5%, N1 16.8%, N2 20.6%, N3 11.9%, REM 6.2%. Because abnormals are
+  only ~44% wake, **scoring over all segments confounds slowing with how much the patient slept.** All scoring
+  is now restricted to W/N1.
+
+---
+
+## 7. Normative curves
+
+- **[VERIFIED]** Reference = **union** of both report-normal cohorts (conservative; costs nothing in
+  detection — `results/union_normal_detection.md`).
+- **[VERIFIED]** GAMLSS/LMS, **BCT** with **age-varying skewness** (`nu ~ cs(t, df=3)`); constant skewness was
+  the true cause of the infant-age median bias (df 3→12 changed nothing).
+- **[VERIFIED]** Sex **pooled**: ΔAUROC ≤ 0.002 across 50 settings (`scripts/74_sex_ablation_discrim.py`).
+- Age transform `log10(age + 1/12)`.
+
+---
+
+## 8. Vigilance matching
+
+- **[VERIFIED]** Routine EEGs are recorded under active alerting, so **W/N1 are genuine alert states**;
+  overnight wake is unconstrained and drowsy (`rel_alpha` 0.064 overnight vs 0.238 routine).
+- Primary detection therefore uses **routine W/N1** against a **routine** normal reference. Using the
+  overnight reference degrades N1 from 0.875 → 0.791 — the effect is large and is itself a finding.
+
+---
+
+## 9. Detection design
+
+- Positives = routine abnormals (n = 3,883). Negatives = **held-out 30%** of routine clean-normals (n = 1,451).
+- The reference norm is built from the **other 70%**, split on `bdsp_id` → **[VERIFIED]** no patient leakage
+  between reference and negatives.
+- **[ASSUMED]** Feature/stage selection ("best feature per stage") is reported **without** an outer split.
+  The per-stage winner is chosen on the same data the AUROC is reported on. With 6 features × 5 stages this
+  is a mild optimism; it should be nested-CV'd before publication.
+
+---
+
+## 10. Severity and prevalence — we cannot currently claim this
+
+Four real defects were found and fixed: the max-statistic (`peak_z`, max 19.4 = artifact) → robust p90;
+a negation-blind, table-order adjective extractor → clause-scoped, negation-aware, nearest-to-"slow";
+whole-head scoring of focal cases → max-deviation region; all-segment scoring → W/N1 only. Plus clean-pair
+filtering.
+
+**Result after all fixes: severity ρ = 0.050 (p = 0.17, n = 753). Null.**
+
+- **[VERIFIED]** `scripts/89_severity_axis_sweep.py`: **168 combinations** (7 features × 4 statistics ×
+  {raw, z} × {generalized, focal, all}). **Largest |ρ| anywhere = 0.179**, which fails Bonferroni
+  (0.05/168 = 3.0e-4; best p = 6.8e-4), and the top hit has the **wrong sign**.
+- **[VERIFIED]** Raw ≈ z (0.159 vs 0.179 generalized). So this is **not** an age-normalization artifact.
+- **[VERIFIED]** Prevalence vs reported frequency: ρ = 0.077 (p = 3.3e-6, n = 3,626). Statistically
+  significant, clinically negligible.
+- **[NOT ESTABLISHED]** Hypothesis that the reader grades diffuse slowing by **posterior dominant rhythm
+  frequency** (which we never measure). A regex extraction of PDR Hz from report text produced a
+  **non-monotonic** relation (mild 6.98, moderate 9.09, marked 7.29 Hz) and captured slowing/photic
+  frequencies rather than PDR. **The regex is invalid; the hypothesis is untested.** Testing it properly means
+  measuring PDR from the signal.
+
+**What may be claimed today:** we detect pathological slowing (AUROC 0.85–0.88) and we show a monotone
+dose-response across report strata (z: −0.11 → +0.43 → +1.49). **What may not be claimed:** that we reproduce
+the clinician's *severity grade*. Whether that grade is even reliable is unknown, and unknowable without the
+inter-rater ceiling (MOE study, `docs/validation_plan.md` V2).
+
+---
+
+## 11. Open defects, in priority order
+
+1. **Report↔EEG pairing is heuristic.** Get a true report↔study key from BDSP. Until then filter `clean_pair`.
+2. **`bdsp_id` is not a recording key.** 352 patients have ≥2 recordings that are being collapsed.
+3. **`findings/*.csv` is itself an EEG×report join** and was never audited for broadcast at the flag level.
+4. **Feature/stage selection is not nested.** Report a nested-CV AUROC.
+5. **Severity is null** and the human ceiling is unmeasured (V2/MOE).
+6. **PDR is never measured** from the signal, though it is plausibly the axis the reader actually grades on.
