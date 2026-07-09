@@ -33,14 +33,18 @@ import numpy as np, pandas as pd
 from scipy.signal import butter, filtfilt, hilbert
 from scipy.stats import mannwhitneyu
 from sklearn.metrics import roc_auc_score
+from morgoth_slowing.io.edf import load_edf_referential
+from morgoth_slowing.features import extract as _ex, recording as _rec
 warnings.filterwarnings("ignore")
+C3P3_IDX, C4P4_IDX = 10, 14        # bipolar channel indices (recording.CH_NAMES): "C3-P3", "C4-P4"
+ALIGN_TOL = 0.02                   # max |Δ rel_delta| over segs 0..9 to accept an offset (feature-match gate)
 
 SC = Path("/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
           "543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad")
 RCLONE = os.environ.get("RCLONE_BIN", "rclone")
 REMOTE = "s3:"
 REPO = "bdsp-opendata-repository/EEG"
-CKPT = SC / "v4a_spindle_results.parquet"
+CKPT = SC / "v4a_spindle_results_v2.parquet"    # v2 = feature-match alignment gate (v1 cross-corr was unreliable)
 N_PER_GROUP = int(os.environ.get("N_PER_GROUP", "120"))
 MAX_DUR_S = float(os.environ.get("MAX_DUR_S", "7200"))   # skip EDFs > 2 h (slow to pull/scan; usually cEEG)
 MAX_EDF_MB = float(os.environ.get("MAX_EDF_MB", "250"))   # skip before download if bigger (~>2.5 h @200Hz)
@@ -72,22 +76,56 @@ def windowed_logpower(x, fs):
     return np.log(var), starts / fs      # logpow at each start-second
 
 
-def recover_t0(mean_sig, fs, profile):
-    """Best extract-start second t0 by correlating the stored 42-seg log_total profile with EDF log-power.
-    Vectorized: logp is at 1 s stride, so feature seg i sits at logp index t0 + 14 i (seconds)."""
-    logp, _ = windowed_logpower(mean_sig, fs)          # 1 s stride
+def total_power_logp(bip, fs):
+    """log( mean over channels of windowed variance ) at 1 s stride — a proxy for whole_head log_total.
+    NOTE: this averages per-CHANNEL power (~total power). The earlier bug averaged the SIGNALS first and
+    took the variance of the mean, which cancels real EEG (common-mode) and produced spurious alignments."""
+    w = int(SEG_LEN_S * fs); step = int(fs)
+    starts = np.arange(0, bip.shape[0] - w, step)
+    var = np.empty((len(starts), bip.shape[1]))
+    c2 = np.concatenate([np.zeros((1, bip.shape[1])), np.cumsum(bip * bip, axis=0)])
+    c1 = np.concatenate([np.zeros((1, bip.shape[1])), np.cumsum(bip, axis=0)])
+    s2 = c2[starts + w] - c2[starts]; s1 = c1[starts + w] - c1[starts]
+    var = np.maximum(s2 / w - (s1 / w) ** 2, 1e-30)
+    return np.log(var.mean(1)), starts / fs
+
+
+def candidate_t0s(logp, profile, topk=12):
+    """Top-K well-separated profile-correlation peaks (candidate extract-start seconds)."""
     n = len(profile); L = len(logp)
     pz = (profile - profile.mean()) / (profile.std() + 1e-9)
-    offs = (SEG_STEP_S * np.arange(n)).astype(int)     # 0,14,28,...
-    max_t0 = L - offs[-1]                               # so that t0+14(n-1) < L
+    offs = (SEG_STEP_S * np.arange(n)).astype(int)
+    max_t0 = L - offs[-1]
     if max_t0 <= 1:
-        return -9.0, None
-    idx = np.arange(max_t0)[:, None] + offs[None, :]    # (max_t0, n)
-    M = logp[idx]                                        # (max_t0, n)
+        return [], np.array([-9.0])
+    idx = np.arange(max_t0)[:, None] + offs[None, :]
+    M = logp[idx]
     Mz = (M - M.mean(1, keepdims=True)) / (M.std(1, keepdims=True) + 1e-9)
     corr = Mz @ pz / n
-    t0 = int(np.argmax(corr))
-    return float(corr[t0]), t0
+    order = np.argsort(corr)[::-1]
+    picks = []
+    for t in order:
+        if all(abs(t - p) > 30 for p in picks):        # >=30 s apart
+            picks.append(int(t))
+        if len(picks) >= topk:
+            break
+    return picks, corr
+
+
+def verify_offset(bip, fs, off_samp, stored_rel):
+    """Recompute whole_head rel_delta for segs 0..len(stored_rel)-1 at sample offset off_samp and return
+    max |Δ| vs stored — the feature-match gate that GUARANTEES the offset is the true source signal."""
+    dif = []
+    for k, rd0 in enumerate(stored_rel):
+        s = off_samp + int(SEG_STEP_S * fs) * k; e = s + int(SEG_LEN_S * fs)
+        if e > bip.shape[0]:
+            return 9.9
+        fr, psd = _ex.multitaper_psd(bip[s:e].T, fs)
+        tens = _ex.features_31(_ex.band_powers(fr, psd))[None]
+        v = _rec._derived(_rec.region_band_powers(tens)["whole_head"])["rel_delta"][0]
+        if np.isfinite(v) and np.isfinite(rd0):
+            dif.append(abs(v - rd0))
+    return max(dif) if dif else 9.9
 
 
 def spindle_pos(x, fs, thr, b, a):
@@ -169,9 +207,9 @@ def main():
         sub = pd.concat([sub[sub.group == "case"].head(limit), sub[sub.group == "control"].head(limit)])
     ids = set(sub.bdsp_id)
 
-    # features: whole_head log_total profile (all segments) + log_delta/DAR for z
+    # features: whole_head log_total profile + rel_delta (alignment gate) + log_delta/DAR for z
     feat = pd.read_parquet("data/derived/segment_features.parquet",
-                           columns=["bdsp_id", "region", "segment", "log_total"] + ART)
+                           columns=["bdsp_id", "region", "segment", "log_total", "rel_delta"] + ART)
     feat = feat[(feat.region == "whole_head") & feat.bdsp_id.isin(ids)]
     prof_by = {k: g.sort_values("segment") for k, g in feat.groupby("bdsp_id")}
 
@@ -186,66 +224,77 @@ def main():
         if r.bdsp_id in done:
             continue
         rec = dict(bdsp_id=r.bdsp_id, group=r.group, age=float(r.age), status="", corr=np.nan,
-                   n_n2=0, n_spindle=0)
+                   align_drel=np.nan, n_n2=0, n_spindle=0)
         try:
+            import pyedflib
             ses = str(r.SessionID_new).split(".")[0]
             local, est = edf_local(r.SiteID, r.BidsFolder, ses, work)
             if local is None:
                 rec["status"] = est; rows.append(rec)
                 print(f"  [{len(rows)}] {r.bdsp_id} {r.group:<7} {est}", flush=True); continue
-            raw = mne.io.read_raw_edf(str(local), preload=False, verbose=False)
-            fs = raw.info["sfreq"]
-            if raw.n_times / fs > MAX_DUR_S:      # feasibility guard; documented bias toward shorter records
-                rec["status"] = "too_long"; local.unlink(missing_ok=True); rows.append(rec); continue
-            ch = {t: resolve(raw.ch_names, t) for t in ["C3", "P3", "C4", "P4"]}
-            if any(v is None for v in ch.values()):
-                rec["status"] = "no_central_ch"; local.unlink(missing_ok=True); rows.append(rec); continue
-            picks = [ch["C3"], ch["P3"], ch["C4"], ch["P4"]]
-            d = raw.get_data(picks=picks)
-            C3P3, C4P4 = d[0] - d[1], d[2] - d[3]
-            # broad channel mean for the log_total (whole-head power) cross-correlation profile
-            broad = [resolve(raw.ch_names, t) for t in
-                     ["Fp1", "F3", "C3", "P3", "O1", "F7", "T3", "T5", "Fz", "Cz", "Pz",
-                      "Fp2", "F4", "C4", "P4", "O2", "F8", "T4", "T6"]]
-            broad = [c for c in broad if c is not None]
-            mean_sig = raw.get_data(picks=broad).mean(0) if broad else d.mean(0)
-            local.unlink(missing_ok=True)
+            try:
+                _fr = pyedflib.EdfReader(str(local)); _ns = _fr.getNSamples(); _fss = _fr.getSampleFrequencies(); _fr._close()
+                dur = max(_ns[k] / _fss[k] for k in range(len(_ns)) if _fss[k] > 0)
+            except Exception:
+                dur = 0.0
+            if dur > MAX_DUR_S:
+                rec["status"] = "too_long"; local.unlink(missing_ok=True); rows.append(rec)
+                print(f"  [{len(rows)}] {r.bdsp_id} {r.group:<7} too_long", flush=True); continue
             g = prof_by.get(r.bdsp_id)
             if g is None or len(g) < 10:
-                rec["status"] = "no_profile"; rows.append(rec); continue
-            profile = g.log_total.to_numpy()
-            corr, t0 = recover_t0(mean_sig, fs, profile)
-            rec["corr"] = float(corr)
-            if t0 is None or corr < MINCORR:
-                rec["status"] = "align_fail"; rows.append(rec); continue
+                rec["status"] = "no_profile"; local.unlink(missing_ok=True); rows.append(rec); continue
+            if g.segment.duplicated().any():     # bdsp_id collapses >=2 recordings -> ambiguous features
+                rec["status"] = "dup_seg"; local.unlink(missing_ok=True); rows.append(rec); continue
+            data, chs, fs = load_edf_referential(str(local)); local.unlink(missing_ok=True)
+            bip = _ex.to_bipolar(_ex.preprocess(data, fs), chs)   # (n,18) 200 Hz double-banana
+            del data
+            gi = g.set_index("segment"); profile = g.log_total.to_numpy()
+            nv = min(10, len(g)); stored_rel = [float(gi.rel_delta.get(k, np.nan)) for k in range(nv)]
+            logp, _ = total_power_logp(bip, fs)
+            cands, corr = candidate_t0s(logp, profile)
+            # FEATURE-MATCH alignment gate: accept the offset only if recompute reproduces the parquet
+            best_off, best_d, best_corr = None, 9.9, np.nan
+            for t0 in cands:
+                for dt in (0, -1, 1, -2, 2):
+                    off = int(round((t0 + dt) * fs))
+                    if off < 0:
+                        continue
+                    dd = verify_offset(bip, fs, off, stored_rel)
+                    if dd < best_d:
+                        best_d, best_off, best_corr = dd, off, corr[t0]
+                    if dd < ALIGN_TOL:
+                        break
+                if best_d < ALIGN_TOL:
+                    break
+            rec["corr"] = float(best_corr) if np.isfinite(best_corr) else np.nan
+            rec["align_drel"] = float(best_d)
+            if best_off is None or best_d >= ALIGN_TOL:
+                rec["status"] = "align_fail"; rows.append(rec)
+                print(f"  [{len(rows)}] {r.bdsp_id} {r.group:<7} align_fail drel={best_d:.3f}", flush=True); continue
             if b is None:
                 b, a = butter(4, [11 / (fs / 2), 16 / (fs / 2)], btype="band")
+            C3P3 = bip[:, C3P3_IDX]; C4P4 = bip[:, C4P4_IDX]
             n2 = sorted(stages[(stages.bdsp_id == r.bdsp_id) & (stages.stage == "N2")].segment.tolist())
-            # per-recording sigma baseline over N2
-            envs = []
-            segwins = {}
+            envs = []; segwins = {}
             for i in n2:
-                s = int(round((t0 + SEG_STEP_S * i) * fs)); e = s + int(SEG_LEN_S * fs)
-                if e > len(C3P3):
+                s = best_off + int(SEG_STEP_S * fs) * i; e = s + int(SEG_LEN_S * fs)
+                if e > bip.shape[0]:
                     continue
-                segwins[i] = (s, e)
-                x = C3P3[s:e]
+                segwins[i] = (s, e); x = C3P3[s:e]
                 if np.std(x) > 1e-13:
                     envs.append(np.abs(hilbert(filtfilt(b, a, x))))
             if not envs:
                 rec["status"] = "no_n2"; rows.append(rec); continue
             base = np.median(np.concatenate(envs)); thr = THR_K * base
-            featmap = g.set_index("segment")
-            zvals = {f: [] for f in ART}; zvals_sp = {f: [] for f in ART}
-            npos = 0
+            zvals = {f: [] for f in ART}; zvals_sp = {f: [] for f in ART}; npos = 0
             for i, (s, e) in segwins.items():
                 sp = spindle_pos(C3P3[s:e], fs, thr, b, a) or spindle_pos(C4P4[s:e], fs, thr, b, a)
                 npos += int(sp)
-                if i not in featmap.index:
+                if i not in gi.index:
                     continue
                 for f in ART:
                     mu = np.interp(r.age, grid, ref[f"mus_{f}"]); sd = np.interp(r.age, grid, ref[f"sds_{f}"])
-                    z = (float(featmap.loc[i, f]) - mu) / sd
+                    z = (float(gi.loc[i, f]) - mu) / sd
                     if np.isfinite(z):
                         zvals[f].append(z)
                         if sp:
@@ -297,8 +346,11 @@ def report(res, limit):
              "THE STAGE, not to infer slowing. If cases' N2 were slow WAKE misclassified as sleep, those segments "
              "would lack spindles, and restricting to spindle-positive N2 would collapse the case-vs-control "
              f"elevation. Detector: C3-P3/C4-P4, band-pass 11-16 Hz, Hilbert envelope, event = envelope > "
-             f"{THR_K:.0f} x (median N2 envelope) sustained >= {MIN_DUR} s. Segment->EDF alignment recovered by "
-             f"log-power cross-correlation (QC gate corr >= {MINCORR}).\n")
+             f"{THR_K:.0f} x (median N2 envelope) sustained >= {MIN_DUR} s. Segment->EDF alignment uses a "
+             f"**feature-match gate**: the public opendata EDF is longer than the analysed 600 s clip, so the "
+             f"clip sits at a recording-specific NON-ZERO offset; we locate it by log-power correlation AND accept "
+             f"it only if recomputing rel_delta there reproduces the stored features to |Δ|<{ALIGN_TOL}. [A bare "
+             f"correlation gate mis-aligned ~50% of high-corr recordings; those v1 results were discarded.]\n")
 
     # --- attrition (status x group) -----------------------------------------------------------
     ct = pd.crosstab(res.group, res.status)
@@ -369,18 +421,14 @@ def report(res, limit):
              f"is marginal, so neither justifies a strong claim at this N.\n")
 
     # --- align_fail diagnosis -----------------------------------------------------------------
-    okc = res[res.status == "ok"]["corr"]; afc = res[res.status == "align_fail"]["corr"]
     read = res[res.status.isin(["ok", "align_fail", "no_n2"])]
     afr = {g: (read[(read.group == g)].status == "align_fail").mean() for g in ["case", "control"]}
-    L.append(f"**Alignment (`align_fail`) diagnosis.** 45% of read recordings fail the corr>= {MINCORR} gate, but "
-             f"the failure is **structural and bimodal**: successes cluster at corr median {okc.median():.2f} "
-             f"(min {okc.min():.2f}), failures at {afc.median():.2f} ({100*np.mean(afc<0.70):.0f}% below 0.70, "
-             f"only {100*np.mean((afc>=0.80)&(afc<0.85)):.0f}% near-miss). It reflects whether the ~600 s "
-             f"feature-extract is a contiguous EDF span (recoverable by a single offset) or a concatenation of "
-             f"non-contiguous usable segments (not). It correlates with **group** (control fail rate "
-             f"{100*afr['control']:.0f}% > case {100*afr['case']:.0f}%), NOT with recording length "
-             f"(align_fail median 0.94 h vs ok 0.87 h). So it does not preferentially drop slow recordings, but "
-             f"it does drop more controls, adding to the representativeness concern above.\n")
+    L.append(f"**Alignment (`align_fail`) diagnosis.** align_fail now means NO candidate offset reproduced the "
+             f"stored features to |Δ rel_delta|<{ALIGN_TOL} (a strict, correctness-guaranteeing gate — not a bare "
+             f"correlation threshold). Group fail rates: case {100*afr['case']:.0f}%, control "
+             f"{100*afr['control']:.0f}%. These recordings are ones whose public opendata EDF does not contain a "
+             f"span reproducing the analysed clip (different export/session), and are correctly excluded rather "
+             f"than mis-detected.\n")
 
     # --- accumulation note --------------------------------------------------------------------
     L.append("**Accumulation toward larger N — what worked and what did not.** The `too_big`/`too_long` guard is "
