@@ -47,6 +47,14 @@ def nearest_modifier(text, table):
 
 
 def report_ordinals():
+    """Cached (scripts/100) if available: derived ordinals only, no raw text, no scratchpad needed."""
+    _c = Path("data/derived/report_ordinals.parquet")
+    if _c.exists():
+        return pd.read_parquet(_c)
+    return _report_ordinals_from_text()
+
+
+def _report_ordinals_from_text():
     """One row per (bdsp_id, recording DATE). 43% of patients have >1 report, so joining on patient alone
     matches an arbitrary report to a recording and destroys the correlation."""
     rows = []

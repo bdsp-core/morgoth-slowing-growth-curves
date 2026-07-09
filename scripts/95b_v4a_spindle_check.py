@@ -458,7 +458,10 @@ def report(res, limit):
     # --- verdict: by evidence at final N, for the routine-length population -------------------
     POP = "routine-length recordings (EDF <= 250 MB)"
     excludes_chance = np.isfinite(dr["lo"]) and dr["lo"] > 0.5
-    hit_target = (nC >= 60 and nK >= 60)          # recruitment target = USABLE, alignment-verified recordings
+    # Target must be met by the ANALYSED sample (rows that contribute a spindle-verified z), not merely by
+    # the alignment-verified 'usable' count: cases with zero spindle-positive N2 segments yield no z, so
+    # counting them inflates N. scripts/95 derives the same verdict from the same rule.
+    hit_target = (dr["n_case"] >= 60 and dr["n_ctrl"] >= 60)
     if excludes_chance and hit_target:
         tag = f"ESTABLISHED for {POP}"
     elif excludes_chance:

@@ -83,7 +83,7 @@ SECTIONS = [
        "deviation analysis). Solid = LMS median, dashed = model-free rolling median (they track closely), "
        "shaded = p3–p97 / p10–p90 / p25–p75. Delta-based features peak in infancy (~6mo) and decline; the "
        "ratio features (TAR/DAR) show sharper peaks and deeper mid-adult troughs — why they discriminate best.")]),
-    ("Figure 2 — Vigilance-matched detection (recomputed union data)",
+    ("Figure 2 — Detection depends on the REFERENCE, not on discarding sleep",
      "Detection of pathological slowing is vigilance-dependent, so the normative reference must be vigilance-"
      "matched. A routine EEG is recorded under active alerting (genuine W/N1); overnight 'wake' is "
      "unconstrained and often drowsy (physiologically high delta), which inflates the normal band and masks "
@@ -95,7 +95,7 @@ SECTIONS = [
        "reference degrades detection in every stage (N1 0.88→0.79). Confirms that vigilance-matched norms — "
        "not just age/sex-matched — are needed for detection; recovers the routine-cohort 0.81 and explains "
        "why a naive union-norm score is weak.")]),
-    ("Figure 3 — Dose-response: the deviation score tracks clinical severity",
+    ("Figure 3 — Dose-response across report strata (NOT a severity scale — see Figure S1)",
      "The central validity claim: our age-adjusted deviation is not merely correlated with the expert call, "
      "it is a CALIBRATED severity measure. Scored in N1 against the routine (alert) norm.",
      [(GROWTH_V2 / "dose_response.png",
@@ -161,6 +161,48 @@ SECTIONS = [
     ("Comparison with prior methods (van Putten lineage)",
      "Head-to-head vs the standard published quantitative-slowing metrics, scored against the same report labels.",
      [(FIGD / "vanputten_comparison.png", "DAR, DTABR (Finnigan & van Putten 2013) and BSI (van Putten 2004/2007) vs our age/sex-normed deviations vs Morgoth. Raw metrics ~0.65–0.80; BSI is the best asymmetry baseline (focal 0.80). Our FULL deviation-LR (0.962 abnormal, see table) and Morgoth (0.92–0.99) dominate the single hand-crafted metrics — the value of age/sex/stage normalization + learning.")]),
+    ("Figure 4 — Our score vs 18 electroencephalographers (external test set, 100 unseen EEGs)",
+     "The pipeline was applied UNCHANGED to 100 EEGs read by 18 experts: same montage, artifact rejection, "
+     "multitaper features, the same sleep stager, the same age- and stage-matched normal reference from our "
+     "cohort. No refitting, no threshold tuning. Predictions were fixed in docs/phaseA_preregistration.md "
+     "before the labels were touched. Generalized AUROC 0.903 [0.832,0.958]; focal 0.738.",
+     [(GROWTH_V2 / "occasion_roc_experts.png",
+       "Each red circle is ONE expert, plotted at their (1-specificity, sensitivity) against the majority of "
+       "the other 17. Our ROC is the blue curve. Read it two ways: after leave-one-out recalibration our "
+       "balanced accuracy (0.835) exceeds the average expert's (0.809) -- but at the expert's OWN specificity "
+       "(0.884) our sensitivity is 0.684 vs their 0.735, so the mean expert point sits just above our curve. "
+       "Ranking quality and operating-point calibration are different claims. This is pre-registered "
+       "prediction P3, and it FAILED.")]),
+
+    ("Figure 5 — Pipeline schematic (to be drawn)",
+     "Detection (the Morgoth gate: whether/what) and description (normative growth curves: how to describe it) "
+     "as two tracks that re-merge. The growth chart is the intellectual centrepiece. Artist brief written; "
+     "artwork not yet produced.",
+     []),
+
+    ("Figure 6 — Readers under-report slowing in SLEEP (the paper's claim of added value)",
+     "Recordings whose report NAMES slowing but never mentions sleep still deviate above age/stage-matched "
+     "normals in N2/N3. The threat: our stager reads the same EEG we score, and pathologically slow WAKE looks "
+     "like N2 -- misstaging would reproduce both the group difference AND the within-subject contrast. "
+     "Adjudicated with sleep spindles (11-16 Hz sigma), a delta-free marker of true N2, used to validate the "
+     "STAGE and not to infer slowing.",
+     [(GROWTH_V2 / "v4a_wake_sleep.png",
+       "Cases (report names slowing, silent on sleep) vs held-out clean-normal controls. Paired wake->sleep "
+       "deviation per recording, plus the misclassification-robustness panels. On spindle-verified N2 the "
+       "elevation is UNDIMINISHED: DAR AUROC 0.856 [0.782,0.919], log_delta 0.832 [0.751,0.904] -- "
+       "statistically identical to all-N2 on the same recordings. low_freq_rel is fully null (0.510).")]),
+
+    ("Figure S1 — Severity is a null result",
+     "Our score does not recover the reader's mild/moderate/marked adjective under any of 168 feature x "
+     "statistic x normalization x stratum combinations (best |rho| = 0.179, fails Bonferroni, wrong sign). "
+     "The expert panel explains why: a reader re-reading the same EEG reproduces their own slowing call at "
+     "kappa 0.56-0.64. The measurement is not the problem; the adjective is. Contrast Figure 4's Phase B, "
+     "where the same score tracks the CONSENSUS PROPORTION (how many of 18 experts saw it) at rho = 0.652.",
+     [(GROWTH_V2 / "severity_recalibrated.png",
+       "Left: the old peak_z (a MAX over hundreds of segments, artifact-dominated, max 19.4 SD). "
+       "Middle: the robust p90 with focal cases scored in their max-deviation region. Right: prevalence vs "
+       "the reader's frequency word. All three are null or negligible.")]),
+
 ]
 
 CAP_MD = [("results/v4a_wake_sleep.md",

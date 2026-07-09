@@ -133,8 +133,12 @@ def build_scores():
 
 def main():
     S = build_scores()
-    xl = pd.ExcelFile(f"{SC}/Occasion.xlsx")
-    db = xl.parse("DB")
+    # Prefer the PHI-free cache (scripts/100) so this figure regenerates without the scratchpad.
+    cache = Path("data/derived/occasion_expert_votes.parquet")
+    if cache.exists():
+        db = pd.read_parquet(cache).rename(columns={"rater": "uid"})
+    else:
+        db = pd.ExcelFile(f"{SC}/Occasion.xlsx").parse("DB")
     tgt, prop, experts = {}, {}, {}
     for ax, nm in [("FN", "focal"), ("GN", "generalized")]:
         c = db.pivot_table(index="fid", columns="uid", values=f"r1.{ax}")
