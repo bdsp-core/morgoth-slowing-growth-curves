@@ -31,8 +31,10 @@ Written 2026-07-09 after discovering that the EEG↔report pairing was wrong. Ev
   explicitly strips the date (`bdsp_id.str.split("_").str[0]`) to make the label join succeed.
 - **[BROKEN]** Nearly every analysis calls `labels_unified.drop_duplicates("bdsp_id")`, which silently keeps
   the *first* recording's labels and discards the second's.
-- **Impact:** ≤ 2.8% of the cohort (352/12,379). Not yet fixed. It must either be fixed (promote the key to
-  `bdsp_id + eeg_datetime` end-to-end) or those patients dropped.
+- **[FIXED 2026-07-09, MBW decision]** Those patients are **dropped**. `scripts/99_exclude_multirecording_patients.py`
+  writes `data/derived/excluded_bdsp_ids.parquet`: **350 patients, 702 recordings (5.67%)**. Downstream
+  analyses filter it out. The excluded patients skew *less* abnormal than those retained (33.1% vs 48.8%),
+  so the exclusion does not enrich for pathology. Stated in Methods §2.1.
 
 ---
 
@@ -76,7 +78,15 @@ have. Until then, `clean_pair` should be read as "probably the right report," no
   only **34.5%** of multi-study patients have identical flag-vectors across their studies (a pure broadcast
   would be ~100%).
 - **[VERIFIED]** But source #3 is *also* an EEG × report join: `DeidentifiedName(Reports)` is reused across up
-  to **17** EEG dates (25.5% of reports). It is contaminated too, just less.
+  to **17** EEG dates (25.5% of reports).
+- **[VERIFIED — flag-level test, 2026-07-09]** The flags **do ride the shared report**. EEG pairs that share a
+  report identifier carry an **identical flag vector 95.2%** of the time (n = 66,817 pairs); same-patient pairs
+  carrying *different* reports agree only **48.1%** (n = 196,710). If the flags had been derived per-EEG, the
+  two rates would match. They do not. So where a report is shared, the flags on the non-owner EEG are the
+  **owner's** flags. Contamination is therefore present in the labels, not only in the free text.
+  *(Note: dropping the 350 multi-recording patients does NOT fix this. Our cohort now holds ≤1 recording per
+  patient, but the report attached to that recording may still have been written about a different study of
+  the same patient — a study that is not in our cohort at all.)*
 - **[BROKEN → BOUNDED]** `scripts/60_build_unified_labels.py:123` defines
   `is_abnormal = (abn_flag | text_abnormal)` and `has_focal_slow = (foc_flag | foc_text)`, so contaminated
   **text** leaks into the labels through the `text_*` terms.
@@ -165,11 +175,14 @@ filtering.
 - **[VERIFIED]** Raw ≈ z (0.159 vs 0.179 generalized). So this is **not** an age-normalization artifact.
 - **[VERIFIED]** Prevalence vs reported frequency: ρ = 0.077 (p = 3.3e-6, n = 3,626). Statistically
   significant, clinically negligible.
-- **[NOT ESTABLISHED]** Hypothesis that the reader grades diffuse slowing by **posterior dominant rhythm
-  frequency** (which we never measure). A regex extraction of PDR Hz from report text produced a
-  **non-monotonic** relation (mild 6.98, moderate 9.09, marked 7.29 Hz) and captured slowing/photic
-  frequencies rather than PDR. **The regex is invalid; the hypothesis is untested.** Testing it properly means
-  measuring PDR from the signal.
+- **[RETRACTED]** I hypothesised that the reader grades diffuse slowing by **posterior dominant rhythm
+  frequency**, which we never measure. **MBW: this is wrong.** Grading the PDR (present/absent, and if present
+  at what frequency) and grading slowing (present/absent, focal/generalized, which frequencies) are **separate
+  tasks, reported separately** in a clinical EEG report. PDR is out of scope for this paper. A regex extraction
+  of PDR Hz from report text was in any case invalid (non-monotonic; it captured slowing and photic-driving
+  frequencies). The remaining explanation for the null is the one now measured: **the adjective is attached to a
+  judgement of low reliability** (expert Fleiss κ 0.373/0.450; within-rater κ 0.563/0.642 — see
+  `results/occasion_human_ceiling.md`).
 
 **What may be claimed today:** we detect pathological slowing (AUROC 0.85–0.88) and we show a monotone
 dose-response across report strata (z: −0.11 → +0.43 → +1.49). **What may not be claimed:** that we reproduce
@@ -180,12 +193,14 @@ inter-rater ceiling (MOE study, `docs/validation_plan.md` V2).
 
 ## 11. Open defects, in priority order
 
-1. **Report↔EEG pairing is heuristic.** Get a true report↔study key from BDSP. Until then filter `clean_pair`.
-2. **`bdsp_id` is not a recording key.** 352 patients have ≥2 recordings that are being collapsed.
+1. **Report↔EEG pairing is heuristic — and nearest-in-time is the best available.** (MBW: no true report↔study
+   key exists to be had.) Filter `clean_pair`; state the heuristic and its median |Δt| in Methods.
+2. ~~`bdsp_id` is not a recording key.~~ **Resolved** by dropping the 350 affected patients (scripts/99).
 3. **`findings/*.csv` is itself an EEG×report join** and was never audited for broadcast at the flag level.
 4. **Feature/stage selection is not nested.** Report a nested-CV AUROC.
 5. **Severity is null** and the human ceiling is unmeasured (V2/MOE).
-6. **PDR is never measured** from the signal, though it is plausibly the axis the reader actually grades on.
+6. ~~PDR is never measured from the signal.~~ **Withdrawn** — PDR grading and slowing grading are separate,
+   separately-reported clinical tasks. PDR is out of scope, and must not be used to infer slowing.
 
 ---
 

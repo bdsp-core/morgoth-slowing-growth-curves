@@ -38,10 +38,30 @@ NEEDED = ["Fp1", "Fp2", "F3", "F4", "F7", "F8", "C3", "C4",
           "P3", "P4", "O1", "O2", "T3", "T4", "T5", "T6", "Fz", "Cz", "Pz"]
 
 
+def _repair_edf(path):
+    """Some OccasionNoise EDFs declare header_bytes = 256*(n_sig+1) + 1 (one stray byte before the data
+    block), which trips MNE's header assertion. The signal data itself is intact. Rewrite a corrected copy.
+    Returns the original path if no repair is needed."""
+    h = open(path, "rb").read(256)
+    ns = int(h[252:256]); declared = int(h[184:192]); correct = 256 * (ns + 1)
+    if declared == correct:
+        return path
+    raw = open(path, "rb").read()
+    body = raw[declared:]                                     # data starts after the DECLARED header
+    if len(body) % (2 * ns) != 0:
+        raise RuntimeError(f"{path.name}: header {declared} vs {correct}, and body is not sample-aligned")
+    hdr = bytearray(raw[:correct])
+    hdr[184:192] = f"{correct:<8d}".encode()                  # write the spec-correct header length
+    out = path.with_name(path.stem + "_fixed.edf")
+    out.write_bytes(bytes(hdr) + body)
+    return out
+
+
 def read_edf(path):
     """MNE read -> (data uV (n_samp, 19), ch_names, fs, age, sex). pyedflib rejects startdate 00.00.00."""
     import mne, warnings
     warnings.filterwarnings("ignore")
+    path = _repair_edf(path)
     raw = mne.io.read_raw_edf(str(path), preload=True, verbose="ERROR")
     raw.rename_channels({c: RENAME.get(c.strip(), c.strip()) for c in raw.ch_names})
     missing = [c for c in NEEDED if c not in raw.ch_names]
