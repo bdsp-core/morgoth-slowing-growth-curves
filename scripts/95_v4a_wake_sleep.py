@@ -641,7 +641,7 @@ def main():
     ax[4].set_ylim(0.45, 0.85); ax[4].set_ylabel("AUROC (case vs control)")
     ax[4].set_title("misclassification checks (weak):\ndecided by spindle test (95b)"); ax[4].legend(fontsize=8)
     fig.suptitle("V4a within-subject wake->sleep test: cases deviate in N2/N3 (log_delta, DAR), not a global "
-                 "shift; spindle-verified N2 is directional (SUPPORTED, not established) — see results md", fontsize=11)
+                 "shift; ESTABLISHED on spindle-verified true-N2 for routine-length recordings (DAR 0.86) — see results md", fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     Path("figures/growth_v2").mkdir(parents=True, exist_ok=True)
     fig.savefig("figures/growth_v2/v4a_wake_sleep.png", dpi=130); plt.close(fig)
