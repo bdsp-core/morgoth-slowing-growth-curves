@@ -141,7 +141,7 @@ say exactly that.
 
 ---
 
-**V4a — the within-subject wake→sleep test.** *(now runnable for the first time)*
+**V4a — the within-subject wake→sleep test.** ✅ **DONE — ESTABLISHED for routine-length recordings.** Spindle-verified N2: log_delta AUROC 0.832 [0.751,0.904], DAR 0.856 [0.782,0.919], undiminished from all-N2 on the same 61 cases / 66 controls. The stager-misclassification confound was the real threat and was adjudicated with a delta-free marker (sleep spindles, used to validate the STAGE, not to infer slowing). Duration-stratum test shows it generalizes to the cEEG cases. `results/v4a_wake_sleep.md`.
 
 *The clinical premise.* Deciding "is there too much delta in N2?" by eye is genuinely hard, because N2 and N3
 are **supposed** to be full of delta. There is no memorized normal value for it. Readers therefore comment on

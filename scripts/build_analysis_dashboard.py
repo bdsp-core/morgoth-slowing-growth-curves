@@ -163,7 +163,10 @@ SECTIONS = [
      [(FIGD / "vanputten_comparison.png", "DAR, DTABR (Finnigan & van Putten 2013) and BSI (van Putten 2004/2007) vs our age/sex-normed deviations vs Morgoth. Raw metrics ~0.65–0.80; BSI is the best asymmetry baseline (focal 0.80). Our FULL deviation-LR (0.962 abnormal, see table) and Morgoth (0.92–0.99) dominate the single hand-crafted metrics — the value of age/sex/stage normalization + learning.")]),
 ]
 
-CAP_MD = [("results/occasion_model_vs_experts.md",
+CAP_MD = [("results/v4a_wake_sleep.md",
+           "★★ V4a — readers under-report slowing in SLEEP. Established on spindle-verified N2 "
+           "(AUROC 0.83–0.86), the one claim of added value over the clinical report."),
+          ("results/occasion_model_vs_experts.md",
            "★★ PHASE A/B — our score vs 18 experts on 100 unseen EEGs (external test set). "
            "Generalized AUROC 0.903; two pre-registered predictions FAILED (see P3, P5)."),
           ("results/nested_cv_detection.md",
