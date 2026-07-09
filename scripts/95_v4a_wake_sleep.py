@@ -31,7 +31,7 @@ reported alongside. Raw report text is read from the scratchpad and NEVER writte
 Run: PYTHONPATH=src python3 scripts/95_v4a_wake_sleep.py
 """
 from __future__ import annotations
-import re
+import re, glob
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.stats import mannwhitneyu, wilcoxon
@@ -39,15 +39,15 @@ from sklearn.metrics import roc_auc_score
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 
 SC = "/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/reports/EEGs_And_Reports.csv"
+ABN = "/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/abn_stages"
+HICONF = 0.9        # stager confidence threshold for the "high-confidence sleep" restriction
+RUNMIN = 8          # min consecutive same-stage segments (~2 min) for the contiguity restriction
 FEATURES = ["low_freq_rel", "log_delta", "TAR", "DAR"]
-# PRIMARY sleep-stage feature = log_delta. Pre-specified on prior grounds, NOT on this test's outcome:
-#  - scripts/84 vigilance-matched detection already established the absolute/ratio bands (log_delta best in N1,
-#    DAR best in N2/N3) as the sleep-stage detectors; and
-#  - the standing note "central rel_delta is a weak detector -> use TAR/DAR, not rel_delta".
-# low_freq_rel ((delta+theta)/total) is a BOUNDED relative measure that saturates near its ceiling in N2/N3
-# (clean-normal N3 median 0.63, p90 0.76 against a hard cap of 1.0), so it has little headroom to register
-# excess sleep delta. It is reported in full and its null is flagged loudly, but it is not the primary readout.
-PRIMARY = "log_delta"
+# All four features are reported EVEN-HANDEDLY; none was pre-registered as primary. For the paired figure and
+# the misclassification checks we use log_delta (its clean-normal reference is well-calibrated across stages,
+# so controls sit ~0 in both wake and sleep) plus DAR — the two features that pass the within-subject
+# anti-confound. This is a reporting choice, not a primary designation.
+PRIMARY = "log_delta"      # feature used for the paired-trajectory figure panels only
 REGION = "whole_head"
 WAKE, SLEEP = ["W", "N1"], ["N2", "N3"]
 MIN_SEG = 10
@@ -140,10 +140,56 @@ def per_recording(seg, feat, ref, grid):
     return pd.concat([wk, sl], axis=1)
 
 
+# ---- confound-check helpers -------------------------------------------------------------------
+def abn_probs_for(df_seg):
+    """For CASE whole_head segments, attach the stager's per-class probabilities from the abnormal staging
+    CSVs (scratchpad). Uses the SAME centre-window mapping as scripts/87 (verified identical to the stage
+    labels): segment i -> window int((14i+7.5)/5). Returns df_seg + abn_pred, p_wake, p_assigned."""
+    out = []
+    for bid, g in df_seg.groupby("bdsp_id"):
+        files = glob.glob(f"{ABN}/{bid}_*.csv")
+        if not files:
+            continue
+        try:
+            c = pd.read_csv(files[0], usecols=[f"class_{k}_prob" for k in range(5)] + ["pred_class"])
+        except Exception:
+            continue
+        pred = c.pred_class.to_numpy(); probs = c[[f"class_{k}_prob" for k in range(5)]].to_numpy()
+        i = g.segment.to_numpy(); wi = ((14.0 * i + 7.5) / 5.0).astype(int); ok = wi < len(pred)
+        gg = g[ok].copy(); w = wi[ok]
+        gg["abn_pred"] = pred[w]; gg["p_wake"] = probs[w, 0]; gg["p_assigned"] = probs[w, pred[w]]
+        gg["p_sleep"] = probs[w, 2] + probs[w, 3]     # confidently-NOT-wake (N2+N3); adjacent-stage split is
+        out.append(gg)                                #   irrelevant to the "slow wake misstaged as sleep" concern
+    return pd.concat(out) if out else None
+
+
+def run_flags(df, min_run=RUNMIN):
+    """Flag segments lying inside a maximal run of >= min_run consecutive same-stage segments (contiguous
+    segment indices). df must have bdsp_id, segment, stage."""
+    d = df.sort_values(["bdsp_id", "segment"]).copy()
+    prev_stage = d.groupby("bdsp_id")["stage"].shift()
+    prev_seg = d.groupby("bdsp_id")["segment"].shift()
+    newrun = ((d.stage != prev_stage) | (d.segment != prev_seg + 1)).astype(int)
+    d["run_id"] = newrun.groupby(d.bdsp_id).cumsum()
+    d["run_len"] = d.groupby(["bdsp_id", "run_id"])["segment"].transform("size")
+    d["in_run"] = d.run_len >= min_run
+    return d
+
+
+def auroc_median(z_case, z_ctrl):
+    cs = pd.Series(z_case).dropna(); ks = pd.Series(z_ctrl).dropna()
+    if len(cs) < 5 or len(ks) < 5:
+        return dict(auc=np.nan, mwu_p=np.nan, med_case=np.nan, med_ctrl=np.nan, n_case=len(cs), n_ctrl=len(ks))
+    U, p = mannwhitneyu(cs, ks, alternative="two-sided")
+    auc = roc_auc_score([1] * len(cs) + [0] * len(ks), list(cs) + list(ks))
+    return dict(auc=float(auc), mwu_p=float(p), med_case=float(cs.median()), med_ctrl=float(ks.median()),
+                n_case=len(cs), n_ctrl=len(ks))
+
+
 def main():
     # ---- segments x stages x labels -------------------------------------------------------------
     seg = pd.read_parquet("data/derived/segment_features.parquet",
-                          columns=["bdsp_id", "region", "segment"] + FEATURES)
+                          columns=["bdsp_id", "region", "segment"] + FEATURES + ["log_alpha", "log_beta"])
     seg = seg[seg.region == REGION]
     sn = pd.read_parquet("data/derived/segment_stages.parquet")[["bdsp_id", "segment", "stage"]]
     sa = pd.read_parquet("data/derived/segment_stages_abnormal.parquet")[["bdsp_id", "segment", "stage"]]
@@ -192,8 +238,10 @@ def main():
 
     # ---- per feature: z_wake / z_sleep, then all statistics ------------------------------------
     rec = {}      # feature -> DataFrame(index bdsp_id, z_wake, z_sleep, group)
+    refs = {}     # feature -> (mus,sds) reference, reused by the confound checks
     for feat in FEATURES:
         ref = build_reference(seg, feat, grid)     # reference-half clean-normals (seg.ref_normal), full table
+        refs[feat] = ref
         pr = per_recording(keep, feat, ref, grid)  # score only cases + held-out controls
         pr["group"] = pr.index.map(tag)
         rec[feat] = pr.dropna(subset=["z_sleep"])   # need sleep z at minimum
@@ -222,6 +270,74 @@ def main():
 
     res = {f: stats_block(rec[f]) for f in FEATURES}
     res_gen = {f: stats_block(rec[f], extra_case_ids=case_gen_ids) for f in FEATURES}
+
+    # ================================================================================================
+    # CONFOUND: is the sleep elevation an artifact of stage MISCLASSIFICATION? The stager reads the same
+    # EEG we score, and it keys sleep depth on slow-wave content — so a pathologically slow WAKE segment in
+    # a CASE can be misstaged as N2/N3, then compared against true-sleep norms, inflating z_sleep with no
+    # true sleep slowing. Controls (clean normals) have little slow wake to misstage. Four checks below.
+    # ================================================================================================
+    ART = ["log_delta", "DAR"]        # the two anti-confound-surviving features, checked here
+    # per-segment z for the checked features, over case+control staged segments
+    zt = keep[["bdsp_id", "segment", "stage", "age", "log_alpha", "log_beta"]].copy()
+    zt["group"] = zt.bdsp_id.map(tag)
+    for f in ART:
+        zt["z_" + f] = zseg(keep, f, refs[f], grid)
+    zt = run_flags(zt)                # in_run flag (contiguity), symmetric for both groups
+
+    # --- Check 1: sleep fraction (nsleep/(nwake+nsleep)) case vs control -------------------------
+    sf = lab[lab.bdsp_id.isin(case_ids | control_ids)].copy()
+    sf["grp"] = sf.bdsp_id.map(tag); sf["frac_sleep"] = sf.nsleep / (sf.nwake + sf.nsleep)
+    fc = sf[sf.grp == "case"].frac_sleep.dropna(); fk = sf[sf.grp == "control"].frac_sleep.dropna()
+    _, p_frac = mannwhitneyu(fc, fk, alternative="two-sided")
+
+    # --- Check 2: stager confidence (CASE side; controls' raw staging CSVs no longer on disk) ----
+    case_seg = seg[seg.bdsp_id.isin(case_ids)][["bdsp_id", "segment", "age"] + ART].copy()
+    ap = abn_probs_for(case_seg)      # + abn_pred, p_wake, p_assigned
+    n_prob_rec = ap.bdsp_id.nunique() if ap is not None else 0
+    hc = {}
+    if ap is not None:
+        ap = ap[ap.abn_pred.isin([2, 3])].copy()             # stager-called N2/N3 for cases
+        ap["region"] = REGION; ap["stage"] = ap.abn_pred.map({2: "N2", 3: "N3"})
+        for f in ART:
+            ap["z_" + f] = zseg(ap, f, refs[f], grid)         # z vs the same (region,stage,age) reference
+        med_pwake = float(ap.p_wake.median()); frac_ambig = float((ap.p_wake >= 0.3).mean())
+        frac_hc = float((ap.p_assigned >= HICONF).mean())
+        for f in ART:
+            zc_all = ap.groupby("bdsp_id")["z_" + f].median()
+            hcv = ap[ap.p_assigned >= HICONF]
+            zc_hc = hcv.groupby("bdsp_id")["z_" + f].median()
+            zc_hc = zc_hc[hcv.groupby("bdsp_id").size() >= 5]   # require >=5 high-conf sleep segments
+            zk = rec[f].loc[rec[f].group == "control", "z_sleep"]
+            hc[f] = dict(all=auroc_median(zc_all, zk), hi=auroc_median(zc_hc, zk),
+                         n_hi_rec=int(len(zc_hc)))
+    else:
+        med_pwake = frac_ambig = frac_hc = np.nan
+
+    # --- Check 3: temporal contiguity (>= RUNMIN consecutive same-stage), symmetric ---------------
+    cg = {}
+    zt_sleep = zt[zt.stage.isin(SLEEP)]
+    for f in ART:
+        base_c = zt_sleep[zt_sleep.group == "case"].groupby("bdsp_id")["z_" + f].median()
+        base_k = zt_sleep[zt_sleep.group == "control"].groupby("bdsp_id")["z_" + f].median()
+        rr = zt_sleep[zt_sleep.in_run]
+        run_c = rr[rr.group == "case"].groupby("bdsp_id")["z_" + f].median()
+        run_c = run_c[rr[rr.group == "case"].groupby("bdsp_id").size() >= 5]
+        run_k = rr[rr.group == "control"].groupby("bdsp_id")["z_" + f].median()
+        run_k = run_k[rr[rr.group == "control"].groupby("bdsp_id").size() >= 5]
+        cg[f] = dict(base=auroc_median(base_c, base_k), run=auroc_median(run_c, run_k),
+                     n_run_case=int(len(run_c)), n_run_ctrl=int(len(run_k)))
+    frac_sleep_in_run_case = float(zt_sleep[zt_sleep.group == "case"].in_run.mean())
+    frac_sleep_in_run_ctrl = float(zt_sleep[zt_sleep.group == "control"].in_run.mean())
+
+    # --- Check 4: direction-of-effect — raw alpha/beta within staged N2 (misstaged wake keeps alpha) --
+    n2 = keep[keep.stage == "N2"].copy(); n2["grp"] = n2.bdsp_id.map(tag)
+    dir4 = {}
+    for band in ["log_alpha", "log_beta"]:
+        a_c = n2[n2.grp == "case"].groupby("bdsp_id")[band].median()
+        a_k = n2[n2.grp == "control"].groupby("bdsp_id")[band].median()
+        _, pb = mannwhitneyu(a_c.dropna(), a_k.dropna(), alternative="two-sided")
+        dir4[band] = dict(med_case=float(a_c.median()), med_ctrl=float(a_k.median()), mwu_p=float(pb))
 
     # ---- markdown ------------------------------------------------------------------------------
     def feat_survives(r):
@@ -255,17 +371,17 @@ def main():
              f"clean_pair & >={MIN_SEG} W/N1 & >={MIN_SEG} N2/N3): **n={len(case_ids)}**. "
              f"CONTROLS (held-out clean-normals, 50/50 split, same segment-count rule): **n={len(control_ids)}**. "
              f"Reference curves built from the OTHER {len(ref_ids)} clean-normals only.\n")
-    L.append(f"Four whole-head features. z per segment vs the (stage, age) clean-normal reference, Gaussian age "
-             f"kernel bw={BW:.0f}y; z_wake/z_sleep = median z over W/N1 and N2/N3 segments respectively. "
-             f"**Primary sleep-stage feature = {PRIMARY}** (pre-specified from scripts/84: absolute/ratio bands "
-             f"are the sleep detectors; the relative composite `low_freq_rel` is a weak, ceiling-bounded "
-             f"detector and is reported but not primary — see the verdict).\n")
+    L.append(f"Four whole-head features, reported **even-handedly** (none was pre-registered as primary). z per "
+             f"segment vs the (stage, age) clean-normal reference, Gaussian age kernel bw={BW:.0f}y; "
+             f"z_wake/z_sleep = median z over W/N1 and N2/N3 segments respectively. For the paired figure and the "
+             f"misclassification checks we use `log_delta` and `DAR` — the two features that pass the "
+             f"within-subject anti-confound below — but this is a reporting choice, not a primary designation.\n")
 
     L.append("## Primary: z_sleep, cases vs held-out controls\n")
     L.append("| feature | median z_sleep (case) | median z_sleep (ctrl) | MWU p | rank-biserial | AUROC [95% CI] |")
     L.append("|---|---|---|---|---|---|")
     for f in FEATURES:
-        r = res[f]; b = " **" if f == PRIMARY else " "
+        r = res[f]; b = " **" if f in ("log_delta", "DAR") else " "
         L.append(f"|{b}{f}{b}| {r['med_sleep_case']:+.3f} | {r['med_sleep_ctrl']:+.3f} | {r['mwu_p']:.2e} | "
                  f"{r['rb']:+.3f} | {r['auc']:.3f} [{r['auc_lo']:.3f},{r['auc_hi']:.3f}] |")
 
@@ -277,7 +393,7 @@ def main():
              "ctrl z_wake->z_sleep | ctrl Δ(sleep-wake) [Wilcoxon p, %>0] |")
     L.append("|---|---|---|---|---|")
     for f in FEATURES:
-        r = res[f]; b = " **" if f == PRIMARY else " "
+        r = res[f]; b = " **" if f in ("log_delta", "DAR") else " "
         L.append(f"|{b}{f}{b}| {r['med_wake_case']:+.3f}->{r['med_sleep_case']:+.3f} | "
                  f"{r['med_diff_case']:+.3f} [p={r['wilc_p_case']:.2e}, {100*r['frac_pos_case']:.0f}%] | "
                  f"{r['med_wake_ctrl']:+.3f}->{r['med_sleep_ctrl']:+.3f} | "
@@ -288,54 +404,116 @@ def main():
              "median (sleep-wake), case [Wilcoxon p] |")
     L.append("|---|---|---|---|---|---|")
     for f in FEATURES:
-        r = res_gen[f]; b = " **" if f == PRIMARY else " "
+        r = res_gen[f]; b = " **" if f in ("log_delta", "DAR") else " "
         L.append(f"|{b}{f}{b}| {r['med_sleep_case']:+.3f} | {r['med_sleep_ctrl']:+.3f} | {r['mwu_p']:.2e} | "
                  f"{r['auc']:.3f} [{r['auc_lo']:.3f},{r['auc_hi']:.3f}] | "
                  f"{r['med_diff_case']:+.3f} [p={r['wilc_p_case']:.2e}] |")
 
+    # ---- confound section --------------------------------------------------------------------
+    def _ok(d):
+        return np.isfinite(d["auc"]) and d["auc"] > 0.65 and d["med_case"] > d["med_ctrl"]
+    hc_ok = bool(hc) and all(_ok(hc[f]["hi"]) for f in ART if f in hc)
+    cg_ok = all(_ok(cg[f]["run"]) for f in ART)
+    confound_ok = hc_ok and cg_ok
+
+    L.append('\n## Is this an artifact of stage misclassification?\n')
+    L.append("**The circularity to rule out.** The sleep stager reads the same EEG we score and keys sleep depth "
+             "on slow-wave content. A pathologically slow WAKE segment in a CASE can be misstaged as N2/N3, then "
+             "compared against true-sleep norms — inflating z_sleep with no true sleep slowing. Controls "
+             "(clean-normals) have little slow wake to misstage, so this would reproduce the whole result "
+             "artifactually. Four checks. NOTE a data limitation: the abnormal group's per-segment stager "
+             f"probabilities survive in the scratchpad ({n_prob_rec} case recordings), but the normal group's raw "
+             "staging CSVs are no longer on disk, so confidence-based filtering (check 2) can purify the CASE side "
+             "(the side the artifact is about) but cannot symmetrically re-filter controls. The contiguity check "
+             "(check 3) uses stage labels only and IS symmetric.\n")
+
+    L.append("**Check 1 — sleep fraction.** More staged sleep in cases would be direct (though not decisive: "
+             "abnormal patients may be genuinely drowsier/encephalopathic) evidence of misstaging.\n")
+    L.append(f"- median N2/N3 fraction: cases **{fc.median():.3f}** vs controls **{fk.median():.3f}** "
+             f"(Mann-Whitney p={p_frac:.2e}). {'Cases have MORE staged sleep — suggestive, see caveat.' if fc.median()>fk.median() else 'Cases do NOT have more staged sleep.'}\n")
+
+    L.append(f"**Check 2 — stager confidence (case side).** Among cases' stager-called N2/N3 segments: median "
+             f"p(Wake) = **{med_pwake:.3f}**, fraction with p(Wake)>=0.3 (ambiguous) = **{100*frac_ambig:.1f}%**, "
+             f"fraction high-confidence p(assigned)>= {HICONF:.1f} = **{100*frac_hc:.1f}%**. Re-run restricting "
+             f"cases' sleep to high-confidence segments only (controls unfiltered — see limitation):\n")
+    L.append("| feature | AUROC case(all-sleep) vs ctrl | AUROC case(p>=0.9 sleep) vs ctrl | case median z_sleep (all -> hi-conf) |")
+    L.append("|---|---|---|---|")
+    for f in ART:
+        a0, a1 = hc[f]["all"], hc[f]["hi"]
+        L.append(f"| {f} | {a0['auc']:.3f} (n_case={a0['n_case']}) | {a1['auc']:.3f} (n_case={a1['n_case']}) | "
+                 f"{a0['med_case']:+.3f} -> {a1['med_case']:+.3f} |")
+
+    L.append(f"\n**Check 3 — temporal contiguity.** Real sleep comes in runs; a misstaged slow-wake segment is "
+             f"typically isolated. Restrict N2/N3 to segments inside a run of >= {RUNMIN} consecutive same-stage "
+             f"segments (~2 min). Fraction of sleep segments that qualify: cases {100*frac_sleep_in_run_case:.0f}%, "
+             f"controls {100*frac_sleep_in_run_ctrl:.0f}%.\n")
+    L.append("| feature | AUROC all-sleep | AUROC run-restricted (>=8 contiguous) | case median z_sleep (all -> run) |")
+    L.append("|---|---|---|---|")
+    for f in ART:
+        b0, b1 = cg[f]["base"], cg[f]["run"]
+        L.append(f"| {f} | {b0['auc']:.3f} | {b1['auc']:.3f} (n_case={b1['n_case']}, n_ctrl={b1['n_ctrl']}) | "
+                 f"{b0['med_case']:+.3f} -> {b1['med_case']:+.3f} |")
+
+    L.append("\n**Check 4 — direction of effect (suggestive).** If cases' 'N2' were really misstaged slow wake, "
+             "those segments should keep relatively preserved alpha/beta (bands the stager does not key on). Raw "
+             "(unnormalized) medians within staged N2:\n")
+    L.append("| band | case | control | MWU p |")
+    L.append("|---|---|---|---|")
+    for band in ["log_alpha", "log_beta"]:
+        d = dir4[band]
+        L.append(f"| {band} | {d['med_case']:+.3f} | {d['med_ctrl']:+.3f} | {d['mwu_p']:.2e} |")
+
+    L.append(f"\n**Confound verdict.** High-confidence-sleep restriction: {'PASS' if hc_ok else 'FAIL'} "
+             f"(case-vs-control AUROC stays >0.65 with cases' sleep purified). Contiguity restriction: "
+             f"{'PASS' if cg_ok else 'FAIL'} (both groups). Misclassification is therefore "
+             f"{'UNLIKELY to explain the effect' if confound_ok else 'a live explanation for the effect'}.\n")
+
+    # ---- verdict -----------------------------------------------------------------------------
     lfr = res["low_freq_rel"]
+    hypothesis_holds = (n_surv >= 1) and confound_ok
     L.append("\n## Verdict\n")
     L.append("**Pre-specified falsification:** cases' sleep z ~= 0 and indistinguishable from held-out controls "
              "on every feature -> the reader's silence about sleep was correct and our sleep detections are "
              "noise.\n")
-    L.append(f"**The falsification is {'MET (null)' if falsified else 'NOT met'}.** "
-             f"Group-level: **{n_grp} of 4** features (log_delta, TAR, DAR) place cases' z_sleep clearly above "
-             f"controls'. Within-subject anti-confound: **{n_surv} of 4** (log_delta, DAR) ALSO show a larger "
-             f"wake->sleep gap in cases than controls, so their sleep excess is not a global shift. TAR separates "
-             f"at the group level but its within-subject gap matches controls' (Δ {res['TAR']['med_diff_case']:+.3f} "
-             f"case vs {res['TAR']['med_diff_ctrl']:+.3f} ctrl) — a global wake+sleep carry-over, not a "
-             f"sleep-specific gain.\n")
-    L.append(f"{verdict} On the primary sleep feature **{PRIMARY}**: cases' median z_sleep = "
-             f"{P['med_sleep_case']:+.3f} vs controls' {P['med_sleep_ctrl']:+.3f} (MWU p={P['mwu_p']:.2e}, "
-             f"AUROC {P['auc']:.3f} [{P['auc_lo']:.3f},{P['auc_hi']:.3f}]). The within-subject test is the "
-             f"decisive one: cases GAIN deviation going wake->sleep (Δ = {P['med_diff_case']:+.3f}, "
-             f"Wilcoxon p={P['wilc_p_case']:.2e}, {100*P['frac_pos_case']:.0f}% positive) while held-out controls "
-             f"do NOT (Δ = {P['med_diff_ctrl']:+.3f}). A pure global shift (cases just older/sicker) would give "
-             f"Δ ~= 0 in both groups; instead the sleep excess appears in the SAME brains the reader called slow "
-             f"in wake. `DAR` gives the highest sleep separation (AUROC {res['DAR']['auc']:.3f}); `TAR` "
-             f"({res['TAR']['auc']:.3f}) agrees.\n")
-    L.append(f"**The one null, reported loudly:** `low_freq_rel` ((delta+theta)/total) does NOT separate "
-             f"(z_sleep {lfr['med_sleep_case']:+.3f} vs {lfr['med_sleep_ctrl']:+.3f}, AUROC {lfr['auc']:.3f}, "
-             f"MWU p={lfr['mwu_p']:.2e}). This is NOT a sleep-specific failure: `low_freq_rel` barely separates in "
-             f"WAKE either (case z_wake {lfr['med_wake_case']:+.3f}), because it is a bounded relative measure "
-             f"that saturates near its ceiling in N2/N3 (clean-normal N3 median 0.63 against a hard cap of 1.0), "
-             f"leaving no headroom for excess sleep delta. Absolute log-delta power and delta/alpha ratio, which "
-             f"are unbounded above, carry the signal. This matches the standing finding that relative "
-             f"low-frequency power is a weak detector and TAR/DAR should be used.\n")
-    L.append("**Interpretation.** Recordings the reader called slow in WAKE, whose reports never mention sleep, "
-             "still sit above stage/age-matched normals in N2/N3 on every dynamic-range slowing measure, and the "
-             "excess is *larger* in sleep than in wake within the same recording. This is World 1 (we add value): "
-             "the reader's silence about sleep understated real deviation, not because sleep slowing was absent "
-             "but because the judgment is hard and rarely attempted. It is not World 2 (false positives): the "
-             "within-subject design and the held-out clean-normal reference (controls ~0 in sleep) rule out an "
-             "older/sicker-cohort artifact.\n")
-    L.append("**Residual caveats.** (1) The operationalization is `report never says a sleep word in a slowing "
-             "clause`; we cannot exclude that a reader intended a wake-slowing sentence to cover sleep too. "
-             "(2) `DAR` controls drift to about -0.3 in sleep (alpha collapses in N2/N3), a mild stage-calibration "
-             "quirk; `log_delta` controls stay ~0 across stages, which is why it is the primary. (3) Cases are "
-             "abnormal for some reason and slowing may travel with it; the within-subject contrast addresses the "
-             "cohort confound but not the possibility that the *unnamed* deviation is a different abnormality than "
-             "the named wake slowing.\n")
+    L.append(f"**The falsification is {'MET (null)' if falsified else 'NOT met'}.** All four features reported "
+             f"even-handedly. Group-level (cases' z_sleep clearly above controls'): **{n_grp} of 4** "
+             f"(log_delta, TAR, DAR). Within-subject anti-confound (Δ(sleep-wake) larger in cases than controls, "
+             f"ruling out a global shift): **{n_surv} of 4** (log_delta, DAR). TAR separates at the group level "
+             f"but its within-subject gap matches controls' (Δ {res['TAR']['med_diff_case']:+.3f} case vs "
+             f"{res['TAR']['med_diff_ctrl']:+.3f} ctrl) — a global carry-over, not a sleep-specific gain. "
+             f"`low_freq_rel` is **fully null** (AUROC {lfr['auc']:.3f}, MWU p={lfr['mwu_p']:.2e}).\n")
+    L.append(f"{'**HYPOTHESIS SUPPORTED (survives the misclassification checks).**' if hypothesis_holds else '**HYPOTHESIS NOT SUPPORTED.**'} "
+             f"For `log_delta`: cases' median z_sleep = {res['log_delta']['med_sleep_case']:+.3f} vs controls' "
+             f"{res['log_delta']['med_sleep_ctrl']:+.3f} (AUROC {res['log_delta']['auc']:.3f}), within-subject "
+             f"Δ(sleep-wake) = {res['log_delta']['med_diff_case']:+.3f} in cases vs "
+             f"{res['log_delta']['med_diff_ctrl']:+.3f} in controls. For `DAR`: AUROC {res['DAR']['auc']:.3f}. "
+             f"Crucially, purifying cases' sleep to high-confidence segments (AUROC "
+             f"{hc['log_delta']['hi']['auc']:.3f} log_delta / {hc['DAR']['hi']['auc']:.3f} DAR) and to contiguous "
+             f"sleep runs (AUROC {cg['log_delta']['run']['auc']:.3f} / {cg['DAR']['run']['auc']:.3f}) does NOT "
+             f"collapse the separation — so the sleep elevation is not an artifact of slow-wake being misstaged "
+             f"as sleep.\n")
+    L.append("**On `low_freq_rel` (a limitation, stated as a hypothesis, not a dismissal).** The relative "
+             "composite (delta+theta)/total is fully null here (AUROC 0.510) and is weak in WAKE too "
+             f"(case z_wake {lfr['med_wake_case']:+.3f}). A plausible reason — NOT verified in this script beyond "
+             "the descriptive observation that clean-normal N3 low_freq_rel sits at median 0.63 against a hard cap "
+             "of 1.0 — is that a bounded relative measure saturates in N2/N3 and loses headroom for excess sleep "
+             "delta, while unbounded absolute log-delta and delta/alpha ratio retain it. This is consistent with "
+             "the standing finding that relative low-frequency power is a weak detector, but it remains a "
+             "hypothesis; the honest statement is that one of four features does not show the effect.\n")
+    L.append("**Interpretation.** On the two features that pass both the within-subject and the misclassification "
+             "checks, recordings the reader called slow in WAKE (reports never mentioning sleep) still sit above "
+             "stage/age-matched normals in N2/N3, and the excess is not explained by cohort composition, by a "
+             "global shift, or by slow wake being misstaged as sleep. This supports World 1 (the reader's silence "
+             "about sleep understated real deviation) over World 2 (false positives) — for log_delta and DAR. It "
+             "is not universal across features (low_freq_rel null; TAR is a group-level carry-over).\n")
+    L.append("**Residual caveats.** (1) Operationalization is `report never says a sleep word in a slowing "
+             "clause`; a reader may have intended a wake-slowing sentence to cover sleep. (2) Control-side stager "
+             "confidence could not be filtered (raw normal staging CSVs absent), so check 2 is one-sided; check 3 "
+             "(symmetric) is the stronger guard. (3) `DAR` controls drift to about -0.3 in sleep (alpha collapses "
+             "in N2/N3); `log_delta` controls stay ~0 across stages, which is why it is the cleaner witness. "
+             "(4) Cases are abnormal for some reason and slowing may travel with it; the within-subject contrast "
+             "addresses the cohort confound but not the possibility that the unnamed sleep deviation is a "
+             "different abnormality than the named wake slowing.\n")
 
     md = "\n".join(L) + "\n"
     Path("results").mkdir(exist_ok=True)

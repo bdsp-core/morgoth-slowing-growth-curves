@@ -53,6 +53,10 @@ results/gen_label_review.html
 results/labeling_cases.csv
 models/
 
+# EEG review viewer (V3): pre-exported signal clips + rater responses — NEVER commit.
+# The case_id -> bdsp_id key lives ONLY in the scratchpad (case_crosswalk.jsonl), never here.
+viewer/data/
+
 # fleet work manifests (per-patient ids; regenerable)
 fleet/manifest_pilot.jsonl
 fleet/manifest_full.jsonl

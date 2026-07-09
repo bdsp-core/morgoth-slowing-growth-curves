@@ -91,6 +91,12 @@ def select() -> pd.DataFrame:
              .merge(fr, on="bdsp_id", how="left")
              .merge(sc, on="bdsp_id", how="left"))
     df = df[(df.clean_pair == True) & df.report.notna()]        # noqa: E712
+    # drop patient-at-site keys with >1 recording (features collapsed onto one label)
+    excl = DER / "excluded_bdsp_ids.parquet"
+    if excl.exists():
+        bad = set(pd.read_parquet(excl).bdsp_id)
+        n0 = len(df); df = df[~df.bdsp_id.isin(bad)]
+        print(f"[select] excluded {n0 - len(df)} rows from {len(bad)} multi-recording patients")
 
     rng = np.random.default_rng(SEED)
     focal = _bin_sample(df[(df.has_focal_slow == 1) & (df.gated_in == True)], N_FOCAL, rng)   # noqa: E712
