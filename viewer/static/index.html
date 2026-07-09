@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EEG description review</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header id="hdr">
+  <div class="hl">
+    <b>EEG description review</b>
+    <span id="pos" class="muted"></span>
+    <span id="bar"><span id="fill"></span></span>
+    <span id="cnt" class="muted"></span>
+  </div>
+  <div class="hr">
+    <label>rater <input id="rater" size="10" spellcheck="false"></label>
+    <span id="status" class="muted"></span>
+  </div>
+</header>
+
+<div id="controls">
+  <button id="prevCase" title="Previous case (Shift+&larr;)">&laquo; case</button>
+  <button id="nextCase" title="Next case (Shift+&rarr;)">case &raquo;</button>
+  <span class="sep"></span>
+  <button id="prevPage" title="Previous page (&larr;)">&larr;</button>
+  <span id="pglabel" class="muted">page</span>
+  <button id="nextPage" title="Next page (&rarr;)">&rarr;</button>
+  <input type="range" id="scrub" min="0" value="0" step="0.1" title="Scroll through the clip">
+  <span class="sep"></span>
+  <label>timebase
+    <select id="timebase">
+      <option value="5">5 s/pg</option>
+      <option value="10" selected>10 s/pg</option>
+      <option value="15">15 s/pg</option>
+      <option value="20">20 s/pg</option>
+      <option value="30">30 s/pg</option>
+    </select>
+  </label>
+  <label>sensitivity
+    <select id="sens">
+      <option value="3">3 &micro;V/mm</option>
+      <option value="5">5 &micro;V/mm</option>
+      <option value="7" selected>7 &micro;V/mm</option>
+      <option value="10">10 &micro;V/mm</option>
+      <option value="15">15 &micro;V/mm</option>
+      <option value="20">20 &micro;V/mm</option>
+    </select>
+  </label>
+  <span class="sep"></span>
+  <label>HP
+    <select id="hp">
+      <option value="0">off</option>
+      <option value="0.5">0.5 Hz</option>
+      <option value="1" selected>1 Hz</option>
+      <option value="5">5 Hz</option>
+    </select>
+  </label>
+  <label>LP
+    <select id="lp">
+      <option value="0">off</option>
+      <option value="15">15 Hz</option>
+      <option value="35">35 Hz</option>
+      <option value="70" selected>70 Hz</option>
+    </select>
+  </label>
+  <label>notch
+    <select id="notch">
+      <option value="0">off</option>
+      <option value="50">50 Hz</option>
+      <option value="60" selected>60 Hz</option>
+    </select>
+  </label>
+  <span id="loading" class="muted"></span>
+</div>
+
+<div id="canvaswrap"><canvas id="eeg"></canvas></div>
+
+<section id="panel">
+  <div id="paneltitle">Auto-generated description <span id="stratum" class="tag"></span></div>
+  <div id="sentence">&hellip;</div>
+  <div id="verdictrow">
+    <button id="btnAcc" class="acc">Accurate &nbsp;<span class="k">1</span></button>
+    <button id="btnNot" class="not">Not accurate &nbsp;<span class="k">2</span></button>
+    <span id="verdictState" class="muted"></span>
+  </div>
+  <div id="editbox" hidden>
+    <div class="muted small">Edit the description to the correct wording, then Save.</div>
+    <textarea id="edit" rows="3" spellcheck="true"></textarea>
+    <button id="btnSave" class="save">Save correction &nbsp;<span class="k">&#8984;/Ctrl+Enter</span></button>
+  </div>
+</section>
+
+<footer id="foot" class="muted small">
+  <span class="k">1</span> accurate &nbsp; <span class="k">2</span> not accurate &nbsp;
+  <span class="k">&larr;</span>/<span class="k">&rarr;</span> page &nbsp;
+  <span class="k">Shift</span>+<span class="k">&larr;</span>/<span class="k">&rarr;</span> case &nbsp;
+  <span class="k">&uarr;</span>/<span class="k">&darr;</span> sensitivity &nbsp;
+  responses saved server-side to viewer/data/responses.jsonl
+</footer>
+
+<script src="/static/viewer.js"></script>
+</body>
+</html>
