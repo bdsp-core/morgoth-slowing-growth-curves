@@ -109,6 +109,22 @@ Optimisation (to be run in `scripts/112_operating_points.py`):
 Both corner cases remain **flag-for-review** outputs at whatever `τ_M` is chosen; the goal is to make that set
 small and genuinely surprising, not to eliminate it.
 
+**The generalized case-2 floor is a finding, not a threshold (MBW 2026-07-10).** Per-branch, focal case-1 and
+case-2 can both be pushed < 1% (τ_focal ≈ 0.65). Generalized case-2 (gate fires + sleep coverage + we measure
+nothing) **floors at ~2.5–3.4% and cannot reach < 1%** at any threshold: of the 426 such recordings, 352 are
+report-labelled generalized-slow with p90 amount median −0.26 (0% above 2 SD). Morgoth *and* the clinician see
+generalized slowing our band-power deviation does not register. Two hypotheses:
+- **Rhythmic morphology** (GRDA / FIRDA — generalized or frontal intermittent rhythmic delta): a pattern
+  experts and Morgoth recognise but that is intermittent and may not elevate *mean* band power.
+- **Norm over-correction in the elderly**: the age-norm already bakes in substantial slowing, so pathological
+  slowing may not clear the (already-elevated) 95th centile.
+
+**ACTION (owner: MBW).** Review a series of these rare generalized case-2 recordings by eye to adjudicate the
+two hypotheses. `scripts/115_case2_review_set.py` will assemble the set (case_id, age, our descriptor values,
+Morgoth p_generalized; PHI-free, routed through the same viewer as V3) so MBW can score each as
+rhythmic-morphology / norm-over-correction / genuine-model-miss / gate-false-positive. The outcome decides
+whether the fix is a rhythmicity feature, an elderly-norm correction, or an accepted limitation.
+
 ---
 
 ## 2. The single object: the deviation field
@@ -230,6 +246,7 @@ of normals"* rather than inventing a lobe.
 | 4 | `111_stage_specific.py` + report-state scan | per-stage present/absent call and its validation (§1c) |
 | 5 | `108_descriptor_validation.py` | split-half reliability, dose-response, external panel concordance |
 | 6 | `110_generate_sentence.py` | gate → descriptors → sentence, strictly against `docs/claims_table.md` |
+| R | `115_case2_review_set.py` | assemble the generalized case-2 recordings for MBW's by-eye adjudication (rhythmic morphology vs norm over-correction) — feeds the viewer |
 
 The description linear predictor is retired (§1a): descriptors are the three normed axes reported
 individually, plus their regional contrasts.
