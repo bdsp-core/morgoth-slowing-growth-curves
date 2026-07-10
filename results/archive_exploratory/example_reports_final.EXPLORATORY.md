@@ -1,3 +1,14 @@
+> # ⚠️ ARCHIVED — EXPLORATORY, DO NOT CITE
+>
+> These sentences violate four rows of `docs/claims_table.md` at once. Example:
+> *"Rare mild generalized mixed theta/delta slowing — peak 0.0 SD above age/stage-matched norms."*
+> — a severity adjective (row 9, FORBIDDEN: ρ = 0.050 across 168 variants), a frequency word
+> (row 6b, FORBIDDEN: ρ = 0.077), a band claim (row 5, FORBIDDEN: AUROC 0.579 against a ceiling of
+> 0.541), and a peak statistic (row 10, FORBIDDEN: artifact-dominated) — asserting slowing at a
+> deviation of **zero**, on a recording labelled normal.
+>
+> Superseded by `scripts/110_generate_sentence.py` (to be written against the claims table).
+
 # Final gated reports (Morgoth gate + normative description)
 
 Gate: report slowing only if Morgoth P(slowing) >= 0.311.
