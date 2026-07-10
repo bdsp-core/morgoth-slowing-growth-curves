@@ -30,8 +30,8 @@ Violating this makes the paper circular. It is not a stylistic preference.
 | 1 | *"There is slowing."* | Morgoth gate | AUROC **0.900** vs 18-expert majority (generalized); **0.923** (focal) | **ALLOWED** — the gate's claim |
 | 2 | *"…focal"* / *"…generalized"* | Morgoth gate | as above | **ALLOWED** — the gate's claim |
 | 2b | focal-vs-generalized **from our spectral features** | `S(focal)` | **0.477 (chance)** for exclusively-focal vs generalized; global amount runs *backwards* for focality (AUROC 0.183) | **FORBIDDEN** — detector retired |
-| 3 | *"2.1 SD above age- and stage-matched normal (94th centile)"* | `S = 0.80·z_δ + 2.82·z_θ + 4.72·α-attenuation`, re-standardised against normals of that age & stage | calibration: normals **−0.05 SD**, prevalence **0.047** vs 0.05 target. Dose-response ρ 0.50–0.55. Conspicuity ρ **0.652** vs the 18-expert consensus proportion | **ALLOWED** |
-| 3b | *"…with paucity of faster activity"* | the α-attenuation component (weight **4.72**, the largest of the three) | `corr(z_TAR − z_θ, −z_α) = 0.985` — this is what TAR was measuring all along | **ALLOWED** as a named component of (3) |
+| 3 | *"2.1 SD above age- and stage-matched normal (94th centile)"* | `S = w·(δ excess, θ excess, α attenuation)`, wake-fit, α-attenuation in wake only; re-standardised against normals of that age & stage. Flat/suppressed segments excluded up front | calibration: normals **−0.06 SD**, prevalence **0.045** vs 0.05 target. Dose-response ρ 0.50–0.55. Conspicuity ρ **0.652** vs the 18-expert consensus proportion | **ALLOWED** |
+| 3b | *"…with paucity of faster activity"* | the α-attenuation component, **wake only** | `corr(z_TAR − z_θ, −z_α) = 0.985` — what TAR measured all along. Restricted to wake: alpha is the posterior dominant rhythm (gone by N2), and sedatives that cause slowing also *generate* alpha (propofol/benzodiazepines) | **ALLOWED** as a named component of (3), **wake only** |
 | 4 | *"left temporal"* — **side** | argmax of background excess `E(r) = S(r) − mean S over the other lobes`; signed temporal asymmetry | side recovered in **79.4%** of lateralized focal recordings; signed asymmetry AUROC **0.881**, fit to nothing | **ALLOWED** (side) |
 | 4b | *"left temporal"* — **lobe** | same | focal slowing raises the *contralateral* hemisphere by +0.5 to +0.8 SD; parasagittal chain lateralizes almost as well as temporal. The signal is **hemispheric, not lobar** | **PROVISIONAL** — report as "maximum-deviation lobe", never as a resolved localization |
 | 4c | focal **excess magnitude** | `E` in SD | exclusively-focal vs generalized **0.692** (from 0.477) | **PROVISIONAL** — reliability untested |
@@ -56,9 +56,10 @@ Violating this makes the paper circular. It is not a stylistic preference.
 2. **`src/morgoth_slowing/report/phrase.py` must be rewritten** against this table (`scripts/110`).
 3. **No band language ships** until the 7–8 Hz fix and the excess-power redefinition are tested
    (`scripts/109`), and then only if the fixed index clears a bar set *before* the test.
-4. **N1 numbers are on hold.** Alpha attenuation is *negative* in focal (−0.34) and generalized (−0.20) but
-   positive in normals (+0.04) in N1 — abnormal N1 has *more* alpha than normal N1. Unexplained; possibly a
-   staging artifact. Resolve before any N1 clause ships.
+4. **N1 resolved.** The apparent N1 alpha reversal was two artifacts, both fixed: (a) 22–32% of abnormal
+   *wake* segments were flat/suppressed and slipped past artifact rejection — now removed up front; (b) alpha
+   in sleep is confounded (disrupted sleep retains wake-like alpha; sedation generates alpha), so the
+   alpha-attenuation axis is **wake only**. In N1–REM, slowing is delta and theta excess. Calibration holds.
 
 ## The sentence this table permits, today
 
