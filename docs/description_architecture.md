@@ -21,6 +21,71 @@ argue that we see what the expert misses. Detection is Morgoth's. Description is
 
 ---
 
+---
+
+## 1a. Operating flow — gate, branch, describe (MBW spec, 2026-07-10)
+
+Morgoth runs first and **selects which description to build**. The descriptors are then computed only for the
+branch that fired.
+
+```
+Morgoth gate
+├─ generalized slowing?  → describe GENERALIZED:  spatial distribution (anterior / posterior / diffuse),
+│                                                  band (δ / θ / mixed), prevalence, persistence, per stage
+├─ focal slowing?        → describe FOCAL:         side (L/R), region, band, prevalence, persistence, per stage
+└─ neither               → "no pathological slowing"
+```
+
+*(The two branches are independent — a recording may fire both, and in our cohort 61% of focal recordings
+also have generalized slowing, so both descriptions can run.)*
+
+**Consistency constraint (new, and load-bearing).** The descriptor must agree with the gate's decision. A
+focal branch may report *side, region, band, prevalence*; it may **not** report a generalized spatial
+gradient, and it may never report a non-slowing feature ("increased alpha", etc.). Enforced structurally: each
+branch has a fixed, small descriptor set drawn only from the slowing axes (δ excess, θ excess, α attenuation)
+and their regional contrasts. Nothing outside `docs/claims_table.md` is emitted.
+
+**Anterior/posterior gradient** (generalized branch) is buildable from existing channel-level features:
+`AP = S(anterior chain) − S(posterior chain)`, anterior = {Fp1-F3, Fp2-F4, Fp1-F7, Fp2-F8, F3-C3, F4-C4,
+Fz-Cz}, posterior = {C3-P3, C4-P4, P3-O1, P4-O2, T5-O1, T6-O2, Cz-Pz}. Frontally-predominant if AP above the
+normal 95th centile, posterior if below the 5th, diffuse otherwise. Same normal-referenced, per-stage logic
+as every other descriptor. Not yet built or validated.
+
+**Do we still need the linear predictor?** For *description*, no. Once Morgoth owns detection, the linear
+predictor's only job (a detection benchmark) is gone. The description IS the three normed axes reported
+individually — δ excess, θ excess, α attenuation — because those are the clauses. Keep a single scalar
+`amount` only as a convenience summary (equal-weight or the frozen `w`), clearly secondary to the components.
+This is the pruning the architecture wants: the supervised score survives only as the thing that told us
+*which* features to keep, not as an output.
+
+## 1b. Corner cases — measured, not hypothetical
+
+At Morgoth's shipped `p_slowing ≥ 0.30` (loose) vs our "marked slowing" = amount > 2 SD in > 20% of alert
+windows, on 10,318 recordings with both:
+
+| case | definition | frequency | what it is |
+|---|---|---|---|
+| **1** | we find marked slowing, gate says none | **1.9%** | genuine flag-for-review; 40% are report-focal (whole-head over-reads a strong focal signal), rest worth a look |
+| **2** | gate says slowing, we find ~none | **12.9%** | mostly a **threshold artifact** — `p ≥ 0.30` calls 55.5% of all EEGs "slowing"; at `p ≥ 0.9` only 14% are, and only 4% of case-2 recordings carry a regional excess our whole-head amount missed |
+
+Consequences: (a) the gate threshold must be set to an operating point, not left at 0.30; (b) corner-case-2
+counting must use the **branch-appropriate** score (regional excess for focal, AP-aware for generalized), not
+whole-head amount, or focal slowing is systematically undercounted; (c) both corner cases become **flag-for-
+review** outputs, which is a feature — the system says "I disagree with the gate here" rather than
+fabricating a description.
+
+## 1c. Stage-specific detection — feasible, and evaluable
+
+Morgoth gates at the recording level and is not stage-specific. Our field IS: `S` is normed per stage, so we
+can emit a per-stage present/absent call (prevalence above the normal 95th centile within that stage).
+**Evaluation** rests on V4a's machinery: reports that name slowing "in wakefulness" or "in sleep" give a
+directional label, and we already showed (spindle-verified) that recordings called slow in wake carry
+genuine excess in N2 that the reader omitted (AUROC 0.85). So the data support at least a directional check;
+a cleaner test needs the count of reports that localise slowing to a specific state, which requires the
+report-text scan (deferred — the CSV read timed out this session).
+
+---
+
 ## 2. The single object: the deviation field
 
 Everything we describe is a **functional of one array**:
