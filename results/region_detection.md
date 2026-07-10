@@ -11,4 +11,4 @@ For each region: AUROC separating recordings with slowing in that region from no
 | occipital |     122 |   0.747 | 0.694 | 0.792 |
 
 
-_This is the clinically natural 'can we see region-X slowing at all?' question; unlike the multi-class lobe confusion it is not swamped by temporal predominance._
+_This is the clinically natural 'can we see region-X slowing at all?' question; unlike the Each region is scored independently of the others; there is no forced-choice classification. 
