@@ -130,18 +130,29 @@ SECTIONS = [
        "focal-vs-generalized falls to 0.477 nested (chance). We claim focal DETECTION, not "
        "focal-versus-generalized discrimination; topography is the gate's job.")]),
 
-    ("Figure 4 — Our score vs 18 electroencephalographers (external test set, 100 unseen EEGs)",
-     "The pipeline was applied UNCHANGED to 100 EEGs read by 18 experts: same montage, artifact rejection, "
-     "multitaper features, the same sleep stager, the same age- and stage-matched normal reference from our "
-     "cohort. No refitting, no threshold tuning. Predictions were fixed in docs/phaseA_preregistration.md "
-     "before the labels were touched. Generalized AUROC 0.903 [0.832,0.958]; focal 0.738.",
-     [(GROWTH_V2 / "occasion_roc_experts.png",
-       "Each red circle is ONE expert, plotted at their (1-specificity, sensitivity) against the majority of "
-       "the other 17. Our ROC is the blue curve. Read it two ways: after leave-one-out recalibration our "
-       "balanced accuracy (0.835) exceeds the average expert's (0.809) -- but at the expert's OWN specificity "
-       "(0.884) our sensitivity is 0.684 vs their 0.735, so the mean expert point sits just above our curve. "
-       "Ranking quality and operating-point calibration are different claims. This is pre-registered "
-       "prediction P3, and it FAILED.")]),
+    ("Figure 4 — The system as used: Morgoth GATES, our deviations QUANTIFY",
+     "The pipeline is two-stage, and it should be evaluated that way. Morgoth decides WHETHER and WHAT "
+     "(detection); our normative deviations then say HOW MUCH of it there is (quantification). Scoring our "
+     "linear predictor as if it were the detector asks it to do a job it was never given.",
+     [(GROWTH_V2 / "two_stage_gate_and_quantify.png",
+       "TOP — the gate against the expert majority on 100 unseen EEGs, with all 18 electroencephalographers "
+       "overlaid (each scored against the majority of the other 17). Morgoth: generalized AUROC 0.900 "
+       "[0.822,0.963], focal 0.923 [0.817,0.995]. Our S is drawn faintly for reference only. "
+       "BOTTOM — the claim that matters: the EEGs the panel calls slow do quantitatively carry more of that "
+       "kind of slowing. S(generalized) is SPECIFIC: +0.77 in generalized-slowing EEGs vs -0.38 in EEGs the "
+       "panel calls neither (p=3.3e-8), and NOT elevated in focal-only EEGs (p=0.24). S(focal) is sensitive "
+       "(+0.23 vs -0.14, p=3.0e-5) but only partly specific — it also rises modestly in generalized-only EEGs "
+       "(p=5.7e-3), the same focal-vs-generalized ambiguity quantified in Figure 3b. Gating on Morgoth's "
+       "focal call before quantifying is what removes it in use. "
+       "WHY our score trails experts on focal but not generalized: 21% of the EEGs it must reject as "
+       "non-focal ARE slow, just not focally; Morgoth sees pattern and topography while our features are "
+       "recording-level averages of amount; and focal slowing is intermittent — a 30-s run of left temporal "
+       "theta in a 50-min study barely moves a mean asymmetry but is unmissable to a reader scrolling."),
+      (GROWTH_V2 / "occasion_roc_experts.png",
+       "Supplementary: our score used as a standalone detector, with the same expert overlay. Retained "
+       "because it supports the ceiling analysis (pre-registered prediction P3 — at the mean expert's "
+       "specificity of 0.884 our sensitivity is 0.684 vs their 0.735, so the mean expert point sits just "
+       "above our curve). It is not how the system is deployed.")]),
 
     ("Figure 5 — Pipeline schematic (to be drawn)",
      "Detection (the Morgoth gate: whether/what) and description (normative growth curves: how to describe it) "
