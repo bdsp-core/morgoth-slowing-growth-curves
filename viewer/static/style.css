@@ -64,3 +64,9 @@ body {
   border-radius: 6px; padding: 10px; font-size: 15px; font-family: inherit; resize: vertical;
 }
 #foot { padding: 8px 16px 14px; }
+
+/* case-2 morphology review */
+.c2btn { padding:6px 10px; margin:2px; border:1px solid #888; border-radius:6px; background:#f4f4f4; cursor:pointer; font-size:13px; }
+.c2btn.sel { background:#2a6; color:#fff; border-color:#2a6; }
+.c2f { display:inline-block; margin:2px 0; }
+#c2fields { line-height:1.8; }
