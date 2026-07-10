@@ -128,8 +128,9 @@ async function setupCase2() {
 function renderCase2(c) {
   const f = c.fields || {};
   const fmt = (k) => (typeof f[k] === 'number' ? f[k].toFixed(k === 'age' ? 0 : 2) : f[k]);
-  const labels = { age: 'age', report_gen_band: 'report band', amount_median: 'our amount (SD)',
-    amount_p90: 'our p90 (SD)', prevalence: 'our prevalence', p_generalized: 'Morgoth p(gen)' };
+  const labels = { age: 'age', dominant_stage: 'STAGE (ours)', stage_mix: 'stage mix',
+    report_gen_band: 'report band', amount_median: 'our amount (SD)', amount_p90: 'our p90 (SD)',
+    prevalence: 'our prevalence', p_generalized: 'Morgoth p(gen)' };
   const el = $('c2fields'); if (el) el.innerHTML = S.caseFields.map(k =>
     `<span class="c2f"><b>${labels[k] || k}</b>: ${fmt(k)}</span>`).join(' &nbsp;&middot;&nbsp; ');
   if ($('stratum')) $('stratum').textContent = c.stratum || '';
