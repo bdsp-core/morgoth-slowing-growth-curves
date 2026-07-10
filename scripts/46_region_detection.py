@@ -1,13 +1,13 @@
-"""Per-region ONE-vs-NORMAL slowing detection (Brandon's request).
+"""Per-region ONE-vs-NORMAL slowing detection.
 
-Different question from the multi-class lobe confusion (which forces one label per case and gets swamped
-by temporal). Here, for each region R independently: can we tell recordings that HAVE slowing in R
-(regardless of other regions) from NORMAL recordings (no focal slowing)? Positives = reports stating
-slowing in R; negatives = normals; score = that region's age-adjusted slowing deviation. Reports AUROC
-per region + n, as a bar chart.
+Each region is scored INDEPENDENTLY of the others; there is no forced-choice classification anywhere in
+this script. For each region R: can we tell recordings whose report states slowing in R (regardless of what
+the other regions do) from clinician-normal recordings? Positives = reports stating slowing in R;
+negatives = normals; score = that region's age-adjusted slowing deviation (mean of rel_delta + DAR + TAR
+over the lobe's bipolar channels). Reports AUROC with bootstrap CIs.
 
-Writes results/figs/region_detection_bars.png + results/region_detection.md.
-Run: PYTHONPATH=src python scripts/46_region_detection.py
+Not a trained model. The forced-choice lobe classifier that used to accompany this was removed: the system
+reports the region of maximum deviation, not a softmax over lobes, and its label was 56% temporal.
 """
 from __future__ import annotations
 import importlib.util
@@ -71,7 +71,7 @@ def main():
            "using that region's age-adjusted slowing deviation (independent of other regions).\n",
            tab.to_markdown(index=False) + "\n",
            "\n_This is the clinically natural 'can we see region-X slowing at all?' question; unlike the "
-           "multi-class lobe confusion it is not swamped by temporal predominance._\n"]
+           "Each region is scored independently of the others; there is no forced-choice classification. "]
     Path("results/region_detection.md").write_text("\n".join(out))
     print(tab.to_string(index=False))
 
