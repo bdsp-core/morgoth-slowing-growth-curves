@@ -86,7 +86,16 @@ def main():
     seg = seg[seg.stage.isin(STAGES)].merge(lu, on="bdsp_id", how="inner").merge(cp, on="bdsp_id", how="left")
     seg["clean_pair"] = seg.clean_pair.fillna(False)
     seg = seg[seg.age.between(0, 100)]
-    print(f"deviation field: {len(seg):,} segment-region rows over {seg.bdsp_id.nunique():,} recordings", flush=True)
+    # FIX (2026-07-10): drop FLAT segments -- all core bands at the 1e-12 eps floor (ln ~ -27.6). These are
+    # suppressed / disconnected / dead epochs that survived artifact rejection; 22-32% of ABNORMAL wake vs
+    # ~1% of normal wake. A flat segment has zero power in every band and carries no slowing information; left
+    # in, it reads as extreme low power on every band and contaminates the wake descriptors and the amount fit.
+    CORE = ["log_delta", "log_theta", "log_alpha", "log_beta"]
+    flat = (seg[CORE] < -20).all(axis=1)
+    print(f"deviation field: {len(seg):,} rows; dropping {int(flat.sum()):,} FLAT segments "
+          f"({flat.mean():.1%}) -> {int((~flat).sum()):,}", flush=True)
+    seg = seg[~flat]
+    print(f"  over {seg.bdsp_id.nunique():,} recordings", flush=True)
 
     # ---------------- per-segment z, referenced to clinician-normals of that age, stage, region
     norm = seg.clean_normal == True
@@ -110,6 +119,10 @@ def main():
         zcols["z_" + f] = z
     Z = pd.DataFrame(zcols, index=seg.index)
     Z["a_atten"] = -Z["z_log_alpha"]                       # alpha attenuation: "paucity of faster activity"
+    # a_atten is a WAKE/N1 sign only: alpha (the posterior dominant rhythm) is expected there. In N2/N3/REM
+    # alpha is normally gone, so low-vs-normal alpha is meaningless and high-vs-normal alpha reflects disrupted
+    # sleep architecture, not health -- which is why the raw N1/N2 a_atten was reversed for abnormal recordings.
+    Z.loc[(seg["stage"] != "W").values, "a_atten"] = 0.0   # alpha = posterior dominant rhythm; wake only
     seg = pd.concat([seg[["bdsp_id", "region", "segment", "stage", "age", "clean_normal",
                           "has_focal_slow", "gen_class", "clean_pair"]], Z], axis=1)
     seg = seg.dropna(subset=AMOUNT)
@@ -117,7 +130,7 @@ def main():
 
     # ---------------- the ONE learned direction w: how much slowing is here
     wh = seg[seg.region == "whole_head"]
-    rec = wh[wh.stage.isin(ALERT)].groupby("bdsp_id")[AMOUNT].mean()
+    rec = wh[wh.stage == "W"].groupby("bdsp_id")[AMOUNT].mean()   # fit w where all three axes apply
     L = lu.set_index("bdsp_id").reindex(rec.index).join(cp.set_index("bdsp_id"))
     L["clean_pair"] = L.clean_pair.fillna(False)
     slow = ((L.gen_class == "pathologic") | (L.has_focal_slow == 1)) & L.clean_pair
@@ -229,6 +242,9 @@ def main():
                                                                       "generalized", "other")))
     D2["group"] = grp
     out = ["# The deviation field and its six descriptors\n",
+           "**Fixes (2026-07-10):** flat segments (all bands at the eps floor; 22-32% of abnormal wake) are "
+           "dropped as suppressed/dead epochs; the alpha-attenuation axis is restricted to W/N1 (alpha is the "
+           "posterior dominant rhythm, meaningful only where it is expected). See results/n1_anomaly_diagnosis.md.\n",
            f"{len(seg):,} segment-region z-scores over {seg.bdsp_id.nunique():,} recordings. "
            f"One learned direction `w` = " + ", ".join(f"`{k}` {v:+.2f}" for k, v in w.items()) +
            f" (5-fold AUROC {np.mean(aucs):.3f}, split on patient). Everything below is an aggregation or a "
