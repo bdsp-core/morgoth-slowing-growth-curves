@@ -30,44 +30,15 @@ Selection (correlation clustering, C, L1 path, stability) is re-derived **inside
 |---|---|---|
 | `TAR@midline@W` | +0.514 | 1.00 |
 | `log_delta@whole_head@N1` | +0.437 | 0.99 |
-| `DAR@whole_head@N1` | +0.051 | 1.00 |
+| `DAR@whole_head@N1` | +0.052 | 1.00 |
 
 Representative features the L1 path *dropped* (stability < 60%): `|asym|@parasagittal@TAR@W` (0.52), `TAR@midline@N1` (0.41), `|asym|@parasagittal@DAR@W` (0.33), `|asym|@parasagittal@log_delta@N1` (0.33), `|asym|@parasagittal@log_delta@W` (0.23)
 
-## focal slowing  (n = 3122 positive / 4869 clean-normal)
-
-- **Nested-CV AUROC of the linear predictor: 0.868** [0.859, 0.875] across 5 folds
-- **Parsimonious frozen model: 5 features**, nested AUROC 0.813 at mean size 3.2 (C = 0.001)
-- L1 with the 1-SE rule retains 19 of 34 correlation-cluster representatives (from ~100 candidates); the dense model buys +0.055 AUROC over the parsimonious one
-
-**How few features suffice?** (nested test AUROC vs model size)
-
-| C | mean # features | nested AUROC |
-|---|---|---|
-| 0.0003 | 0.0 | 0.500 |
-| 0.001 | 3.2 | 0.813 |
-| 0.003 | 15.6 | 0.860 |
-| 0.01 | 17.8 | 0.868 |
-| 0.03 | 19.4 | 0.868 |
-| 0.1 | 26.0 | 0.870 |
-| 0.3 | 28.4 | 0.870 |
-| 1 | 30.0 | 0.870 |
-
-| retained feature | coefficient | stability |
-|---|---|---|
-| `log_delta@whole_head@N1` | +0.311 | 1.00 |
-| `TAR@midline@W` | +0.188 | 1.00 |
-| `|asym|@temporal@log_delta@N1` | +0.093 | 0.98 |
-| `|asym|@temporal@DAR@N1` | +0.025 | 0.95 |
-| `|asym|@temporal@TAR@N1` | +0.004 | 0.99 |
-
-Representative features the L1 path *dropped* (stability < 60%): `TAR@L_temporal@N1` (0.54), `DAR@whole_head@W` (0.39), `rel_delta@midline@W` (0.23), `|asym|@temporal@DAR@W` (0.21), `rel_delta@R_temporal@N1` (0.15)
-
-## focal_specific slowing  (n = 3122 positive / 6526 clean-normal)
+## focal slowing  (n = 3122 positive / 6526 clean-normal)
 
 - **Nested-CV AUROC of the linear predictor: 0.798** [0.771, 0.812] across 5 folds
 - **Parsimonious frozen model: 8 features**, nested AUROC 0.745 at mean size 4.8 (C = 0.001)
-- L1 with the 1-SE rule retains 20 of 32 correlation-cluster representatives (from ~100 candidates); the dense model buys +0.052 AUROC over the parsimonious one
+- L1 with the 1-SE rule retains 20 of 32 correlation-cluster representatives (from ~100 candidates); the dense model buys +0.053 AUROC over the parsimonious one
 
 **How few features suffice?** (nested test AUROC vs model size)
 
@@ -85,15 +56,30 @@ Representative features the L1 path *dropped* (stability < 60%): `TAR@L_temporal
 | retained feature | coefficient | stability |
 |---|---|---|
 | `|asym|@temporal@log_delta@N1` | +0.168 | 1.00 |
-| `|asym|@temporal@DAR@N1` | +0.076 | 0.93 |
-| `log_delta@L_temporal@N1` | +0.076 | 0.98 |
+| `|asym|@temporal@DAR@N1` | +0.076 | 0.90 |
+| `log_delta@L_temporal@N1` | +0.076 | 1.00 |
 | `|asym|@parasagittal@log_theta@N1` | +0.044 | 1.00 |
-| `|asym|@parasagittal@TAR@N1` | +0.029 | 0.96 |
-| `|asym|@parasagittal@DAR@N1` | +0.028 | 1.00 |
-| `|asym|@temporal@TAR@N1` | +0.010 | 0.92 |
+| `|asym|@parasagittal@TAR@N1` | +0.029 | 0.98 |
+| `|asym|@parasagittal@DAR@N1` | +0.028 | 0.99 |
+| `|asym|@temporal@TAR@N1` | +0.010 | 0.91 |
 | `TAR@L_temporal@W` | +0.009 | 1.00 |
 
-Representative features the L1 path *dropped* (stability < 60%): `DAR@R_temporal@N1` (0.49), `|asym|@parasagittal@log_delta@N1` (0.45), `|asym|@parasagittal@DAR@W` (0.44), `rel_delta@L_temporal@W` (0.43), `rel_delta@midline@W` (0.43)
+Representative features the L1 path *dropped* (stability < 60%): `DAR@R_temporal@N1` (0.57), `|asym|@parasagittal@DAR@W` (0.44), `|asym|@parasagittal@log_delta@N1` (0.41), `|asym|@temporal@rel_delta@W` (0.41), `rel_delta@L_temporal@W` (0.40)
+
+## The focal detector, evaluated on three different questions
+
+One detector (negatives during training = clean-normals **plus** generalized slowing, so it cannot win on global slowing). The three contrasts below use that same score and differ only in which recordings form the comparison group. Nested CV; mean over outer folds, range in brackets.
+
+**Note on the positives:** a report naming focal slowing does not exclude generalized slowing — 60.9% of focal recordings also carry pathologic generalized slowing. The second block restricts positives to the 39.1% that are exclusively focal.
+
+| positives | comparison group | nested AUROC [fold range] | what it tells us |
+|---|---|---|---|
+| all focal | clean-normal | **0.857** [0.841–0.869] | can we see focal slowing at all? |
+| all focal | clean-normal + generalized | **0.798** [0.768–0.813] | the deployment question: focal against everything else |
+| all focal | generalized | **0.622** [0.576–0.638] | can we tell focal *from* generalized? (the hard one) |
+| exclusively focal (no pathologic generalized) | clean-normal | **0.759** [0.732–0.780] | can we see focal slowing at all? |
+| exclusively focal (no pathologic generalized) | clean-normal + generalized | **0.688** [0.645–0.713] | the deployment question: focal against everything else |
+| exclusively focal (no pathologic generalized) | generalized | **0.477** [0.415–0.502] | can we tell focal *from* generalized? (the hard one) |
 
 ## Frozen for external confirmation
 

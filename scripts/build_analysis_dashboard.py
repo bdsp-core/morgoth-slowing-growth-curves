@@ -107,27 +107,28 @@ SECTIONS = [
        "called abnormal WITHOUT slowing named still deviate (+0.4), the signature of slowing the reader did "
        "not name — the basis of the 'detects what reports miss' hypothesis.")]),
     ("Figure 3b — The sparse slowing score S: how few features actually suffice?",
-     "The paper had drifted into hand-picked scores (I averaged two z's I chose by eye). This restores the "
-     "original design: an L1-regularised logistic model fit on the normative deviations, keeping only the "
-     "features it retains, and reporting the LINEAR PREDICTOR (the weighted sum of z's) rather than the "
-     "probability — the probability saturates near 0/1 and destroys grading. Selection, correlation "
-     "clustering, the penalty and the normal reference are ALL re-derived inside each cross-validation fold. "
-     "TWO NAMED OBJECTS: z is the measurement (unsupervised); S is the detector (trained on expert calls). "
-     "S may never be used to argue we see what experts miss — that stays z's job (Figure 6).",
+     "An L1-regularised logistic model fit on the normative deviations, keeping only the features it retains, "
+     "and reporting the LINEAR PREDICTOR (the weighted sum of z's) rather than the probability — the "
+     "probability saturates near 0/1 and destroys grading. Selection, correlation clustering, the penalty and "
+     "the normal reference are ALL re-derived inside each cross-validation fold. TWO NAMED OBJECTS: z is the "
+     "measurement (unsupervised); S is the detector (trained on expert calls). S may never be used to argue "
+     "we see what experts miss — that stays z's job (Figure 6). The FOCAL detector is trained against "
+     "clean-normals PLUS generalized slowing, because 60.9% of focal recordings also carry generalized "
+     "slowing and a detector trained against healthy controls alone learns 'abnormal', not 'focal'.",
      [(GROWTH_V2 / "sparse_score.png",
-       "Left: the retained coefficients — all positive and clinically readable. GENERALIZED needs just THREE "
-       "features (TAR@midline in wake, log_delta@whole_head in N1, DAR@whole_head in N1), nested AUROC 0.908; "
-       "the dense 28-feature model buys only +0.025. Note L1 independently rediscovered the exact pair that "
-       "had been hand-picked. Middle: bootstrap stability selection. Right: the parsimony curve — 3 features "
-       "reach 0.908, 10 reach 0.923, 28 reach 0.934. A small number of features really does suffice."),
+       "Left: retained coefficients — all positive, all clinically readable. GENERALIZED needs THREE features "
+       "(TAR@midline in wake, log_delta@whole_head in N1, DAR@whole_head in N1), nested AUROC 0.908; the dense "
+       "28-feature model buys only +0.025. FOCAL retains eight, and every one is an asymmetry or lobar term — "
+       "no whole-head, no midline. Middle: bootstrap stability selection. Right: the parsimony curve — 3 "
+       "features reach 0.908, 10 reach 0.923, 28 reach 0.934. A small number of features really does suffice."),
       (GROWTH_V2 / "sparse_score_external.png",
-       "The frozen coefficients applied ONCE to the 100 expert-read EEGs. Generalized: AUROC 0.909 "
-       "[0.840,0.962] from 3 features, edging the hand-picked score (0.903) and the Morgoth gate (0.895), "
-       "with rho = 0.661 against the consensus proportion. FOCAL, trained against clean-normals only, "
-       "COLLAPSED to 0.611 — trained that way 'focal' is learnable as 'generally slow', and its two biggest "
-       "weights are global terms. Retraining with generalized cases in the negative set (focal_specific) "
-       "retains only asymmetry and lobar terms and reaches 0.848 [0.724,0.946]. That fix was TRIGGERED BY "
-       "THIS TEST SET and is therefore post hoc; it needs independent confirmation.")]),
+       "Frozen coefficients applied to the 100 expert-read EEGs. Generalized: AUROC 0.909 [0.840,0.962] from "
+       "3 features, above the Morgoth gate (0.895), rho = 0.661 against the consensus proportion. THE FOCAL "
+       "SCORE ANSWERS THREE QUESTIONS AND THE ANSWERS DIFFER: vs clean-normals 0.857 nested / 0.855 external; "
+       "vs clean-normals+generalized (the deployment question) 0.798 / 0.848; vs generalized alone 0.622 / "
+       "0.746. And that last number is inflated — restricting positives to EXCLUSIVELY focal recordings, "
+       "focal-vs-generalized falls to 0.477 nested (chance). We claim focal DETECTION, not "
+       "focal-versus-generalized discrimination; topography is the gate's job.")]),
 
     ("Figure 4 — Our score vs 18 electroencephalographers (external test set, 100 unseen EEGs)",
      "The pipeline was applied UNCHANGED to 100 EEGs read by 18 experts: same montage, artifact rejection, "

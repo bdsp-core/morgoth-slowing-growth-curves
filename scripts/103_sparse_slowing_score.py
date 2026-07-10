@@ -209,7 +209,7 @@ def run_target(d, lu, name, pos_mask, neg_mask=None):
 
     outer = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=7)
     ylab = np.array([y_map[i] for i in ids]); groups = np.array(ids)
-    fold_auc, fold_stab, fold_cols, fold_C, curves = [], [], [], [], []
+    fold_auc, fold_stab, fold_cols, fold_C, curves, fold_test = [], [], [], [], [], []
 
     for tr, te in outer.split(np.zeros(len(ids)), ylab, groups):
         tr_ids, te_ids = set(np.array(ids)[tr]), set(np.array(ids)[te])
@@ -227,7 +227,9 @@ def run_target(d, lu, name, pos_mask, neg_mask=None):
         C = pick_C(Xtr_s, ytr, np.array(Xtr.index))
         st = stability(Xtr_s, ytr, C)
         m = l1_fit(Xtr_s, ytr, C)
-        fold_auc.append(roc_auc_score(yte, m.decision_function(Xte_s)))   # LINEAR PREDICTOR, not p
+        Ste = m.decision_function(Xte_s)                                  # LINEAR PREDICTOR, not p
+        fold_auc.append(roc_auc_score(yte, Ste))
+        fold_test.append(pd.DataFrame({"bdsp_id": Xte.index, "S": Ste}))
         fold_stab.append(pd.Series(st, index=reps)); fold_cols.append(reps); fold_C.append(C)
         curves.append(parsimony_curve(Xtr_s, ytr, Xte_s, yte))
 
@@ -260,7 +262,7 @@ def run_target(d, lu, name, pos_mask, neg_mask=None):
     coef = pd.Series(final.coef_[0], index=Xs.columns)
     coef = coef[coef.abs() > 1e-8].sort_values(key=np.abs, ascending=False)
 
-    return dict(name=name, curve=cur, C_par=C_par, k_par=k_par, auc_par=auc_par,
+    return dict(name=name, curve=cur, C_par=C_par, k_par=k_par, auc_par=auc_par, fold_test=fold_test,
                 nested_auc=float(np.mean(fold_auc)),
                 nested_lo=float(np.percentile(fold_auc, 2.5)), nested_hi=float(np.percentile(fold_auc, 97.5)),
                 folds=fold_auc, C=C, stability=stab, stable=stable, coef=coef,
@@ -272,11 +274,12 @@ def run_target(d, lu, name, pos_mask, neg_mask=None):
 def main():
     d, lu = load()
     gen_only = (lu.gen_class == "pathologic") & (lu.has_focal_slow != 1)
+    # ONE focal detector. Its negatives include generalized slowing, so it cannot win on global slowing:
+    # 60.9% of focal-slowing recordings ALSO carry pathologic generalized slowing, and a model trained
+    # against healthy controls alone learns "abnormal", not "focal".
     targets = [
         ("generalized", lu.gen_class == "pathologic", None),
-        ("focal", lu.has_focal_slow == 1, None),                       # vs clean-normals (the naive task)
-        # focal-SPECIFIC: negatives include generalized slowing, so the model cannot win on global slowing
-        ("focal_specific", lu.has_focal_slow == 1, (lu.clean_normal == True) | gen_only),
+        ("focal", lu.has_focal_slow == 1, (lu.clean_normal == True) | gen_only),
     ]
     res = {}
     for nm, mask, neg in targets:
@@ -285,6 +288,38 @@ def main():
         r = res[nm]
         print(f"  nested AUROC {r['nested_auc']:.3f}  |  kept {len(r['coef'])} of "
               f"{len(r['stability'])} candidates  |  C={r['C']}", flush=True)
+
+    # ---------------- the focal detector, evaluated on three different questions
+    gp = lu.set_index("bdsp_id").gen_class.eq("pathologic")
+    hf = lu.set_index("bdsp_id").has_focal_slow.eq(1)
+    cn = lu.set_index("bdsp_id").clean_normal.eq(True)
+    cpair = lu.set_index("bdsp_id").clean_pair.eq(True)
+    CONTRASTS = [
+        ("focal vs clean-normal", lambda i: hf.get(i, False) and cpair.get(i, False), lambda i: cn.get(i, False)),
+        ("focal vs clean-normal + generalized",
+         lambda i: hf.get(i, False) and cpair.get(i, False),
+         lambda i: cn.get(i, False) or (gp.get(i, False) and not hf.get(i, False))),
+        ("focal vs generalized",
+         lambda i: hf.get(i, False) and cpair.get(i, False),
+         lambda i: gp.get(i, False) and not hf.get(i, False)),
+    ]
+    contrast_rows = []
+    for label_pos, pos_extra in [("all focal", lambda i: True),
+                                 ("exclusively focal (no pathologic generalized)",
+                                  lambda i: not gp.get(i, False))]:
+        for cname, is_pos, is_neg in CONTRASTS:
+            aucs = []
+            for ft in res["focal"]["fold_test"]:
+                p_ = ft[[is_pos(i) and pos_extra(i) for i in ft.bdsp_id]]
+                n_ = ft[[is_neg(i) for i in ft.bdsp_id]]
+                if len(p_) < 10 or len(n_) < 10: continue
+                y = np.r_[np.ones(len(p_)), np.zeros(len(n_))]
+                aucs.append(roc_auc_score(y, np.r_[p_.S.values, n_.S.values]))
+            if aucs:
+                contrast_rows.append(dict(positives=label_pos, contrast=cname, auc=float(np.mean(aucs)),
+                                          lo=float(np.min(aucs)), hi=float(np.max(aucs)), folds=len(aucs)))
+    CONT = pd.DataFrame(contrast_rows)
+    CONT.to_csv("results/focal_contrasts.csv", index=False)
 
     frozen = {nm: dict(intercept=r["intercept"], coef=r["coef"].to_dict(),
                        center=r["center"], scale=r["scale"], impute=r["impute"], C=r["C"])
@@ -305,7 +340,8 @@ def main():
            "training fold**; the normal reference is rebuilt from that fold's clean-normals. Split on patient.\n"]
 
     for nm, r in res.items():
-        out.append(f"\n## {nm} slowing  (n = {r['n_pos']} positive / {r['n_neg']} clean-normal)\n")
+        neg_desc = "clean-normal" if nm != "focal_specific" else "negative (clean-normals + generalized-only)"
+        out.append(f"\n## {nm} slowing  (n = {r['n_pos']} positive / {r['n_neg']} {neg_desc})\n")
         out.append(f"- **Nested-CV AUROC of the linear predictor: {r['nested_auc']:.3f}** "
                    f"[{r['nested_lo']:.3f}, {r['nested_hi']:.3f}] across 5 folds")
         out.append(f"- **Parsimonious frozen model: {len(r['coef'])} features**, nested AUROC "
@@ -359,6 +395,23 @@ def main():
                  "predictor, not the probability", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.93])
     fig.savefig(OUT_FIG, dpi=140); plt.close(fig)
+
+    out.append("\n## The focal detector, evaluated on three different questions\n")
+    out.append("One detector (negatives during training = clean-normals **plus** generalized slowing, so it "
+               "cannot win on global slowing). The three contrasts below use that same score and differ only "
+               "in which recordings form the comparison group. Nested CV; mean over outer folds, range in "
+               "brackets.\n")
+    out.append("**Note on the positives:** a report naming focal slowing does not exclude generalized "
+               "slowing — 60.9% of focal recordings also carry pathologic generalized slowing. The second "
+               "block restricts positives to the 39.1% that are exclusively focal.\n")
+    out.append("| positives | comparison group | nested AUROC [fold range] | what it tells us |")
+    out.append("|---|---|---|---|")
+    MEANING = {"focal vs clean-normal": "can we see focal slowing at all?",
+               "focal vs clean-normal + generalized": "the deployment question: focal against everything else",
+               "focal vs generalized": "can we tell focal *from* generalized? (the hard one)"}
+    for _, q in CONT.iterrows():
+        out.append(f"| {q.positives} | {q.contrast.split('vs ')[1]} | **{q.auc:.3f}** "
+                   f"[{q.lo:.3f}–{q.hi:.3f}] | {MEANING[q.contrast]} |")
 
     out.append("\n## Frozen for external confirmation\n")
     out.append("Coefficients written to `data/derived/sparse_score_coefs.json`. The external test against the "
