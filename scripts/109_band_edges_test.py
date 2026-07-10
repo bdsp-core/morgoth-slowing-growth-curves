@@ -77,12 +77,14 @@ def main():
             subprocess.run([RC, "copy", f"s3:{ep}", str(work)], check=True, capture_output=True, timeout=180)
             src = next(work.glob("*.edf"))
             data, chs, fs = load_edf_referential(str(src))
+            data = data[: int(30 * 60 * fs)]                  # first 30 min only: band is stable long before
             bip = ex.to_bipolar(ex.preprocess(data.astype(np.float32), fs), chs)
             segidx = ex.segment_indices(bip.shape[0])
             mask, _ = af.usable_mask(bip, segidx, fs)
             dp = th47 = th48 = ap = 0.0; nseg = 0
             for k, (s, e) in enumerate(segidx):
                 if not mask[k]: continue
+                if nseg >= 120: break                          # cap: ~30 min of usable data
                 fr, psd = ex.multitaper_psd(bip[s:e].T, fs)   # (18, nf)
                 whole = psd.mean(0, keepdims=True)             # whole-head PSD
                 dp += band_power(fr, whole, 1, 4)[0]
@@ -93,7 +95,7 @@ def main():
             if nseg < 5: continue
             rows.append(dict(bdsp_id=r.bdsp_id, band=r.band, dp=dp / nseg, th47=th47 / nseg,
                              th48=th48 / nseg, ap=ap / nseg, nseg=nseg))
-            if len(rows) % 25 == 0:
+            if len(rows) % 10 == 0:
                 pd.DataFrame(rows).to_parquet(CKPT)
                 print(f"  {len(rows)} computed", flush=True)
         except Exception as exn:
