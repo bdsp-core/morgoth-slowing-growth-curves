@@ -78,11 +78,36 @@ fabricating a description.
 
 Morgoth gates at the recording level and is not stage-specific. Our field IS: `S` is normed per stage, so we
 can emit a per-stage present/absent call (prevalence above the normal 95th centile within that stage).
-**Evaluation** rests on V4a's machinery: reports that name slowing "in wakefulness" or "in sleep" give a
-directional label, and we already showed (spindle-verified) that recordings called slow in wake carry
-genuine excess in N2 that the reader omitted (AUROC 0.85). So the data support at least a directional check;
-a cleaner test needs the count of reports that localise slowing to a specific state, which requires the
-report-text scan (deferred — the CSV read timed out this session).
+**Committed plan (MBW 2026-07-10).** We WILL emit a per-stage present/absent slowing call and validate it:
+1. `scripts/111_stage_specific.py` — per-stage prevalence call from the field.
+2. Extract, from report text, the state a report localises slowing to (wake-only / sleep / both / generalised
+   across states); a clause-scoped, negation-aware scan (reuse `scripts/95` machinery), counting how many
+   reports carry a state-specific slowing statement — this is the denominator that decides how strong a test
+   is possible. Read in chunks with a hard row cap so it cannot time out.
+3. Evaluate our per-stage calls against those state labels (directional AUROC / concordance), and re-use the
+   spindle-verified V4a result (wake-reported slowing → genuine N2 excess, AUROC 0.85) as the anchor.
+
+---
+
+## 1d. Setting the operating points to minimise "flag for review" (MBW point 3)
+
+Two thresholds jointly determine the corner-case rate: the **gate cutoff** `τ_M` on Morgoth's p_slowing, and
+our **descriptor cutoff** `τ_S` (the amount/prevalence above which we call slowing "present"). At the shipped
+`τ_M = 0.30` the corner cases total ~15%; that is a threshold problem, not a disagreement.
+
+Optimisation (to be run in `scripts/112_operating_points.py`):
+1. Fix `τ_S` at its **principled** value — the point where our per-stage prevalence exceeds the normal 95th
+   centile — because that has a meaning (false-positive rate 5% in normals *by construction*) and should not
+   be tuned to match the gate.
+2. Sweep `τ_M`, and for each value compute the two corner-case rates using the **branch-appropriate** score
+   (regional excess for focal, AP-aware for generalized — NOT whole-head, which undercounts focal).
+3. Choose `τ_M` at the knee that minimises `case1 + case2` subject to the gate's own sensitivity staying at a
+   clinically acceptable level (do not sacrifice detection to look tidy). Report the frontier, not a single
+   point, so the trade-off is visible.
+4. Sanity target: corner cases **2–5% total**. If the minimum is far above that, the disagreement is real and
+   is a finding — but §1b shows most of it is the loose 0.30 cutoff, so we expect the knee to land low.
+Both corner cases remain **flag-for-review** outputs at whatever `τ_M` is chosen; the goal is to make that set
+small and genuinely surprising, not to eliminate it.
 
 ---
 
@@ -118,7 +143,7 @@ Each is reported **per sleep stage** (the reader's expectation is stage-dependen
 |---|---|---|---|
 | 1 | **Amount / excess** | median and p90 of `S` over that stage's segments | SD above age- and stage-matched normal, plus its centile in the clinician-normal distribution |
 | 2 | **Location** | `E(r) = S(r) − mean S over the *other* lobes`; take argmax | region + side, with the excess in SD |
-| 3 | **Band** | from the *excess*: `BI = (z_θ − z_δ) / (|z_θ| + |z_δ|)` over supra-threshold segments | continuous index in [−1, +1]; delta-predominant / mixed / theta-predominant |
+| 3 | **Band** | **primary principle (MBW): pick the feature(s) most correlated with the report's band word.** Redefine as the share of EXCESS power `ΔP_θ/(ΔP_δ+ΔP_θ)` in linear units vs the age/stage normal mean, AFTER the 7–8 Hz fix. The old z-difference index is deprecated. | continuous index; δ-predominant / mixed / θ-predominant, only if it clears the ceiling-referenced bar |
 | 4 | **Prevalence** | fraction of that stage's segments with `S` above the 95th centile of normals at that age and stage | % of segments; ACNS-style word only as a gloss |
 | 5 | **Persistence** | run-length structure of supra-threshold segments | longest run (min), number of episodes, median episode length |
 | 6 | **Stage-accentuation** | the stage maximising descriptor 1; whether slowing is present *only* in sleep | named stage; "present only during sleep" |
@@ -176,15 +201,17 @@ of normals"* rather than inventing a lobe.
 
 ---
 
-## 6. Build order
+## 6. Build order (MBW-approved 2026-07-10)
 
-| script | produces | status |
+| # | script | produces |
 |---|---|---|
-| `107_deviation_field.py` | the per-segment field, `w`, the normal thresholds, and the six descriptors per (recording, stage) | **this change** |
-| `108_descriptor_validation.py` | split-half reliability, dose-response, conspicuity, concordance-vs-ceiling, external check on the expert panel | next |
-| `109_band_edges_test.py` | does widening theta to 4–8 Hz rescue the band index? | next |
-| `110_generate_sentence.py` | gate + descriptors → the sentence, with the abstain path | after 108 |
+| 0 | `107b` diagnose the **N1 anomaly** (alpha attenuation reversed in abnormal N1) | root cause + fix; GATES everything per-stage |
+| 1 | `112_operating_points.py` | the gate/descriptor thresholds that minimise flag-for-review (§1d) |
+| 2 | `113_gated_describe.py` | gated per-branch descriptors + anterior/posterior gradient |
+| 3 | `109_band_edges_test.py` | the 7–8 Hz fix; then band = feature most correlated with the report band word |
+| 4 | `111_stage_specific.py` + report-state scan | per-stage present/absent call and its validation (§1c) |
+| 5 | `108_descriptor_validation.py` | split-half reliability, dose-response, external panel concordance |
+| 6 | `110_generate_sentence.py` | gate → descriptors → sentence, strictly against `docs/claims_table.md` |
 
-Retired by this plan: the trained **focal detector** (`S(focal)` in `scripts/103`). It was ill-posed — its
-negative class shares its positive class's dominant signal, so the score had to rise with slowing and fall
-with global slowing at the same time. `S(generalized)` survives, as the amount direction `w`.
+The description linear predictor is retired (§1a): descriptors are the three normed axes reported
+individually, plus their regional contrasts.
