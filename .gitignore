@@ -60,3 +60,4 @@ viewer/data/
 # fleet work manifests (per-patient ids; regenerable)
 fleet/manifest_pilot.jsonl
 fleet/manifest_full.jsonl
+PREFLATSTRIP.parquet

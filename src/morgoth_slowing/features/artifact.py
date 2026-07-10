@@ -10,6 +10,7 @@ from scipy.signal.windows import dpss
 
 # thresholds (µV / relative); tune against manual review (see docs/artifact_rejection_plan.md)
 FLAT_UV = 1.0          # median channel p2p below this = flat/disconnected
+FLAT_STD_UV = 0.5      # median channel std below this = flat (catches near-DC segments the p2p check misses)
 HIAMP_UV = 500.0       # channel p2p above this = movement/electrode pop
 EMG_REL = 0.55         # fraction of power >20 Hz above this = muscle
 FLAT_FRAC = 0.5        # >this fraction of channels flat -> reject segment
@@ -30,8 +31,13 @@ def _emg_frac(seg, fs):
 def segment_usable(seg, fs=200.0):
     """seg: (n_samp, n_ch) bipolar. Return (usable: bool, reason: str)."""
     p2p = np.ptp(seg, axis=0)                        # per-channel peak-to-peak (µV)
-    flat_frac = float(np.mean(p2p < FLAT_UV))
-    if flat_frac > FLAT_FRAC or np.median(p2p) < FLAT_UV:
+    std = np.std(seg, axis=0)                        # per-channel std
+    flat_frac = float(np.mean((p2p < FLAT_UV) | (std < FLAT_STD_UV)))
+    # Reject flat/disconnected/suppressed segments. The std guard catches zero- and near-DC segments whose
+    # band power floors to ~0 (ln power ~ -27.6) but whose p2p can be nonzero (a single step/spike). This
+    # pipeline is for SLOWING, not suppression: burst-suppression and disconnection are handled upstream by a
+    # dedicated detector and must not enter here (docs/description_architecture.md).
+    if flat_frac > FLAT_FRAC or np.median(p2p) < FLAT_UV or np.median(std) < FLAT_STD_UV:
         return False, "flat"
     if np.max(p2p) > HIAMP_UV:
         return False, "high_amplitude"
