@@ -38,9 +38,9 @@ if MODE == "case2":
     SIGDIR = HERE / "data" / "signals_case2"
     REVIEW_SET = ROOT / "data" / "derived" / "case2_review_set.jsonl"
     RESP_PATH = RESP_DIR / "responses_case2.jsonl"
-    VERDICTS = ["rhythmic-morphology (GRDA/FIRDA)", "norm-over-correction-elderly",
-                "genuine-model-miss", "gate-false-positive"]
-    CASE_FIELDS = ["age", "report_gen_band", "amount_median", "amount_p90", "prevalence", "p_generalized"]
+    VERDICTS = ["physiologic-sleep-slowing (correctly not flagged)", "rhythmic-morphology (GRDA/FIRDA)",
+                "norm-over-correction-elderly", "genuine-model-miss", "gate-false-positive"]
+    CASE_FIELDS = ["age", "dominant_stage", "stage_mix", "report_gen_band", "amount_median", "prevalence", "p_generalized"]
 else:
     SIGDIR = HERE / "data" / "signals"
     REVIEW_SET = ROOT / "data" / "derived" / "review_set.jsonl"
