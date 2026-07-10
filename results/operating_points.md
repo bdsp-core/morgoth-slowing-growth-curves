@@ -1,26 +1,41 @@
-# Operating points — minimising flag-for-review
+# Operating points, per branch — flag-for-review
 
-n = 12,027 recordings with both a gate probability and descriptors. Descriptor cutoff held at its principled value. **Flags are genuine contradictions only**: case 1 = we measure MARKED slowing (>3 SD) while the gate is silent; case 2 = the gate fires while we measure NOTHING (amount ≤ 0 SD, no lobar excess). 'Gate fires, we measure mild slowing' is normal operation and is NOT flagged — the descriptor describes, it does not re-detect.
+n = 12,027. Three outcomes per branch, so a data limitation is not scored as a disagreement:
 
-| gate τ_M | % gated in | case 1 (we see, gate silent) | case 2 (gate fires, we don't) | total flag | gate sens | gate spec |
+- **agree / quantify** — gate fires, we measure slowing (normal operation)
+- **quantification-limited** — gate fires, we measure nothing, but the recording is WAKE-ONLY (no sleep staged); slowing is subtle in alert wake, so this is a data limitation, NOT a flag
+- **FLAG** — case 1 (we measure MARKED slowing, gate silent) OR case 2b (gate fires, we measure nothing, WITH sleep coverage: a genuine contradiction)
+
+## generalized
+
+| gate tau | % gated | case 1 (marked, silent) | quant-limited (wake-only) | case 2b (FLAG: has sleep, nothing) | true flag | gate sens vs report |
 |---|---|---|---|---|---|---|
-| 0.20 | 83.1% | 0.0% | 14.2% | **14.2%** | 0.98 | 0.30 |
-| 0.25 | 73.6% | 0.0% | 10.4% | **10.4%** | 0.96 | 0.46 |
-| 0.30 | 55.5% | 0.1% | 4.7% | **4.7%** | 0.88 | 0.72 |  ←
-| 0.35 | 46.3% | 0.1% | 2.7% | **2.8%** | 0.80 | 0.82 |
-| 0.40 | 40.5% | 0.2% | 2.0% | **2.2%** | 0.72 | 0.87 |
-| 0.45 | 35.8% | 0.3% | 1.6% | **1.8%** | 0.65 | 0.89 |
-| 0.50 | 32.4% | 0.4% | 1.3% | **1.6%** | 0.60 | 0.91 |
-| 0.55 | 29.7% | 0.4% | 1.1% | **1.5%** | 0.55 | 0.92 |
-| 0.60 | 27.5% | 0.4% | 0.9% | **1.4%** | 0.51 | 0.93 |
-| 0.65 | 25.5% | 0.5% | 0.8% | **1.3%** | 0.48 | 0.93 |
-| 0.70 | 23.5% | 0.5% | 0.7% | **1.2%** | 0.44 | 0.94 |
-| 0.75 | 21.8% | 0.6% | 0.6% | **1.2%** | 0.41 | 0.95 |
-| 0.80 | 19.9% | 0.6% | 0.5% | **1.1%** | 0.38 | 0.95 |
-| 0.85 | 17.6% | 0.7% | 0.4% | **1.1%** | 0.34 | 0.96 |
-| 0.90 | 14.0% | 0.8% | 0.3% | **1.1%** | 0.27 | 0.97 |
-| 0.95 | 9.1% | 0.9% | 0.2% | **1.1%** | 0.18 | 0.98 |
+| 0.30 | 51.3% | 0.22% | 1.09% | 5.64% | **5.85%** | 0.89 |
+| 0.35 | 39.5% | 0.37% | 0.47% | 4.34% | **4.71%** | 0.79 |
+| 0.40 | 34.0% | 0.55% | 0.30% | 3.92% | **4.47%** | 0.73 |
+| 0.45 | 30.5% | 0.66% | 0.22% | 3.56% | **4.22%** | 0.68 |
+| 0.50 | 28.1% | 0.79% | 0.18% | 3.36% | **4.15%** | 0.64 |
+| 0.55 | 26.1% | 0.84% | 0.18% | 3.20% | **4.04%** | 0.61 |
+| 0.60 | 24.5% | 0.94% | 0.16% | 3.08% | **4.02%** | 0.58 |
+| 0.65 | 23.0% | 1.00% | 0.13% | 2.98% | **3.98%** | 0.55 |
+| 0.70 | 21.5% | 1.10% | 0.12% | 2.89% | **3.98%** | 0.52 |
+| 0.75 | 20.3% | 1.18% | 0.12% | 2.78% | **3.96%** | 0.50 |
+| 0.80 | 18.7% | 1.25% | 0.11% | 2.66% | **3.91%** | 0.47 |
+| 0.85 | 16.8% | 1.36% | 0.11% | 2.48% | **3.83%** | 0.42 |
 
-**Chosen τ_M = 0.30** (minimises total flag with gate sensitivity ≥ 0.80): flag-for-review **4.7%** (case1 0.1%, case2 4.7%), gate sensitivity 0.88, specificity 0.72.
+## focal
 
-At the shipped τ_M = 0.30 the flag rate is 4.7%; the knee cuts it to 4.7%. Both corner cases remain flag-for-review outputs — the goal is a small, genuinely surprising set, not zero.
+| gate tau | % gated | case 1 (marked, silent) | quant-limited (wake-only) | case 2b (FLAG: has sleep, nothing) | true flag | gate sens vs report |
+|---|---|---|---|---|---|---|
+| 0.30 | 13.0% | 0.76% | 2.64% | 7.23% | **8.00%** | 0.34 |
+| 0.35 | 9.1% | 0.81% | 2.00% | 4.63% | **5.45%** | 0.24 |
+| 0.40 | 6.9% | 0.84% | 1.65% | 3.21% | **4.05%** | 0.18 |
+| 0.45 | 5.3% | 0.84% | 1.40% | 2.29% | **3.13%** | 0.14 |
+| 0.50 | 4.4% | 0.86% | 1.17% | 1.85% | **2.71%** | 0.12 |
+| 0.55 | 3.6% | 0.86% | 1.02% | 1.41% | **2.27%** | 0.10 |
+| 0.60 | 3.0% | 0.86% | 0.86% | 1.14% | **2.00%** | 0.08 |
+| 0.65 | 2.5% | 0.87% | 0.69% | 0.93% | **1.80%** | 0.07 |
+| 0.70 | 2.0% | 0.87% | 0.54% | 0.72% | **1.59%** | 0.05 |
+| 0.75 | 1.6% | 0.87% | 0.41% | 0.52% | **1.40%** | 0.04 |
+| 0.80 | 1.2% | 0.87% | 0.30% | 0.38% | **1.26%** | 0.03 |
+| 0.85 | 0.8% | 0.87% | 0.18% | 0.24% | **1.11%** | 0.02 |
