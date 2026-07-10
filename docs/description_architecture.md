@@ -148,6 +148,24 @@ Each is reported **per sleep stage** (the reader's expectation is stage-dependen
 | 5 | **Persistence** | run-length structure of supra-threshold segments | longest run (min), number of episodes, median episode length |
 | 6 | **Stage-accentuation** | the stage maximising descriptor 1; whether slowing is present *only* in sleep | named stage; "present only during sleep" |
 
+**Alpha in sleep, and sedation (2026-07-10).** The alpha-attenuation axis is computed **in wake only**.
+Two reasons: (i) alpha is the posterior dominant rhythm, expected in wake, normally attenuated by N1 and gone
+by N2 — so "low alpha vs normal-for-stage" is not a slowing sign in sleep, and abnormal patients' disrupted,
+lighter sleep retains wake-like alpha the stager still calls N1/N2, which made the raw sleep a_atten reversed;
+(ii) **sedatives that cause slowing also generate alpha** — propofol and benzodiazepines induce anterior/
+diffuse alpha (and beta) alongside slowing, so alpha power is not a clean inverse marker of slowing under
+sedation. Both point the same way: treat alpha attenuation as a wake sign, and describe sleep slowing by
+delta and theta excess. This is stated in the manuscript.
+
+**Flat / suppressed / disconnected segments are removed up front (2026-07-10).** 6.5% of cohort segments
+(22–32% of abnormal *wake*) are flat — every band at the eps floor, near-zero power. These are
+suppression / disconnection / dead epochs, not slowing. `features/artifact.py::usable_mask` now rejects them
+at extraction (a per-channel std guard, added because the peak-to-peak check missed zero-power segments), and
+the existing derived table was stripped (`segment_features` 6.5% removed; backup retained). **This pipeline is
+for slowing only:** recordings that are predominantly burst-suppression or disconnection are handled by a
+dedicated detector upstream and must not enter here. `data/derived/high_flat_recordings.parquet` flags the
+1,317 recordings with > 30% flat segments as candidates for that review.
+
 Two design points that were previously wrong and are now fixed:
 
 - **Location must be an excess, not an absolute deviation.** In a globally slow brain, the argmax over
