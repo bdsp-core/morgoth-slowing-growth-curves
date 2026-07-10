@@ -29,10 +29,24 @@ from flask import Flask, request, jsonify, send_from_directory, Response
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 STATIC = HERE / "static"
-SIGDIR = HERE / "data" / "signals"
-REVIEW_SET = ROOT / "data" / "derived" / "review_set.jsonl"
 RESP_DIR = HERE / "data"
-RESP_PATH = RESP_DIR / "responses.jsonl"
+
+# MODE: "v3" (accurate/not-accurate on a generated sentence) or "case2" (adjudicate the generalized
+# case-2 recordings — pick a morphology label). Selected by VIEWER_MODE; drives paths + the UI.
+MODE = os.environ.get("VIEWER_MODE", "v3")
+if MODE == "case2":
+    SIGDIR = HERE / "data" / "signals_case2"
+    REVIEW_SET = ROOT / "data" / "derived" / "case2_review_set.jsonl"
+    RESP_PATH = RESP_DIR / "responses_case2.jsonl"
+    VERDICTS = ["rhythmic-morphology (GRDA/FIRDA)", "norm-over-correction-elderly",
+                "genuine-model-miss", "gate-false-positive"]
+    CASE_FIELDS = ["age", "report_gen_band", "amount_median", "amount_p90", "prevalence", "p_generalized"]
+else:
+    SIGDIR = HERE / "data" / "signals"
+    REVIEW_SET = ROOT / "data" / "derived" / "review_set.jsonl"
+    RESP_PATH = RESP_DIR / "responses.jsonl"
+    VERDICTS = ["accurate", "not_accurate"]
+    CASE_FIELDS = []
 
 app = Flask(__name__, static_folder=None)
 
@@ -112,6 +126,12 @@ def static_files(fn):
     return send_from_directory(STATIC, fn)
 
 
+@app.route("/api/config")
+def api_config():
+    """Drives the UI: which verdict buttons and which per-case numeric fields to show."""
+    return jsonify({"mode": MODE, "verdicts": VERDICTS, "case_fields": CASE_FIELDS})
+
+
 @app.route("/api/cases")
 def api_cases():
     """Cases + this rater's existing verdicts (for resume + progress)."""
@@ -122,11 +142,13 @@ def api_cases():
     out = []
     for c in cases:
         prev = resp.get((rater, c["case_id"]))
-        item = {"case_id": c["case_id"], "stratum": c.get("stratum"),
+        item = {"case_id": c["case_id"], "stratum": c.get("stratum", c.get("age_band")),
                 "done": prev is not None,
                 "verdict": (prev or {}).get("verdict"),
                 "edited_text": (prev or {}).get("edited_text", "")}
-        if not blinded:
+        if MODE == "case2":
+            item["fields"] = {k: c.get(k) for k in CASE_FIELDS}
+        elif not blinded:
             item["sentence"] = c["generated_sentence"]
             item["source"] = "generated"
         out.append(item)
@@ -176,14 +198,15 @@ def api_save():
     b = request.get_json(force=True)
     cid = b.get("case_id")
     verdict = b.get("verdict")
-    if not cid or verdict not in ("accurate", "not_accurate"):
-        return jsonify({"error": "case_id and verdict required"}), 400
+    if not cid or verdict not in VERDICTS:
+        return jsonify({"error": f"case_id and a valid verdict required ({VERDICTS})"}), 400
     rec = {
         "case_id": cid,
         "rater_id": b.get("rater_id") or app.config["DEFAULT_RATER"],
         "verdict": verdict,
+        "notes": b.get("edited_text", ""),
         "shown_sentence": b.get("shown_sentence", ""),
-        "edited_text": b.get("edited_text", "") if verdict == "not_accurate" else "",
+        "edited_text": b.get("edited_text", ""),
         "source": b.get("source", "generated"),
         "ts_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     }

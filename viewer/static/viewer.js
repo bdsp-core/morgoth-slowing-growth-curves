@@ -102,11 +102,47 @@ async function loadSignal() {
 
 async function loadSentence() {
   const c = S.cases[S.idx];
+  if (S.mode === 'case2') { renderCase2(c); return; }
   const r = await fetch(`/api/sentence?case_id=${c.case_id}&rater=${encodeURIComponent(S.rater)}`);
   const j = await r.json();
   S.sentence = j.sentence; S.shown = j.sentence; S.source = j.source;
   $('sentence').textContent = j.sentence;
   $('stratum').textContent = S.blinded ? '' : (c.stratum || '');
+}
+
+// ---- case-2 morphology review: show the numbers, ask for one of 4 labels + notes ----
+async function setupCase2() {
+  const r = await fetch('/api/config'); const cfg = await r.json();
+  S.mode = cfg.mode; S.verdicts = cfg.verdicts || []; S.caseFields = cfg.case_fields || [];
+  if (S.mode !== 'case2') return;
+  $('paneltitle').innerHTML = 'Case-2 adjudication: Morgoth + report say generalized slowing, our field measured nothing &mdash; <b>why?</b> <span id="stratum" class="tag"></span>';
+  $('verdictrow').innerHTML = S.verdicts.map((v, i) =>
+    `<button class="c2btn" data-v="${v}">${v} <span class="k">${i + 1}</span></button>`).join(' ')
+    + ' <span id="verdictState" class="muted"></span>';
+  $('sentence').innerHTML = '<div id="c2fields" class="small"></div>';
+  const eb = $('editbox'); eb.hidden = false;
+  const m = eb.querySelector('.muted'); if (m) m.textContent = 'Notes (optional): morphology seen (FIRDA/GRDA runs?) or why the model missed it.';
+  document.querySelectorAll('.c2btn').forEach(b => b.onclick = () => saveCase2(b.dataset.v));
+}
+
+function renderCase2(c) {
+  const f = c.fields || {};
+  const fmt = (k) => (typeof f[k] === 'number' ? f[k].toFixed(k === 'age' ? 0 : 2) : f[k]);
+  const labels = { age: 'age', report_gen_band: 'report band', amount_median: 'our amount (SD)',
+    amount_p90: 'our p90 (SD)', prevalence: 'our prevalence', p_generalized: 'Morgoth p(gen)' };
+  const el = $('c2fields'); if (el) el.innerHTML = S.caseFields.map(k =>
+    `<span class="c2f"><b>${labels[k] || k}</b>: ${fmt(k)}</span>`).join(' &nbsp;&middot;&nbsp; ');
+  if ($('stratum')) $('stratum').textContent = c.stratum || '';
+  document.querySelectorAll('.c2btn').forEach(b => b.classList.toggle('sel', c.verdict === b.dataset.v));
+  if ($('verdictState')) $('verdictState').textContent = c.done ? ('✓ ' + c.verdict) : 'not yet scored';
+  if ($('edit')) $('edit').value = c.edited_text || '';
+}
+
+async function saveCase2(verdict) {
+  if (await save(verdict, $('edit').value.trim())) {
+    document.querySelectorAll('.c2btn').forEach(b => b.classList.toggle('sel', verdict === b.dataset.v));
+    setTimeout(nextCase, 250);
+  }
 }
 
 async function loadCase() {
@@ -121,6 +157,7 @@ async function loadCase() {
 }
 
 function showVerdict(c) {
+  if (S.mode === 'case2') return;   // case2 verdict state is set in renderCase2
   $('btnAcc').classList.toggle('sel', c.verdict === 'accurate');
   $('btnNot').classList.toggle('sel', c.verdict === 'not_accurate');
   $('verdictState').textContent = c.done
@@ -179,13 +216,18 @@ function initControls() {
   $('sens').addEventListener('change', e => { S.sens = parseFloat(e.target.value); draw(); });
   for (const f of ['hp', 'lp', 'notch'])
     $(f).addEventListener('change', e => { S[f] = e.target.value; loadSignal(); });
-  $('btnAcc').onclick = onAccurate; $('btnNot').onclick = onNotAccurate; $('btnSave').onclick = onSaveEdit;
+  if ($('btnAcc')) { $('btnAcc').onclick = onAccurate; $('btnNot').onclick = onNotAccurate; }
+  if ($('btnSave')) $('btnSave').onclick = onSaveEdit;
   window.addEventListener('resize', draw);
 
   document.addEventListener('keydown', e => {
     const t = e.target.tagName;
     if (t === 'TEXTAREA') { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); onSaveEdit(); } return; }
     if (t === 'INPUT' || t === 'SELECT') return;
+    if (S.mode === 'case2') {
+      const i = parseInt(e.key, 10) - 1;
+      if (i >= 0 && i < S.verdicts.length) { e.preventDefault(); saveCase2(S.verdicts[i]); return; }
+    }
     if (e.key === '1') onAccurate();
     else if (e.key === '2') onNotAccurate();
     else if (e.key === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? prevCase() : pageBy(-1); }
@@ -202,4 +244,6 @@ function stepSens(dir) {
 }
 
 initControls();
-loadCaseList().catch(e => { $('sentence').textContent = 'load error: ' + e; });
+setupCase2()
+  .then(loadCaseList)
+  .catch(e => { $('sentence').textContent = 'load error: ' + e; });
