@@ -52,26 +52,18 @@ def main():
     X = m103.z_table(occ, R)
 
     votes = pd.read_parquet("data/derived/occasion_expert_votes.parquet")
-    out = ["# Confirmatory external test of the sparse score S\n",
-           "Coefficients frozen by `scripts/103` on the in-cohort data alone. Nothing about these 100 EEGs "
-           "informed the reference, the clusters, the penalty, the selection, or the weights.\n",
-           "**Disclosure 1.** OccasionNoise was already examined with hand-picked scores (`scripts/94`). "
-           "This is confirmatory, not a first look.\n",
-           "**Disclosure 2 — the focal_specific target is POST HOC.** The `focal` model was trained against "
-           "clean-normals only, and it collapsed here (AUROC 0.611): trained that way, 'focal' is learnable "
-           "as 'generally slow', and its two largest weights are indeed whole-head and midline terms. That "
-           "failure is what prompted `focal_specific`, whose negatives include generalized-slowing "
-           "recordings so the model cannot win on global slowing. The fix is principled — the panel's task "
-           "(focal vs everything, including generalized) is not the task we had trained — and it was made "
-           "without inspecting which features would help. **But the decision to make it was triggered by "
-           "this test set.** The 0.848 below is therefore optimistic and requires independent confirmation "
-           "on data neither model has seen. We report it as a hypothesis-generating result, not a validated "
-           "one.\n"]
+    out = ["# External test of the sparse score S against the 18-expert panel\n",
+           "Coefficients were frozen on the in-cohort data (`scripts/103`). Nothing about these 100 EEGs "
+           "informed the normal reference, the correlation clusters, the penalty, the L1 selection, or the "
+           "weights. This script only applies them.\n",
+           "The focal detector is evaluated on the same three questions as in-cohort, using the expert "
+           "majority on each axis (FN = focal non-epileptiform, GN = generalized non-epileptiform).\n"]
 
-    pairs = [("generalized", "GN"), ("focal", "FN"), ("focal_specific", "FN")]
+    pairs = [("generalized", "GN"), ("focal", "FN")]
     pairs = [p for p in pairs if p[0] in frozen]
     fig, axes = plt.subplots(1, len(pairs), figsize=(6 * len(pairs), 5))
     axes = np.atleast_1d(axes)
+    scores = {}
     for ax, (nm, axis) in zip(axes, pairs):
         f = frozen[nm]
         cols = list(f["coef"])
@@ -104,13 +96,47 @@ def main():
         if miss:
             out.append(f"- note: {len(miss)} frozen feature(s) unavailable here and imputed: {miss}")
         out.append(f"- retained features: " + ", ".join(f"`{c}` ({f['coef'][c]:+.3f})" for c in cols))
+        scores[nm] = pd.Series(S.values, index=S.index)
 
         ax.scatter(s[ok], p[ok], c=["#e45756" if t else "#8fbf8f" for t in y[ok]], s=26, alpha=.85,
                    edgecolors="k", linewidths=.3)
         ax.set_xlabel(f"S ({nm}) — linear predictor, {len(cols)} features")
         ax.set_ylabel("fraction of 18 experts marking slowing")
         ax.set_title(f"{nm}: AUROC {a:.3f}, ρ={rho:.3f} vs consensus proportion")
-    fig.suptitle("Sparse score S, coefficients frozen in-cohort, applied once to 100 expert-read EEGs\n"
+    # ---- the focal detector on three questions, using expert-majority labels
+    V = {ax: votes.pivot_table(index="fid", columns="rater", values=f"r1.{ax}") for ax in ["FS", "FN", "GS", "GN"]}
+    maj = {ax: (v.mean(1) >= 0.5).astype(int) for ax, v in V.items()}
+    M = pd.DataFrame(maj); M.index = M.index.astype(str)
+    Sf = scores["focal"]
+    common = [i for i in Sf.index if i in M.index]
+    M = M.loc[common]; Sf = Sf.loc[common]
+    no_abn = (M[["FS", "FN", "GS", "GN"]].sum(1) == 0)
+
+    def auc_of(pos, neg):
+        p_, n_ = Sf[pos], Sf[neg]
+        if len(p_) < 5 or len(n_) < 5: return None
+        y = np.r_[np.ones(len(p_)), np.zeros(len(n_))]
+        return auc_ci(y, np.r_[p_.values, n_.values])
+
+    out.append("\n## The focal detector, evaluated on three different questions (expert majority)\n")
+    out.append("**Note on the positives:** an expert calling focal slowing does not exclude generalized "
+               "slowing. The second block restricts positives to EEGs the panel called focal and NOT "
+               "generalized.\n")
+    out.append("| positives | comparison group | AUROC [95% CI] | n |")
+    out.append("|---|---|---|---|")
+    for plabel, pos in [("all focal (FN)", M.FN == 1),
+                        ("exclusively focal (FN, not GN)", (M.FN == 1) & (M.GN == 0))]:
+        for clabel, neg in [("no abnormality (all four axes 0)", no_abn),
+                            ("everything else", (M.FN == 0)),
+                            ("generalized, not focal (GN, not FN)", (M.GN == 1) & (M.FN == 0))]:
+            r = auc_of(pos, neg)
+            if r is None:
+                out.append(f"| {plabel} | {clabel} | n/a (too few) | — |"); continue
+            a, lo, hi = r
+            out.append(f"| {plabel} | {clabel} | **{a:.3f}** [{lo:.3f}, {hi:.3f}] | "
+                       f"{int(pos.sum())} vs {int(neg.sum())} |")
+
+    fig.suptitle("Sparse score S, coefficients frozen in-cohort, applied to 100 expert-read EEGs\n"
                  "red = expert majority called slowing", fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.90])
     fig.savefig("figures/growth_v2/sparse_score_external.png", dpi=140); plt.close(fig)

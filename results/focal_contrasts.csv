@@ -1,0 +1,7 @@
+positives,contrast,auc,lo,hi,folds
+all focal,focal vs clean-normal,0.8567516020481516,0.8407709681705164,0.8685383147968181,5
+all focal,focal vs clean-normal + generalized,0.7977287468380331,0.7683358387003352,0.8127873139625031,5
+all focal,focal vs generalized,0.6220215053219549,0.5758222356739306,0.6377551020408163,5
+exclusively focal (no pathologic generalized),focal vs clean-normal,0.7591593857082277,0.7317884310924044,0.7799907982516678,5
+exclusively focal (no pathologic generalized),focal vs clean-normal + generalized,0.688155065234244,0.6453101764821413,0.712886454044246,5
+exclusively focal (no pathologic generalized),focal vs generalized,0.4768247482959535,0.4154736247947454,0.5022100245558283,5
