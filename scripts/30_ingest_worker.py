@@ -100,17 +100,20 @@ def process_one(r, work):
     t_start = time.time()
     fi.rclone(["copy", f"bdsp:{ep}", str(work)])
     src = next(work.glob("*.edf")); src.rename(local)
-    # size guard (bogus-duration multi-day recordings)
+    # size guard (bogus-duration multi-day recordings). We analyze only the first MAX_ANALYZE_HOURS, so the
+    # guard estimates the CAPPED size — a 40 h recording is truncated to 24 h (~1.3 GB), not skipped.
     import pyedflib
     _f = pyedflib.EdfReader(str(local)); _ns = _f.getNSamples(); _fs = _f.getSampleFrequencies(); _f._close()
-    est_gb = max(int(_ns[k] * 200.0 / _fs[k]) for k in range(len(_ns)) if _fs[k] > 0) * 19 * 4 / 1e9
+    _cap_samp = int(ex.MAX_ANALYZE_HOURS * 3600 * 200.0)
+    est_gb = min(max(int(_ns[k] * 200.0 / _fs[k]) for k in range(len(_ns)) if _fs[k] > 0), _cap_samp) * 19 * 4 / 1e9
     if est_gb > MAX_GB:
         local.unlink(missing_ok=True)
         _prog(event="skip", rid=rid, est_gb=round(est_gb, 1))
         return "toobig"
-    # featurize (bounded memory)
+    # featurize (bounded memory) — truncate to the first MAX_ANALYZE_HOURS so features, stages, and gate
+    # all cover the same span (SAP §4.2/§4.3).
     data, chs, fs = load_edf_referential(str(local))
-    data = data.astype(np.float32, copy=False)
+    data = ex.cap_to_hours(data.astype(np.float32, copy=False), fs)
     bip = ex.to_bipolar(ex.preprocess(data, fs), chs)
     segidx = ex.segment_indices(bip.shape[0])
     mask, reasons = af.usable_mask(bip, segidx, fs)

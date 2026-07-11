@@ -37,6 +37,7 @@ BANDS = {"delta": (1.0, 4.0), "theta": (4.0, 8.0), "alpha": (8.0, 13.0),
 SEG_SAMPLES = 3000     # 15 s @ 200 Hz
 SEG_STEP = 2800        # 14 s (1 s overlap) — matches Growth_curves res
 FS = 200.0
+MAX_ANALYZE_HOURS = 24.0   # coverage cap: analyze up to the first 24 h of a recording (SAP §4.2/§4.3)
 NW = 4.0               # time-bandwidth product
 N_TAPERS = 7
 
@@ -71,7 +72,19 @@ def to_bipolar(data, ch_names):
     return out
 
 
-def segment_indices(n_samples, seg=SEG_SAMPLES, step=SEG_STEP):
+def cap_to_hours(data, fs, hours=MAX_ANALYZE_HOURS):
+    """Truncate a (n_samples, n_ch) array to the first `hours` hours — the analysis coverage cap.
+    Applied to the raw recording BEFORE featurizing/staging so features, stages, and the gate all cover
+    the same span (SAP §4.2/§4.3). Returns the array unchanged if it is already <= the cap."""
+    n = int(hours * 3600 * fs)
+    return data[:n] if data.shape[0] > n else data
+
+
+def segment_indices(n_samples, seg=SEG_SAMPLES, step=SEG_STEP, fs=FS, max_hours=MAX_ANALYZE_HOURS):
+    """Segment start/end indices, capped to the first `max_hours` hours (belt-and-suspenders: the worker
+    also caps the raw data via cap_to_hours). Pass max_hours=None to disable the cap."""
+    if max_hours is not None:
+        n_samples = min(n_samples, int(max_hours * 3600 * fs))
     starts = list(range(0, n_samples - seg + 1, step))
     return [(s, s + seg) for s in starts]
 
