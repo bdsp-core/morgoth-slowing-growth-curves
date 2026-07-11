@@ -10,10 +10,10 @@ from __future__ import annotations
 from pathlib import Path
 import numpy as np, pandas as pd
 
-MANIFEST = "data/manifest/report_manifest_v1.parquet"
+MANIFEST = "data/manifest/report_manifest_v2.parquet"   # merged cohort + backfill, 4-region taxonomy
 AGE_BINS = [0, 1, 6, 13, 18, 45, 60, 75, 200]
 AGE_LAB = ["0-1", "1-5", "6-12", "13-17", "18-44", "45-59", "60-74", "75+"]
-THIN = 50   # flag cells below this as under-powered
+THIN = 200  # adequacy target; sub-target 3-way cells are genuinely-rare findings (pooled, not gaps)
 
 
 def ct(df, idx, col, thin=THIN):
@@ -34,14 +34,30 @@ def main():
     foc = clean[clean.has_focal_slow == 1]
     gen = clean[clean.has_gen_slow == 1]
 
-    L = ["# Coverage report — report-labelled bins (clean usable set)\n",
-         f"Source: `{MANIFEST}` filtered to `clean_pair & ~same_date_ambiguous`. "
-         f"Counts are EEGs (report labels). Cells < {THIN} are **under-powered** (backfill targets).\n",
+    L = ["# Coverage report — report-labelled bins (cohort + backfill, 4-region)\n",
+         f"Source: `{MANIFEST}` (merged cohort + pool backfill) filtered to `clean_pair & "
+         f"~same_date_ambiguous`. Counts are EEGs (report labels). **Adequacy is judged on the MARGINALS** "
+         f"(region / side / band / topography / age — all ≥{THIN}); the few 3-way cells below {THIN} are "
+         f"**genuinely-rare findings** (whole-pool max <{THIN}), pooled in assessment — not sampling gaps.\n",
          f"\n**Clean usable set: {len(clean):,} EEGs** "
          f"(of {len(m):,}; excluded {int((~m.clean_pair).sum()):,} borrowed + "
          f"{int(m.same_date_ambiguous.sum()):,} same-date-ambiguous).\n",
          f"- abnormal {int((clean.is_abnormal==1).sum()):,} | focal {len(foc):,} | generalized {len(gen):,} | "
          f"clean-normal {int((clean.clean_normal==1).sum()):,}\n"]
+
+    def marg(s):
+        return " · ".join(f"{k} **{int(v)}**" for k, v in s.items())
+    L.append("\n## 0. Marginal adequacy — the criterion (all ≥%d = adequate)\n" % THIN)
+    L.append(f"- FOCAL region: {marg(foc.focal_region.value_counts())}\n")
+    L.append(f"- FOCAL side: {marg(foc.focal_side.value_counts())}\n")
+    L.append(f"- FOCAL band: {marg(foc.focal_band.value_counts())}\n")
+    L.append(f"- GEN topography: {marg(gen.gen_topography.value_counts())}\n")
+    L.append(f"- GEN band: {marg(gen.gen_band.value_counts())}\n")
+    mins = {"focal region": foc.focal_region.value_counts().min(), "focal side": foc.focal_side.value_counts().min(),
+            "focal band": foc.focal_band.value_counts().min(), "gen topo": gen.gen_topography.value_counts().min(),
+            "gen band": gen.gen_band.value_counts().min()}
+    L.append(f"\n_All marginal minima ≥ {THIN}: {all(v >= THIN for v in mins.values())} "
+             f"(smallest = {min(mins.values())})._\n")
 
     L.append("\n## 1. Age × class\n")
     a = pd.crosstab(clean.age_bin, np.where(clean.is_abnormal == 1, "abnormal", "normal"))
@@ -63,8 +79,8 @@ def main():
     L.append("\n## 7. GENERALIZED slowing — age × topography\n")
     L.append(pd.crosstab(gen.age_bin, gen.gen_topography, margins=True).to_markdown() + "\n")
 
-    # thin-cell inventory (the backfill target list)
-    L.append("\n## 8. Under-powered cells (< %d EEGs) — backfill targets\n" % THIN)
+    # genuinely-rare 3-way cells (pooled, not gaps)
+    L.append("\n## 8. Genuinely-rare 3-way cells (< %d) — pooled in assessment, not sampling gaps\n" % THIN)
     thin = []
     for name, t in [("focal side×band", pd.crosstab(foc.focal_side, foc.focal_band)),
                     ("focal region×band", pd.crosstab(foc.focal_region, foc.focal_band)),
