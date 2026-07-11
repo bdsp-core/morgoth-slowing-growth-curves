@@ -1,73 +1,155 @@
-# Data Dictionary — Growth_curves feature set
+# Data dictionary — canonical tables
 
-Source: `s3://bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/`
-(2.0 GiB, 12,380 objects). Precomputed by Dr. Jing. Transcribed from its `read_me.txt`.
+Authoritative column-level definition for the canonical dataset produced by the one clean-room fleet run
+(`docs/analysis_plan.md` §5, §12). **Governance:** adding or changing a column requires editing this file
+and `docs/DATA_INVENTORY.md` in the same commit. Every primary result reads only the tables below.
 
-## Layout
+> The legacy Growth_curves `.mat` format (first-600 s, precomputed) is documented separately in
+> `docs/legacy_growth_curves_matformat.md` and is **not** an input to any canonical table.
 
-```
-Growth_curves/
-  read_me.txt
-  features/
-    normal/        # clinically-normal recordings  -> CONTROL group
-    focal_slow/    # focal slowing                  -> abnormal comparison
-    general_slow/  # generalized slowing            -> abnormal comparison
-```
+Conventions: power in µV²; `log_*` = natural log of band power; `rel_*` = band power / total power (0–1);
+ratios dimensionless. Missing = NaN, never silently imputed (SAP §8.6). Segment = 15 s @ 200 Hz, step 14 s.
 
-One file per recording: `sub-<BDSP_ID>_<YYYYMMDDHHMMSS>.mat`
-- `<BDSP_ID>` = OMOP `person_id` (e.g. `S0001111192519`).
-- `<YYYYMMDDHHMMSS>` = **EEG recording datetime** (e.g. `20150613113205` = 2015-06-13 11:32:05).
-  → EEG time is known from the filename; OMOP only needs **birth date** to compute age.
+---
 
-## `.mat` contents — table `res`
+## 1. `segment_master` — source of truth (per segment × region, whole recording)
 
-One **row per 15-second segment**, 4 columns:
+Grain: one row per **(bdsp_id, segment, region)**. Partitioned one parquet per recording
+(`segment_master/bdsp_id=<id>/part.parquet`). Region grain is canonical; channel grain built on demand
+for the focal subset (SAP §5.3).
 
-| Col | Name | Meaning |
+| column | type | units / allowed | definition |
+|---|---|---|---|
+| `bdsp_id` | str | site+patient+date key | recording identifier; join key to all sidecars |
+| `segment` | int32 | 0-based | segment index over the **whole** recording |
+| `t_start_s` | float32 | seconds | onset of the 15 s segment (step 14 s) |
+| `region` | category | see §5 | 6 aggregates (+18 bipolar channels in the channel-grain build) |
+| `stage` | category | `W`,`N1`,`N2`,`N3`,`REM` | per-segment sleep stage (Morgoth stager) |
+| `artifact_flag` | bool | — | True = segment failed usability check (retained, not dropped) |
+| `artifact_reason` | category | `none`,`flat`,`high_amp`,`other` | why flagged (`none` when usable) |
+| `log_delta` | float32 | ln µV² | ln power 1–4 Hz |
+| `log_theta` | float32 | ln µV² | ln power 4–7 Hz |
+| `log_alpha` | float32 | ln µV² | ln power 8–13 Hz |
+| `log_beta` | float32 | ln µV² | ln power 13–30 Hz |
+| `log_gamma` | float32 | ln µV² | ln power 30–45 Hz |
+| `log_total` | float32 | ln µV² | ln power 0.5–45 Hz |
+| `rel_delta` | float32 | 0–1 | delta / total |
+| `rel_theta` | float32 | 0–1 | theta / total |
+| `rel_alpha` | float32 | 0–1 | alpha / total |
+| `DAR` | float32 | ratio | delta/alpha power ratio |
+| `TAR` | float32 | ratio | theta/alpha power ratio |
+| `DTR` | float32 | ratio | delta/theta power ratio |
+| `low_freq_rel` | float32 | 0–1 | (delta+theta) / total |
+| `p_slowing` | float32 | 0–1 | per-segment Morgoth gate: P(pathologic slowing) |
+| `p_focal` | float32 | 0–1 | per-segment Morgoth gate: P(focal) |
+| `p_generalized` | float32 | 0–1 | per-segment Morgoth gate: P(generalized) |
+
+Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usable = ~artifact_flag`.
+
+---
+
+## 2. `recording_meta` — one row per recording
+
+| column | type | allowed | definition |
+|---|---|---|---|
+| `bdsp_id` | str | | recording id |
+| `patient_id` | str | | patient key (may span multiple recordings) |
+| `src` | category | `cohort`,`expansion` | provenance (never inferred from filename) |
+| `panel` | bool | | True if in a multi-rater expert set (SAP §3.6) |
+| `panel_set` | category | `none`,`occasionnoise`,`moe` | which expert panel |
+| `age` | float32 | years | age at recording (fractional where available) |
+| `sex` | category | `F`,`M`,`unknown` | recorded sex (norms pool sexes; SAP §6.2) |
+| `recording_seconds` | float32 | s | analyzed duration |
+| `n_segments` | int32 | | total segments |
+| `n_usable` | int32 | | segments with `artifact_flag=False` |
+| `frac_artifact` | float32 | 0–1 | 1 − n_usable/n_segments |
+| `frac_W`…`frac_REM` | float32 | 0–1 | segment-weighted stage fractions |
+| `clean_normal` | bool | | report normal AND no abnormal flags (norm-fit set) |
+| `is_abnormal` | bool | | any abnormal finding in report |
+| `nearest_report_id` | str | | id of nearest-in-time report |
+| `clean_pair` | bool | | report↔EEG pairing unambiguous (SAP §3.3) |
+| `included` | bool | | passes inclusion/exclusion (SAP §3.2) |
+| `exclusion_reason` | category | `none`,`burst_supp`,`too_short`,`low_usable`,`other` | if `included=False` |
+
+---
+
+## 3. `recording_labels` — one row per recording (report-derived)
+
+Read from the PHI-safe scratchpad extract only (SAP §11). All label-dependent analyses filter `clean_pair`.
+
+| column | type | allowed | definition |
+|---|---|---|---|
+| `bdsp_id` | str | | recording id |
+| `has_focal_slow` | bool | | report asserts focal slowing (negation-handled) |
+| `has_gen_slow` | bool | | report asserts generalized slowing |
+| `focal_side` | category | `left`,`right`,`bilateral`,`na` | focal laterality |
+| `focal_region` | category | `frontal`,`temporal`,`central`,`parietal`,`occipital`,`na` | focal lobe |
+| `focal_band` | category | `delta`,`theta`,`mixed`,`na` | focal band word |
+| `gen_band` | category | `delta`,`theta`,`mixed`,`na` | generalized band word |
+| `gen_topography` | category | `anterior`,`posterior`,`unspecified`,`na` | generalized predominance |
+| `gen_state` | category | `awake`,`sleep`,`unspecified`,`na` | state in which reported |
+| `gen_class` | category | project label set | generalized subtype |
+| `report_stratum` | category | project label set | ordinal report-severity stratum (dose-response only; NOT a severity claim) |
+
+---
+
+## 4. `panel_votes` — one row per (panel EEG × rater × axis) [SAP §3.6, §8.3]
+
+The expert-panel scores that supply inter-rater reliability and the human ceiling. Rater ids anonymized.
+
+| column | type | allowed | definition |
+|---|---|---|---|
+| `bdsp_id` | str | | panel recording id (join to `recording_meta` where `panel=True`) |
+| `panel_set` | category | `occasionnoise`,`moe` | which panel |
+| `rater` | category | `R01`…`Rnn` | anonymized rater (author `bwestove`→flagged, excluded from validation) |
+| `read` | category | `I`,`II` | OccasionNoise re-read part (within-rater); `I` elsewhere |
+| `axis` | category | `presence`,`focal`,`generalized`,`band`,`side`,`topography` | scored axis |
+| `value` | category | axis-specific (e.g. band δ/θ/α/β) | the rater's call |
+| `consensus_value` | category | | panel majority/adjudicated value for that EEG×axis |
+| `consensus_prop` | float32 | 0–1 | fraction of raters positive (graded conspicuity target) |
+
+---
+
+## 5. Controlled vocabularies
+
+**Regions — 6 aggregates:** `whole_head`, `L_temporal`, `R_temporal`, `L_parasagittal`,
+`R_parasagittal`, `midline`.
+**Regions — 18 bipolar channels (double banana):** `Fp1-F7`,`F7-T3`,`T3-T5`,`T5-O1`,
+`Fp2-F8`,`F8-T4`,`T4-T6`,`T6-O2`,`Fp1-F3`,`F3-C3`,`C3-P3`,`P3-O1`,`Fp2-F4`,`F4-C4`,`C4-P4`,`P4-O2`,
+`Fz-Cz`,`Cz-Pz`.
+**Stages:** `W`,`N1`,`N2`,`N3`,`REM`. **Features:** `log_{delta,theta,alpha,beta,gamma,total}`,
+`rel_{delta,theta,alpha}`, `DAR`,`TAR`,`DTR`,`low_freq_rel`.
+
+---
+
+## 6. `norms` — fitted normative model (GAMLSS/BCT)
+
+One row per **(stage, region, feature, age_grid, fold)**; evaluated on a standard age grid for lookup (the
+fitted smooth model stored alongside for continuous evaluation).
+
+| column | type | definition |
 |---|---|---|
-| 1 | sleep_stage | 0=W, 1=N1, 2=N2, 3=N3, 4=R (REM), 5=Other |
-| 2 | start | segment start sample/point |
-| 3 | end | segment end sample/point |
-| 4 | feature array | **18 × 31** matrix (channels × features) |
+| `stage` | category | W/N1/N2/N3/REM |
+| `region` | category | region/channel |
+| `feature` | category | feature name (e.g. `TAR`) |
+| `age` | float32 | age grid point (years) |
+| `mu` | float32 | BCT location |
+| `sigma` | float32 | BCT scale |
+| `nu` | float32 | BCT skew (λ) |
+| `tau` | float32 | BCT df (kurtosis) |
+| `n_fit` | int32 | clean-normal recordings contributing at this stage/region |
+| `fold` | int8 | cross-fit fold id (norms are out-of-fold; SAP §6.3) |
 
-**Note:** wake is a single stage (0) — eyes-open/closed/drowsy are NOT separated here (the framework
-recommends separating them; flagged as a limitation, see PLAN.md §9 / feature_spec §9.1).
+---
 
-### 18 bipolar channels (double-banana), in order
+## 7. `deviation_field` — materialized z (per segment × region × feature)
 
-```
-0  Fp1-F7    4  Fp2-F8    8  Fp1-F3   12  Fp2-F4   16  Fz-Cz
-1  F7-T3     5  F8-T4     9  F3-C3    13  F4-C4    17  Cz-Pz
-2  T3-T5     6  T4-T6    10  C3-P3    14  C4-P4
-3  T5-O1     7  T6-O2    11  P3-O1    15  P4-O2
-```
-Left chains: 0–3 (temporal), 8–11 (parasagittal). Right chains: 4–7 (temporal), 12–15
-(parasagittal). Midline: 16–17. See `config/channels_regions.yaml` for the region/asymmetry mapping.
+Grain: one row per **(bdsp_id, segment, region, feature)** (long). Derived from `segment_master` + `norms`;
+materialized for speed. Same partitioning as `segment_master`.
 
-### 31 power features (per channel), in order
-
-```
-0  delta-power     8  alpha/total    16 theta/delta    24 beta/theta
-1  theta-power     9  beta/total     17 theta/alpha     25 beta/alpha
-2  alpha-power    10  gamma/total    18 theta/beta      26 beta/gamma
-3  beta-power     11  delta/theta    19 theta/gamma     27 gamma/delta
-4  gamma-power    12  delta/alpha    20 alpha/delta     28 gamma/theta*
-5  total-power    13  delta/beta     21 alpha/theta     29 gamma/alpha*
-6  delta/total    14  delta/gamma    22 alpha/beta      30 gamma/beta*
-7  theta/total    15  theta/delta*   23 alpha/gamma
-```
-\* indices 28–30 continue the ratio series; confirm the exact tail order against `read_me.txt` when
-loading (the readme lists ratios through `gamma/delta`; verify gamma/theta, gamma/alpha, gamma/beta).
-
-Powers are **linear** — log-transform before z-scoring (feature_spec §1). Relative powers
-(`band/total`) and ratios (esp. `alpha/delta`=inverse DAR, `alpha/theta`=inverse TAR) are already
-provided, so much of `features/bandpower.py` reduces to selecting columns rather than integrating PSDs.
-
-## Implications for the pipeline
-
-- **Phase 2 (feature computation) is largely done** — consume `res` tables; we mainly log-transform,
-  aggregate the 18 bipolar channels into regions, and build homologous L/R asymmetry ratios.
-- **Labels come free** from the folder name → control group = `normal/`; discrimination study uses
-  all three folders.
-- **Bands available:** delta, theta, alpha, beta, gamma (+ total). No separate LF(0.5–7) or SEF/median
-  freq/alpha-peak in this set — either derive from the provided bands or revisit raw if needed.
+| column | type | definition |
+|---|---|---|
+| `bdsp_id`,`segment`,`region` | | keys (join to `segment_master`) |
+| `feature` | category | feature name |
+| `z` | float32 | BCT z-score vs age/stage/region-matched normals |
+| `centile` | float32 | 0–100, Φ(z)·100 |

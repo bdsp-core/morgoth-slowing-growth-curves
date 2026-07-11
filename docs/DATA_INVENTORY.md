@@ -5,6 +5,11 @@ where it came from, and whether it is CANONICAL, a DERIVED VIEW, or LEGACY (arch
 This exists because we kept losing track of which table we were working with. If you add a
 table, add a row here in the same commit, or it does not exist.
 
+**Companion docs.** `docs/analysis_plan.md` (the SAP — how the canonical data is built and analyzed),
+`docs/data_dictionary.md` (column-level definitions of the canonical tables),
+`docs/run_manifest_schema.md` (the frozen "which EEGs" list format),
+`docs/legacy_growth_curves_matformat.md` (the retired `.mat` source format).
+
 Last audited: 2026-07-10.
 
 ---

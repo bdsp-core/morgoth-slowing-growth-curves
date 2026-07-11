@@ -2,8 +2,9 @@
 
 **Status:** DRAFT for colleague review, to be finalized *before* the fleet re-run.
 **Version:** 1.0 (2026-07-10). **Owner:** MBW.
-**Companion docs:** `docs/DATA_INVENTORY.md` (data tables), `docs/claims_table.md` (clause
-governance), `docs/description_architecture.md` (descriptor definitions).
+**Companion docs:** `docs/DATA_INVENTORY.md` (data tables), `docs/data_dictionary.md` (canonical column
+definitions), `docs/run_manifest_schema.md` (frozen EEG list), `docs/claims_table.md` (clause governance),
+`docs/description_architecture.md` (descriptor definitions).
 
 > **How to review this document.** It is written so that following it end-to-end produces every
 > number, figure, and table in the paper from a *single* canonical dataset, with no ambiguity about
@@ -439,9 +440,9 @@ balanced accuracy against consensus on the same EEGs.
 
 ## 12. Build order (the one clean re-run — zero reuse)
 1. Freeze this SAP after review.
-2. **Freeze the EEG list.** One manifest enumerating every recording in the run: both cohorts (§3.1) **and**
-   the expert-panel EEGs (§3.6, OccasionNoise + MoE, `icare_*` excluded). This manifest is the single
-   source of "which EEGs."
+2. **Freeze the EEG list.** One manifest (format: `docs/run_manifest_schema.md`) enumerating every recording
+   in the run: both cohorts (§3.1) **and** the expert-panel EEGs (§3.6, OccasionNoise + MoE, `icare_*`
+   excluded). This manifest is the single source of "which EEGs"; commit it and tag the code version.
 3. **Pull to the bucket.** Copy every EEG on the manifest into the bucket. Nothing is analyzed from a
    prior location or a prior computation.
 4. Finalize the extractor (band-edge fix in) and the fleet worker to **persist per-segment features,
