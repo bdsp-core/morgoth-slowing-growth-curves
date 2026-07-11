@@ -13,11 +13,12 @@ alongside the code version used for the run.
 counts_by_src, counts_by_panel_set, sha256_of_csv}`. Bump `<N>` for any change; never edit a frozen
 manifest in place (that is the whole point).
 
-## Realized manifest (2026-07-11): `report_manifest_v4.parquet` (v3 = cohort+backfill only)
+## Realized manifest (2026-07-11): `report_manifest_v5.parquet` (v4 = cohort+expansion; v3 = cohort+backfill)
 
 Built by `scripts/120` → `88` (pairing) → `121` (pool backfill) → `124` (merge) → `125` (routing).
-**25,663 EEGs** (cohort 12,303 + expansion 10,706 + backfill 2,654; abnormal 14,294 / clean-normal
-9,919; 4-region taxonomy). Built by `scripts/{120,88,121,124,125,126}`. **Panels (OccasionNoise 100 + MoE)
+**27,524 EEGs** (cohort 12,303 + expansion 10,706 + backfill 2,654 + **panel 1,861** = OccasionNoise
+100 + MoE 1,761; 4-region taxonomy). Panels carry `source_type`/`source_path` (edf_direct / mat_v73) and
+need format handling before featurizing (scripts/127 docstring) — they do NOT block the main cohort run. Built by `scripts/{120,88,121,124,125,126}`. **Panels (OccasionNoise 100 + MoE)
 are appended by `scripts/127`** — their EDF metadata is external (OccasionNoise in Box; MoE in the
 scratchpad `moe/` set). Schema-aligned columns present: `panel`, `panel_set`, `role`, `n_bytes`, `sha256`
 (the last two stamped at pull). Carries the report

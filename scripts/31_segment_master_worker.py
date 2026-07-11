@@ -205,8 +205,18 @@ def main(n=10):
     meta_cols = ["eeg_id", "patient_id", "eeg_datetime", "src", "age", "sex", "recording_seconds", "bids_task"]
     label_cols = ["eeg_id", "is_abnormal", "has_focal_slow", "has_gen_slow", "clean_normal",
                   "focal_side", "focal_region", "focal_band", "gen_topography", "gen_band", "clean_pair"]
-    task = os.environ.get("PILOT_TASK", "rEEG")          # routine EEGs = small/fast for the pilot
-    picks = (man[man.bids_task == task] if task in set(man.bids_task.dropna()) else man).head(n)
+    # SHARDING for the parallel AWS run: SHARD="i/N" -> worker i of N takes rows where idx % N == i.
+    # ALL=1 processes the whole manifest (sharded); else the first `n` (pilot, PILOT_TASK-filtered).
+    shard = os.environ.get("SHARD")
+    if os.environ.get("ALL") == "1" or shard:
+        picks = man.reset_index(drop=True)
+        if shard:
+            i, N = (int(x) for x in shard.split("/"))
+            picks = picks[picks.index % N == i]
+        print(f"FULL run: {len(picks)} EEGs" + (f" (shard {shard})" if shard else ""))
+    else:
+        task = os.environ.get("PILOT_TASK", "rEEG")      # routine EEGs = small/fast for the pilot
+        picks = (man[man.bids_task == task] if task in set(man.bids_task.dropna()) else man).head(n)
     work = Path(tempfile.mkdtemp()); ok = 0
     try:
         for _, m in picks.iterrows():
