@@ -602,7 +602,10 @@ script the fleet executes is **organized, named, reviewed, and tested before fre
 1. **Inventory & separate.** Enumerate exactly the modules the fleet runs — the extractor
    (`src/morgoth_slowing/features/extract.py`), `artifact.py`, the sleep-stager loader, the Morgoth gate
    (`run_gate`), and the worker (`scripts/30_ingest_worker.py`) — plus the pre-fleet manifest builders
-   (§3.7). Everything else in `scripts/` is *analysis*, not fleet code; label the split.
+   (§3.7). Everything else in `scripts/` is *analysis*, not fleet code; label the split. **Every external
+code/model dependency (Morgoth repo, the 6 checkpoints, the pyhealth shim, torch/timm pins, the required
+env vars incl. `KMP_DUPLICATE_LIB_OK`) is inventoried in `docs/fleet_dependencies.md`** — no piece of what
+the fleet runs is undocumented.
 2. **Name & document.** Each fleet module gets a one-line purpose header and a row in `DATA_INVENTORY.md` /
    `data_dictionary.md`. No dead code on the fleet path (cf. the retired `bandpower.py`).
 3. **Unit tests** for the load-bearing functions: band powers on a synthetic PSD with known integrals;
