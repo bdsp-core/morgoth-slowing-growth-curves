@@ -120,14 +120,16 @@ De-identification and PHI handling per §11.
   < 20%).
 
 ### 3.3 Unit of analysis and the report-broadcast dedup rule
-The clinical unit is the **recording** (a single EEG). The analytic unit for description is the
-**segment**. Patients may have multiple recordings. Note that patients are identified by subject IDs ((`bdsp_id`). )
+Three nested units (§5.3): **patient** = `patient_id` (the legacy `bdsp_id`, site+person), **EEG /
+recording** = `eeg_id` = `{patient_id}_{eeg_datetime}` (a patient may have several), and **segment**.
+`eeg_id` is the recording key for every analysis; CIs are patient-clustered on `patient_id`.
 
-**⚠ PITFALL 1 — report broadcast.** A single report can be joined onto to more than one EEG of the same
-patient by a naive report↔EEG join, contaminating labels. **Rule:** use the nearest-in-time
-report per recording and carry a `clean_pair` flag; all label-dependent analyses filter to
-`clean_pair`. Report the number of recordings dropped by this filter.
->> we need to compute this now - up front - and then freeze the manifest. 
+**⚠ PITFALL 1 — report broadcast.** A single report can be joined onto more than one EEG of the same
+patient by a naive report↔EEG join, contaminating labels. **Rule:** assign each EEG its nearest-in-time
+report and carry a `clean_pair` flag; all label-dependent analyses filter to `clean_pair`.
+**This pairing is computed UP FRONT — before the run — and frozen into the manifest** (§12 step 2, and
+`run_manifest_schema.md`), so "which report belongs to which EEG" is fixed once and never re-derived
+mid-analysis. Report the number of EEGs dropped by the filter.
 
 ### 3.4 Reference ("normal") definition
 `clean_normal` = report explicitly normal **and** not carrying any abnormal finding flags. The
@@ -156,9 +158,11 @@ EEG is directly comparable to that EEG's expert panel. They are tagged with a `p
 
 Handling rules:
 - **`icare_*` cardiac-arrest events are excluded** from the MoE panel (different population from the norms).
+>> no, this is not accurate -- they do not need to be excluded just because they are in icare. the reason to exclude would be based on labels, e.g. isoelectric = exclude. 
 - **Author-as-rater:** `bwestove` (MBW) is one panel rater — disclosed, and **excluded** when the panel is
   used to *validate* this system (kept only in the pure between-rater ceiling estimate). Rater identities
   anonymized R01…Rnn; never committed.
+  >> not necessary to exclude
 - **Consensus label:** for panel EEGs, the multi-rater consensus (majority / adjudicated) is a
   higher-quality reference than a single signed report; the **consensus proportion** (fraction of experts
   who saw slowing) is a graded human *conspicuity* target we may test our `z` against (pre-registered).
@@ -181,6 +185,7 @@ every recording in both cohorts and over the **whole recording**.
 **⚠ PITFALL 3 — coverage.** The legacy description table used only the first 600 s (42 segments). The
 intended use is EEG of *any* length. **Rule:** every per-segment feature, stage, artifact flag, and gate
 output is computed over the **whole recording**; "first-600 s" is never a coverage default anywhere.
+>> revise this to say: we use up to the first 24 hours of EEG
 
 ### 4.3 Artifact detection — flag, do not strip
 Per segment, `artifact.usable_mask` computes a **flag** (and reason: flat/high-amplitude/etc.), including
@@ -202,16 +207,17 @@ Multitaper PSD per segment per channel; band powers:
 | Band | Hz |
 |---|---|
 | delta | 1–4 |
-| theta | 4–7 |
+| theta | 4–8 |
 | alpha | 8–13 |
 | beta | 13–30 |
 | gamma | 30–45 |
 | total | 0.5–45 |
 
-**Band-edge fix:** the historical 7–8 Hz gap between theta and alpha is being re-extracted; the final
-run uses the corrected contiguous edges (result of `scripts/109*`), so theta/alpha are not artificially
-separated. Features per (segment, channel/region): `log_{band}`, `rel_{band}` (delta/theta/alpha), `DAR`
+**Band-edge fix (applied):** theta is **4–8 Hz**, not the legacy 4–7. The old 4–7/8–13 split left a 7–8 Hz
+hole that discarded ~23% of theta power (clinically theta runs to 8 Hz); closing it also improves band-word
+discrimination (0.58→0.60; `scripts/109`). Theta 4–8 is now contiguous with alpha 8–13. Features per (segment, channel/region): `log_{band}`, `rel_{band}` (delta/theta/alpha), `DAR`
 (δ/α), `TAR` (θ/α), `DTR` (δ/θ), `low_freq_rel`.
+>> i updated the band powers definition above to make theta be 4-8
 
 ### 4.6 Spatial units
 - **18 bipolar channels** (for lateralization / lobe localization), and
@@ -231,11 +237,15 @@ segment aggregate, not a separate computation.
 **One long-format master + typed sidecars.** No analysis reads anything else for primary results.
 
 ### 5.1 `segment_master` — the source of truth
-One row per **(bdsp_id, segment, region)** over the whole recording:
+One row per **(eeg_id, segment, region)** over the whole recording. **The key is the EEG, not the
+patient** — one patient may have several EEGs, so a patient-level key would collide their recordings
+(see §5.3).
 
 | column | type | notes |
 |---|---|---|
-| bdsp_id | str | recording id (site+patient+date) |
+| eeg_id | str | **recording key** = `{patient_id}_{eeg_datetime}` (unique per EEG; matches the legacy `sub-<id>_<YYYYMMDDHHMMSS>` filename) |
+| patient_id | str | person key (= legacy `bdsp_id`, site+person); one patient → many `eeg_id` |
+| eeg_datetime | str | recording start `YYYYMMDDHHMMSS` (distinguishes a patient's EEGs) |
 | segment | int | 0-based, whole recording |
 | t_start_s | float | segment onset in seconds |
 | region | cat | 6 aggregates (+ 18 channels for the channel-grain build) |
@@ -246,22 +256,29 @@ One row per **(bdsp_id, segment, region)** over the whole recording:
 | p_slowing, p_focal, p_generalized | float | per-segment gate |
 
 ### 5.2 Sidecars (join keys in brackets)
-- `recording_meta` [bdsp_id]: age, sex, src, clean_normal, is_abnormal, recording_seconds, n_segments,
-  n_usable, stage fractions, nearest-report id, `clean_pair`.
-- `recording_labels` [bdsp_id]: report-derived labels (§3.5).
+- `recording_meta` [eeg_id]: patient_id, eeg_datetime, age, sex, src, clean_normal, is_abnormal,
+  recording_seconds, n_segments, n_usable, stage fractions, nearest-report id, `clean_pair`.
+- `recording_labels` [eeg_id]: report-derived labels (§3.5).
 - `norms` [age-knot × stage × region × feature]: fitted GAMLSS parameters (§6).
-- `deviation_field` [bdsp_id × segment × region × feature]: `z` (derived from `segment_master` + `norms`;
+- `deviation_field` [eeg_id × segment × region × feature]: `z` (derived from `segment_master` + `norms`;
   materialized for speed).
 
-### 5.3 Physical layout & scale (a decision for review)
+### 5.3 Patient vs EEG vs segment — the identity rule
+Three nested units, kept explicit so nothing silently collapses: **patient** (`patient_id`) → **EEG /
+recording** (`eeg_id`) → **segment** (`segment`). `eeg_id` is the analytic key for every recording-level
+table; `patient_id` is carried alongside for patient-clustered CIs and the report-broadcast dedup (§3.3).
+Legacy tables keyed on `bdsp_id` == today's `patient_id`, which is why a patient's multiple EEGs were
+collapsed — the canonical run does not repeat that.
+
+### 5.4 Physical layout & scale (a decision for review)
 Full per-segment × **per-channel** (18) × whole-recording × 27k ≈ **1.4 B rows** — not a single parquet.
 Per-segment × **region** (6) ≈ **0.5 B rows** — large but partitionable.
 **Proposed:** `segment_master` at **region grain** is the canonical default, **partitioned one parquet
-per recording** (`segment_master/bdsp_id=.../part.parquet`); channel-grain is computed on demand for the
+per recording** (`segment_master/eeg_id=.../part.parquet`); channel-grain is computed on demand for the
 abnormal/focal subset that needs lateralization. *Reviewers: confirm region-default vs channel-everywhere,
 and the partitioning scheme.*
 
-### 5.4 Data dictionary & the one rule
+### 5.5 Data dictionary & the one rule
 A `docs/data_dictionary.md` defines every column, units, and allowed values. **Governance rule:** adding
 or changing a table requires a matching edit to `DATA_INVENTORY.md` and `data_dictionary.md` in the same
 commit. No orphan tables, no filename aliases (the `_py` alias incident is why).
