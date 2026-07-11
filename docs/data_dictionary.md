@@ -14,13 +14,15 @@ ratios dimensionless. Missing = NaN, never silently imputed (SAP §8.6). Segment
 
 ## 1. `segment_master` — source of truth (per segment × region, whole recording)
 
-Grain: one row per **(bdsp_id, segment, region)**. Partitioned one parquet per recording
-(`segment_master/bdsp_id=<id>/part.parquet`). Region grain is canonical; channel grain built on demand
-for the focal subset (SAP §5.3).
+Grain: one row per **(eeg_id, segment, region)** — the key is the EEG, not the patient (one patient
+can have several EEGs). Partitioned one parquet per recording (`segment_master/eeg_id=<id>/part.parquet`). Region grain is canonical; channel grain built on demand
+for the focal subset (SAP §5.4).
 
 | column | type | units / allowed | definition |
 |---|---|---|---|
-| `bdsp_id` | str | site+patient+date key | recording identifier; join key to all sidecars |
+| `eeg_id` | str | `{patient_id}_{eeg_datetime}` | **recording key** (unique per EEG); joins to all sidecars |
+| `patient_id` | str | site+person (= legacy `bdsp_id`) | person key; one patient → many `eeg_id` |
+| `eeg_datetime` | str | `YYYYMMDDHHMMSS` | recording start; distinguishes a patient's EEGs |
 | `segment` | int32 | 0-based | segment index over the **whole** recording |
 | `t_start_s` | float32 | seconds | onset of the 15 s segment (step 14 s) |
 | `region` | category | see §5 | 6 aggregates (+18 bipolar channels in the channel-grain build) |
@@ -28,7 +30,7 @@ for the focal subset (SAP §5.3).
 | `artifact_flag` | bool | — | True = segment failed usability check (retained, not dropped) |
 | `artifact_reason` | category | `none`,`flat`,`high_amp`,`other` | why flagged (`none` when usable) |
 | `log_delta` | float32 | ln µV² | ln power 1–4 Hz |
-| `log_theta` | float32 | ln µV² | ln power 4–7 Hz |
+| `log_theta` | float32 | ln µV² | ln power 4–8 Hz |
 | `log_alpha` | float32 | ln µV² | ln power 8–13 Hz |
 | `log_beta` | float32 | ln µV² | ln power 13–30 Hz |
 | `log_gamma` | float32 | ln µV² | ln power 30–45 Hz |
@@ -56,12 +58,13 @@ Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usabl
 
 ---
 
-## 2. `recording_meta` — one row per recording
+## 2. `recording_meta` — one row per EEG (recording)
 
 | column | type | allowed | definition |
 |---|---|---|---|
-| `bdsp_id` | str | | recording id |
-| `patient_id` | str | | patient key (may span multiple recordings) |
+| `eeg_id` | str | `{patient_id}_{eeg_datetime}` | recording key |
+| `patient_id` | str | = legacy `bdsp_id` | person key (spans this patient's EEGs) |
+| `eeg_datetime` | str | `YYYYMMDDHHMMSS` | recording start |
 | `src` | category | `cohort`,`expansion` | provenance (never inferred from filename) |
 | `panel` | bool | | True if in a multi-rater expert set (SAP §3.6) |
 | `panel_set` | category | `none`,`occasionnoise`,`moe` | which expert panel |
@@ -81,13 +84,13 @@ Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usabl
 
 ---
 
-## 3. `recording_labels` — one row per recording (report-derived)
+## 3. `recording_labels` — one row per EEG (report-derived)
 
 Read from the PHI-safe scratchpad extract only (SAP §11). All label-dependent analyses filter `clean_pair`.
 
 | column | type | allowed | definition |
 |---|---|---|---|
-| `bdsp_id` | str | | recording id |
+| `eeg_id` | str | | recording key |
 | `has_focal_slow` | bool | | report asserts focal slowing (negation-handled) |
 | `has_gen_slow` | bool | | report asserts generalized slowing |
 | `focal_side` | category | `left`,`right`,`bilateral`,`na` | focal laterality |
@@ -107,7 +110,7 @@ The expert-panel scores that supply inter-rater reliability and the human ceilin
 
 | column | type | allowed | definition |
 |---|---|---|---|
-| `bdsp_id` | str | | panel recording id (join to `recording_meta` where `panel=True`) |
+| `eeg_id` | str | | panel recording key (join to `recording_meta` where `panel=True`) |
 | `panel_set` | category | `occasionnoise`,`moe` | which panel |
 | `rater` | category | `R01`…`Rnn` | anonymized rater (author `bwestove`→flagged, excluded from validation) |
 | `read` | category | `I`,`II` | OccasionNoise re-read part (within-rater); `I` elsewhere |
@@ -152,12 +155,12 @@ fitted smooth model stored alongside for continuous evaluation).
 
 ## 7. `deviation_field` — materialized z (per segment × region × feature)
 
-Grain: one row per **(bdsp_id, segment, region, feature)** (long). Derived from `segment_master` + `norms`;
+Grain: one row per **(eeg_id, segment, region, feature)** (long). Derived from `segment_master` + `norms`;
 materialized for speed. Same partitioning as `segment_master`.
 
 | column | type | definition |
 |---|---|---|
-| `bdsp_id`,`segment`,`region` | | keys (join to `segment_master`) |
+| `eeg_id`,`segment`,`region` | | keys (join to `segment_master`) |
 | `feature` | category | feature name |
 | `z` | float32 | BCT z-score vs age/stage/region-matched normals |
 | `centile` | float32 | 0–100, Φ(z)·100 |

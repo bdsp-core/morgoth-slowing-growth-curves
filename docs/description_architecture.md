@@ -208,9 +208,10 @@ We validate in this order, and we say which is which.
 **Band.** Two electroencephalographers who both call slowing agree on its band 54% of the time (focal) and
 27% (generalized); pairwise κ is 0.09–0.38. **The reader cannot be the criterion for band.** We therefore
 report the band index as a *measurement*, validate it as one, and report its concordance with report language
-against that ceiling. A cheap and probably-important fix first: our band edges leave a **7–8 Hz hole**
-(`theta = 4–7`, `alpha = 8–13`). Clinical theta runs to 8 Hz. Slowing at 7–7.9 Hz is currently discarded, and
-this is a plausible contributor to the band failure. **Test: widen theta to 4–8 Hz and recompute.**
+against that ceiling. A cheap fix, now applied: the band edges used to leave a **7–8 Hz hole**
+(`theta = 4–7`, `alpha = 8–13`), discarding ~23% of theta power (clinical theta runs to 8 Hz). Theta is now
+**4–8 Hz** (contiguous with alpha 8–13; `extract.py`), which slightly improves band-word discrimination
+(0.58→0.60; `scripts/109`). Band remains reported as a low-confidence *measurement* against the reader ceiling.
 
 **Prevalence / frequency.** Our prevalence correlates with the reader's frequency word at ρ = 0.077 —
 significant, negligible. We have never measured how reliably readers use those words, so we do not know the

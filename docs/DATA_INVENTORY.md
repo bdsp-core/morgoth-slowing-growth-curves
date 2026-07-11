@@ -97,5 +97,11 @@ all features + Morgoth, for all 27k recordings. Gaps:
 4. **One spatial grain decided.** Per-segment × per-channel × whole-recording × 27k ≈ 1.4 B rows
    (hundreds of GB) — not a single parquet. Must choose region-grain default (~470 M rows,
    partitionable) vs channel-grain, and a partitioned physical layout (one file per recording).
+5. **A recording-level key.** ⚠ `bdsp_id` is **patient-level** (site+person, e.g. `S0001111192519`) —
+   the date lives in a separate `eeg_datetime`, and one `bdsp_id` already maps to up to 3 EEGs. Legacy
+   tables keyed on `bdsp_id` therefore *collapse* a patient's multiple recordings. The canonical run keys
+   on **`eeg_id` = `{patient_id}_{eeg_datetime}`** (one row per EEG), with `patient_id` (= legacy
+   `bdsp_id`) carried for patient-clustered CIs. Verified 2026-07-10.
 
-See `docs/canonical_rebuild_plan.md` (to be written) for the fleet re-run that closes 1–3.
+See `docs/analysis_plan.md` §5 (`data_dictionary.md`, `run_manifest_schema.md`) for the canonical
+`eeg_id`-keyed schema and the fleet re-run that closes 1–5.
