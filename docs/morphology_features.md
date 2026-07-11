@@ -9,7 +9,7 @@ expert-calibrated P(slowing). Two structural reasons:
 
 1. **Our features only measure power in bands.** A band integral cannot tell delta from theta when the
    spectral mass sits on a band edge, cannot see a peak riding on a 1/f background, and cannot see the
-   *shape* of the low-frequency excess. Band edges (0.5–4 / 4–7) are hard cutoffs; the report language
+   *shape* of the low-frequency excess. Band edges (delta 1–4 / theta 4–8) are hard cutoffs; the report language
    is about where the *dominant slow rhythm* sits, which is a continuous quantity.
 2. **Power is blind to morphology.** feature_spec §8 states the caveat explicitly: a spectrum detects
    delta *excess* but cannot alone distinguish **polymorphic** slowing vs **rhythmic** delta (FIRDA /
@@ -139,7 +139,7 @@ peak; low ⇒ broad polymorphic excess.
 This family targets the feature_spec §8 caveat head-on: the spectrum sees delta *excess* but cannot
 say whether it is **polymorphic** (irregular, arrhythmic — most focal/structural slowing) or
 **rhythmic/monomorphic** (FIRDA frontal, TIRDA temporal). Compute all on the slow-band-filtered
-segment `y = bandpass(bip[s:e,ch], 0.5–4 Hz)` (theta variant on 4–7 Hz).
+segment `y = bandpass(bip[s:e,ch], 0.5–4 Hz)` (theta variant on 4–8 Hz).
 
 ### 3.1 Autocorrelation rhythmicity index
 **Measures.** Whether the slow activity repeats at a stable period.

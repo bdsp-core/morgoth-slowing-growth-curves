@@ -9,7 +9,6 @@ but are **gitignored** (copyrighted); only this README + `references.bib` are co
 | `The_revised_brain_symmetry_index.pdf` | van Putten, *Clin Neurophysiol* 118 (2007) 2362 | r-sBSI (power-based), r-tBSI (diffuse) |
 | `Quantification_of_the_adult_EEG_backgrou.pdf` | Lodder & van Putten, *Clin Neurophysiol* 124 (2013) 228 | **Q_SLOWING, Q_APG, Q_ASYM, Q_REAC, Q_ALPHA** |
 | `file.pdf` | Lodder, Askamp & van Putten, *PLoS ONE* (2014) "Computer-Assisted Interpretation of the EEG Background Pattern: A Clinical Evaluation" | validation-design precedent (IRR + automated-vs-consensus) |
-| `circuitVis.pdf` | Anderson, Chong, Preston & Silva (Utah/Barrow), "Discovering and Visualizing Patterns in EEG Data" | **EEG visualization** paper — not a slowing metric; relevance TBD (flagged to MBW) |
 
 ## Exact metric definitions (as published)
 
@@ -37,12 +36,10 @@ Sampling 250 Hz, 19 ch 10–20, ICA eye-blink removal. **Q_SLOWING/Q_APG/Q_ASYM 
   moderate 0.4–0.6, abnormal >0.6 (posterior→anterior shift). κ = 0.19. → adopt for generalized A–P.
 - **Q_ASYM(c) = normalized spectral difference** per homologous pair c ∈ {Fp1,Fp2},{F7,F8},{F3,F4},
   {T3,T4},{C3,C4},{T5,T6},{P3,P4},{O1,O2}; asymmetry if any pair > 0.5. κ = 0.12. → adopt for focal/lateral.
-- **Q_REAC = 1 − P_EO/P_EC** (occipital alpha, eyes-open vs eyes-closed). Substantial >0.5 / moderate /
-  low <0.1. κ = 0.34. **State-dependent (needs EO/EC annotation)** — flagged: adopt only if we have reliable
-  eyes-open/closed states.
-- **Q_ALPHA = alpha (PDR) peak frequency** vs age norm (their Table 2: >51 yr 9.1±1.8 Hz, 16–50 9.9±1.8;
-  deviant if |Δ|>1.8 Hz). κ = 0.60. **PDR grading was scoped OUT by MBW** (separate from slowing) — flagged
-  for decision, not adopted by default.
+- **Q_REAC = 1 − P_EO/P_EC** (reactivity). κ = 0.34. **NOT ADOPTED** (MBW: we do not have reliable
+  eyes-open/closed annotations).
+- **Q_ALPHA = alpha (PDR) peak frequency** vs age norm. κ = 0.60. **NOT ADOPTED** (MBW: PDR is out of scope,
+  separate from slowing).
 
 ## Relevance summary
 Lodder & van Putten (2013) + the 2014 clinical evaluation are the **closest prior work to ours**: quantify
