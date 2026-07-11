@@ -23,6 +23,7 @@ SCRATCH = Path(os.environ.get("PILOT_SCRATCH", "scratch"))            # holds ee
 M2 = os.environ.get("MORGOTH2_DIR", str(SCRATCH / "morgoth2"))
 VENV = os.environ.get("PILOT_VENV", "python")
 DEVICE = os.environ.get("MORGOTH_DEVICE", "mps")                      # "cuda" on the cloud GPU box
+SHIMS = os.environ.get("MORGOTH_SHIMS", "scripts/shims")             # lightweight pyhealth shim for the stager
 OUT = Path("data/derived"); STAGES = ["W", "N1", "N2", "N3", "REM"]
 PROG = OUT / "progress.jsonl"
 
@@ -75,8 +76,9 @@ def edf_path(row):
 
 
 def stage_dir(indir, outdir):
+    _shims = os.path.abspath(SHIMS)
     subprocess.run(["bash", "-lc",
-        f"cd {M2} && PYTORCH_ENABLE_MPS_FALLBACK=1 OMP_NUM_THREADS=1 {VENV} finetune_classification.py "
+        f"cd {M2} && PYTHONPATH={_shims}:${{PYTHONPATH}} PYTORCH_ENABLE_MPS_FALLBACK=1 OMP_NUM_THREADS=1 {VENV} finetune_classification.py "
         f"--abs_pos_emb --model base_patch200_200 --predict --task_model checkpoints/ss_hm_1.pth "
         f"--dataset SLEEPPSG --data_format mat --sampling_rate 0 --already_format_channel_order no "
         f"--already_average_montage no --allow_missing_channels yes --max_length_hour no "
