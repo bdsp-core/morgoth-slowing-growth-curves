@@ -579,8 +579,11 @@ balanced accuracy against consensus on the same EEGs.
 ---
 
 ## 11. Data governance / PHI (binding)
-- Raw report text is **never** committed — read from the scratchpad extract only; PHI already scrubbed
-  from git history, do not reintroduce.
+- **The reports are BDSP de-identified.** MBW confirmed (2026-07-05, reaffirmed) that the de-identified
+  report-text exposure is **NOT reportable** under the BDSP IRB/DUA, so de-identified report text **may be
+  committed** (it is included in `report_manifest`). The identifiers in play (`bdsp_id`, `OrderID`,
+  `report_note_name`) are BDSP surrogates, not real hospital IDs; dates are shifted. This **supersedes** the
+  earlier "raw text never committed" rule. The remote is the credentialed `github.com/bdsp-core` repo.
 - OMOP is read-only (person_id → birth_datetime for age only). De-identified `dob` is date-shifted —
   never join to real-date sources.
 - Viewer bundles are PHI-free: opaque `case_id`, no bdsp_id/dates/report text/EDF headers; crosswalks

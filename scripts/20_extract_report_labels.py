@@ -5,9 +5,11 @@ Source (kept LOCAL, not committed — sensitive text):
   Box: Brandon - PHI/Datasets/BDSP_deID/<site>/data_Unstructured/EEG_Reports_OtherSourceFiles/EEGs_And_Reports.csv
   (per-note originals: .../I0001_Neurology_Reports_1/<year>.zip, named by ReportName)
 
-We PUBLISH only the derived labels (results/report_extracted_labels.csv) — one row per recording with
-the extracted labels + `source_note_name` + `source_box_path` for traceability. Raw text is NOT
-committed.
+We PUBLISH the derived labels (results/report_extracted_labels.csv) — one row per recording with
+the extracted labels + `source_note_name` + `source_box_path` for traceability. NOTE: the earlier
+"raw text is NOT committed" rule was superseded 2026-07 — the reports are BDSP de-identified and MBW
+confirmed the exposure is not reportable under the IRB/DUA, so de-id report text may be committed
+(see docs/analysis_plan.md §11). This script still reads from the local source.
 
 Run: python scripts/20_extract_report_labels.py <EEGs_And_Reports.csv> [site]
 """

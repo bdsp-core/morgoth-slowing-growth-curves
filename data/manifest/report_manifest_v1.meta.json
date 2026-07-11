@@ -1,13 +1,14 @@
 {
   "version": 1,
-  "frozen_utc": "2026-07-11T06:37:39Z",
+  "frozen_utc": "2026-07-11T06:44:08Z",
   "n_eeg": 12379,
   "n_patients": 12027,
   "n_clean_pair": 10255,
   "n_same_date_ambiguous": 554,
-  "n_with_duration": 0,
+  "n_with_duration": 2,
+  "n_with_text": 11587,
   "n_abnormal": 5893,
-  "sha256": "83aa04de40adbc61f87ff7f5b9d97bb8f9ac10f7cfe308299bbd927e39713af6",
+  "sha256": "5b164aeb1720fec6565445d2e14585fc1e9b69ccf8222d13909f0c8d196eb475",
   "columns": [
     "eeg_id",
     "patient_id",
@@ -30,11 +31,15 @@
     "sex",
     "n_report_chars",
     "has_report",
+    "report_note_name",
     "clean_pair",
     "same_date_ambiguous",
     "abs_time_diff_h",
+    "nearest_report_id",
     "recording_seconds",
-    "eeg_path"
+    "eeg_path",
+    "report_text",
+    "report_impression"
   ],
-  "phi": "free (note-name filenames + report text excluded; both in scratchpad version only)"
+  "deid": "BDSP de-identified; report text included (NOT reportable under IRB/DUA, MBW 2026-07-05)"
 }
