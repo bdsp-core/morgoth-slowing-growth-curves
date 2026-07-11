@@ -13,10 +13,14 @@ alongside the code version used for the run.
 counts_by_src, counts_by_panel_set, sha256_of_csv}`. Bump `<N>` for any change; never edit a frozen
 manifest in place (that is the whole point).
 
-## Realized manifest (2026-07-11): `report_manifest_v3.parquet`
+## Realized manifest (2026-07-11): `report_manifest_v4.parquet` (v3 = cohort+backfill only)
 
 Built by `scripts/120` → `88` (pairing) → `121` (pool backfill) → `124` (merge) → `125` (routing).
-**14,957 EEGs / 13,642 patients** (cohort 12,303 + backfill 2,654; 4-region taxonomy). Carries the report
+**25,663 EEGs** (cohort 12,303 + expansion 10,706 + backfill 2,654; abnormal 14,294 / clean-normal
+9,919; 4-region taxonomy). Built by `scripts/{120,88,121,124,125,126}`. **Panels (OccasionNoise 100 + MoE)
+are appended by `scripts/127`** — their EDF metadata is external (OccasionNoise in Box; MoE in the
+scratchpad `moe/` set). Schema-aligned columns present: `panel`, `panel_set`, `role`, `n_bytes`, `sha256`
+(the last two stamped at pull). Carries the report
 labels + de-identified text (§11) **and** the S3 routing the pull step needs:
 
 | field | value | note |
