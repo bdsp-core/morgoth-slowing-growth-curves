@@ -1,3 +1,5 @@
+> ⚠ **SUPERSEDED — historical only.** This doc asserts facts now overridden by `docs/analysis_plan.md` (the SAP) and `docs/claims_table.md` (e.g. theta = 4–8 Hz; severity adjectives / ACNS frequency words / band-from-our-features are FORBIDDEN output; artifact segments are flagged not stripped; zero reuse of prior derived tables). Do not implement from this file. Retained for provenance.
+
 # Artifact / flat-segment rejection — method & validation plan
 
 Essential for two reasons: (1) norms must be computed on clean brain signal, not flat/artifact

@@ -31,7 +31,7 @@ BIPOLAR = [
 # standard clinical convention and calibrates rel_delta to JJ's precomputed features (median 0.33 vs
 # 0.30). theta = 4-8 (NOT 4-7): the legacy 4-7/8-13 split left a 7-8 Hz hole that discarded ~23% of
 # theta power (clinically theta runs to 8 Hz); closing it improves band-word discrimination (0.58->0.60,
-# scripts/109). alpha starts at 8, so theta 4-8 is contiguous. See docs/feature_extraction.md.
+# scripts/109). alpha starts at 8, so theta 4-8 is contiguous. See docs/data_dictionary.md.
 BANDS = {"delta": (1.0, 4.0), "theta": (4.0, 8.0), "alpha": (8.0, 13.0),
          "beta": (13.0, 30.0), "gamma": (30.0, 45.0), "total": (0.5, 45.0)}
 SEG_SAMPLES = 3000     # 15 s @ 200 Hz
