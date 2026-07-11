@@ -1,67 +1,55 @@
 # Copy to config/config.yaml and edit. config.yaml is gitignored.
+# Canonical spec: docs/analysis_plan.md (the SAP). This example reflects the CLEAN-ROOM design:
+# every feature is re-computed from raw EEG (zero reuse of prior derived tables).
 
 data:
   s3:
-    bucket: bdsp-opendata-credentialed
-    growth_curves: morgoth2/data/internal_dataset/Growth_curves/
-    focal_examples: morgoth1/data/internal_dataset/FOCALSLOWING/
-    gen_examples:   morgoth1/data/internal_dataset/GENSLOWING/
+    bucket: bdsp-opendata-repository
+    eeg_bids: EEG/bids            # s3:.../EEG/bids/{site}/sub-{bdsp_id}/ses-{N}/eeg/..._eeg.edf
   local:
     raw:     ./data/raw
     derived: ./data/derived
+    manifest: ./data/manifest     # frozen run/report manifests (report_manifest_v3.parquet)
 
 # OMOP (age/sex at EEG). Credentials come from env, NOT this file. See docs/omop-query-instructions.txt
 omop:
-  host: localhost      # via SSH tunnel to the Aurora endpoint
+  host: localhost                 # via SSH tunnel to the Aurora endpoint
   port: 5433
   dbname: bdsp_omop
   # user/password: set OMOP_USER / OMOP_PASSWORD in the environment
   eeg_concept_id: 4181917
-  psg_concept_id: 4189015
 
-# Growth_curves features are PRECOMPUTED (18x31 per 15-s segment; see docs/data_dictionary.md).
-# We consume them directly; spectral params are only needed if we ever re-featurize raw EEG.
-spectral:
-  segment_seconds: 15
-  # fs / multitaper params: only relevant for re-featurizing raw (FOCAL/GENSLOWING segments_raw).
+# Feature extraction (src/morgoth_slowing/features/extract.py is authoritative).
+extract:
+  segment_seconds: 15             # 3000 samp @ 200 Hz
+  step_seconds: 14                # 1 s overlap
+  max_analyze_hours: 24           # MAX_ANALYZE_HOURS — analyze up to the first 24 h (never "first 600 s")
+  fs: 200
+  bands:                          # theta is 4-8 (contiguous with alpha; NOT 4-7)
+    delta: [1.0, 4.0]
+    theta: [4.0, 8.0]
+    alpha: [8.0, 13.0]
+    beta:  [13.0, 30.0]
+    gamma: [30.0, 45.0]
+    total: [0.5, 45.0]
 
-# Bands present in the feature set (JJ's definitions). Features are linear power -> log before z.
-bands: [delta, theta, alpha, beta, gamma]
-# Slowing ratios of interest already provided per channel:
-#   alpha/delta (inverse DAR), alpha/theta (inverse TAR), delta/total, theta/total, delta/theta.
+# Sleep stages (Morgoth ss_hm_1 stager). Norms are stage-conditioned.
+stages: [W, N1, N2, N3, REM]      # "Other" excluded from norms
 
-# Sleep stages as coded in res column 1. Norms are computed per-state.
-# NOTE: wake is a single stage here (eyes-open/closed/drowsy are NOT separated) -> limitation.
-states:
-  "0": W
-  "1": N1
-  "2": N2
-  "3": N3
-  "4": REM
-  # "5": Other  -> excluded from norms
-
-scoring:
-  z_threshold: 2.0       # tau; calibrate against held-out normals
-  # ACNS-style prevalence words (fraction of usable state time)
-  prevalence_words:
-    rare:        [0.00, 0.01]
-    occasional:  [0.01, 0.10]
-    frequent:    [0.10, 0.50]
-    abundant:    [0.50, 0.90]
-    continuous:  [0.90, 1.01]
-  # provisional patient-level-z severity words
-  severity_words:
-    mild:     [2.0, 3.0]
-    moderate: [3.0, 4.5]
-    marked:   [4.5, 999]
-
+# Normative model (R GAMLSS/LMS; scripts/gamlss_fit.R). SEX-POOLED (ΔAUROC ≤ 0.002).
 normative_model:
-  method: gamlss         # gamlss | quantile_regression | robust_zscore
+  method: gamlss                  # BCT (Box-Cox-t) / LMS
   age_continuous: true
+  sex: pooled                     # NOT sex-specific
+  conditioned_on: [age, stage, region]
   percentiles: [3, 10, 25, 50, 75, 90, 97]
-  validation: loso       # leave-one-subject-out
+  cross_fit: true                 # out-of-fold z for normals (no self-normalization)
 
-control_group:
-  age_bands: [[0,2],[3,5],[6,12],[13,17],[18,29],[30,44],[45,59],[60,74],[75,120]]
-  sexes: [F, M]
-  min_usable_segments_per_state: 20   # denominator guard
+# Recording identity + inclusion.
+run:
+  recording_key: eeg_id           # {patient_id}_{eeg_datetime} — one row per EEG (not per patient)
+  min_usable_fraction: 0.20       # exclude recordings below this usable-segment fraction
+
+# NOTE: FORBIDDEN output (docs/claims_table.md) — do NOT configure these:
+#   severity adjectives (mild/moderate/marked), ACNS frequency words (rare/frequent/continuous),
+#   band-from-our-features. Prevalence is reported as a % (ALLOWED), never as a word.

@@ -41,6 +41,14 @@ Sampling 250 Hz, 19 ch 10–20, ICA eye-blink removal. **Q_SLOWING/Q_APG/Q_ASYM 
 - **Q_ALPHA = alpha (PDR) peak frequency** vs age norm. κ = 0.60. **NOT ADOPTED** (MBW: PDR is out of scope,
   separate from slowing).
 
+### Finnigan & van Putten 2013 — slowing ratios & spectral edge (the global comparators)
+Defined per channel/region from the multitaper PSD; band powers are the trapezoid integral over each band.
+- **DAR** = P[delta] / P[alpha]  (delta-alpha ratio; higher = slower). **ADR** = P[alpha]/P[delta] = 1/DAR.
+- **DTABR** = (P[delta] + P[theta]) / (P[alpha] + P[beta])  (a.k.a. the (δ+θ)/(α+β) power-ratio index).
+- **SEF95** = spectral edge frequency: the frequency below which 95% of total power (0.5–45 Hz) lies.
+  **median_freq** (SEF50) and **peak_freq** (dominant frequency) are the related summaries; all fall as the
+  EEG slows. Bands: delta 1–4, theta 4–8, alpha 8–13, beta 13–30 Hz (this project's edges).
+
 ## Relevance summary
 Lodder & van Putten (2013) + the 2014 clinical evaluation are the **closest prior work to ours**: quantify
 the background properties clinicians report, validate against reports/consensus by κ, and show automation
