@@ -82,3 +82,29 @@ are the arbiter.
 
 Sample drawn to span the age range (H2) and the report bands; theta is scarce in this pool
 (3 eligible) so it is capped by availability, not design.
+
+---
+
+## Verdict framing (revised after MBW review, 2026-07-10)
+
+The verdicts are organized by WHO IS RIGHT — because the original "norm-over-correction-elderly" label
+conflated two opposite conclusions that MBW separated:
+
+**WE'RE RIGHT (our field correctly measures ~normal; Morgoth/report over-call):**
+1. *physiologic sleep slowing* — recording is mostly sleep (82% of this set is N2/N3-dominant); the report
+   describes normal sleep slowing; our stage-aware field correctly compares sleep to sleep norms.
+2. *age-appropriate* — the slowing would be abnormal in a younger patient but is within normal limits for
+   this age; our age-norm correctly does not flag it; Morgoth and the reader over-call against a younger
+   expectation. **This is the method's value proposition working, not a failure.** (MBW's hypothesis.)
+
+**WE'RE WRONG / WE MISS IT (real pathology our field does not capture):**
+3. *rhythmic morphology (GRDA/FIRDA)* — real, intermittent, pattern-based; does not raise mean band power.
+4. *our age-norm over-corrects* — genuinely pathological even for age, but our elderly "normal" reference is
+   too permissive (possibly contaminated with mild pathology), so we explain it away. The dangerous case.
+5. *genuine miss* — real abnormal slowing, no clear reason.
+
+**GATE WRONG:**
+6. *Morgoth false-positive* — no real slowing.
+
+The two pre-tests both point at the "WE'RE RIGHT" rows: the case-2 set is younger than the captured set
+(against #4 elderly over-correction) and 82% sleep-dominant (toward #1). MBW's reads assign each case.

@@ -38,8 +38,14 @@ if MODE == "case2":
     SIGDIR = HERE / "data" / "signals_case2"
     REVIEW_SET = ROOT / "data" / "derived" / "case2_review_set.jsonl"
     RESP_PATH = RESP_DIR / "responses_case2.jsonl"
-    VERDICTS = ["physiologic-sleep-slowing (correctly not flagged)", "rhythmic-morphology (GRDA/FIRDA)",
-                "norm-over-correction-elderly", "genuine-model-miss", "gate-false-positive"]
+    VERDICTS = [
+        "WE'RE RIGHT: physiologic sleep slowing (normal sleep, not pathology)",
+        "WE'RE RIGHT: age-appropriate (normal for this age; Morgoth/report over-call)",
+        "WE MISS IT: rhythmic morphology (GRDA/FIRDA) that doesn't raise mean power",
+        "WE'RE WRONG: our age-norm over-corrects genuinely pathological slowing",
+        "WE MISS IT: real slowing, no clear reason (genuine miss)",
+        "GATE WRONG: Morgoth false-positive (no real slowing)",
+    ]
     CASE_FIELDS = ["age", "dominant_stage", "stage_mix", "report_gen_band", "amount_median", "prevalence", "p_generalized"]
 else:
     SIGDIR = HERE / "data" / "signals"
@@ -123,7 +129,9 @@ def index():
 
 @app.route("/static/<path:fn>")
 def static_files(fn):
-    return send_from_directory(STATIC, fn)
+    resp = send_from_directory(STATIC, fn)
+    resp.headers["Cache-Control"] = "no-store, must-revalidate"
+    return resp
 
 
 @app.route("/api/config")
