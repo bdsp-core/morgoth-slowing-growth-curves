@@ -1,5 +1,29 @@
 # Fleet Runbook — running Morgoth over a large EEG cohort on AWS spot GPUs
 
+> ## ⚠️ PIPELINE UPDATED 2026-07-11 — the frozen v6 / segment_master run (prior run discarded)
+> The earlier run described below (**scripts/30 → `expansion` layout → 13,034**) produced results that were
+> **thrown away**. The fleet now runs the validated clean-room pipeline:
+> - **Worker:** `fleet/batch_worker.py` drives **`scripts/31_segment_master_worker.py`** → `segment_master`/
+>   `segment_summary`/`_done` schema (NOT the old features/stages/gate/provenance layout).
+> - **Manifest:** `data/manifest/report_manifest_v6.parquet` (**27,524**, tracked in the repo/AMI) — not
+>   `fleet/manifest.jsonl`.
+> - **S3 output:** FRESH prefix **`…/Growth_curves/segmaster_v6/`** (resume keyed on `_done/<eeg_id>.done`).
+> - **Two venvs** (docs/fleet_dependencies.md §4): the worker runs in the repo venv; Morgoth runs in
+>   `PILOT_VENV=$MORGOTH2_DIR/.venv/bin/python`. Panels + EDFs + results all move via rclone (`s3:` read,
+>   `bdsp:` write) — no `aws` CLI needed on the worker path.
+> - **Launcher:** `fleet/scale_elastic.sh` (updated). **Validation:** `fleet/.validation_userdata.sh`.
+>   **Post-run:** `scripts/33_assemble_ledger.py` → `scripts/32_segmaster_summary.py` (replaces
+>   `fleet/reanalyze.sh` + `scripts/51`).
+> - **Cost/time:** ~12.6 min/rec × 27,524 ≈ **5,780 worker-hrs** → ~45 h at 128 workers (§9 math, 2.1× the
+>   old run). Raise the spot quota + re-run `scale_elastic.sh <target>` to compress.
+> - ⚠️ **Legacy, NOT yet migrated** (still reference `manifest.jsonl`/`expansion` — do NOT launch for the v6
+>   run): `scale_full.sh`, `scale_pilot.sh`, `scale_ondemand.sh`, `scale_cohort*.sh`, `launch_fleet.sh`,
+>   `launch_spot_fleet.sh`, `do_launch.sh`, `entrypoint.sh`, `reanalyze.sh`. Use `scale_elastic.sh` only.
+>
+> Everything below is the ORIGINAL (expansion-run) runbook, kept for the AWS mechanics (AMI, quota, scale,
+> finalize/teardown) which are pipeline-agnostic — but read every `S3_OUT`/`MANIFEST`/`PILOT_VENV`/worker
+> reference through the box above.
+
 This documents the exact setup used to process **13,034 EEG recordings** through the Morgoth slowing
 pipeline on a fleet of AWS GPU spot instances, writing per-recording results to S3. It is written to be
 **repeatable** — including for future runs over *different* EEG cohorts and *different Morgoth heads*
