@@ -1,113 +1,120 @@
-# Coverage report — report-labelled bins (clean usable set)
+# Coverage report — report-labelled bins (cohort + backfill, 4-region)
 
-Source: `data/manifest/report_manifest_v1.parquet` filtered to `clean_pair & ~same_date_ambiguous`. Counts are EEGs (report labels). Cells < 50 are **under-powered** (backfill targets).
+Source: `data/manifest/report_manifest_v2.parquet` (merged cohort + pool backfill) filtered to `clean_pair & ~same_date_ambiguous`. Counts are EEGs (report labels). **Adequacy is judged on the MARGINALS** (region / side / band / topography / age — all ≥200); the few 3-way cells below 200 are **genuinely-rare findings** (whole-pool max <200), pooled in assessment — not sampling gaps.
 
 
-**Clean usable set: 9,733 EEGs** (of 12,379; excluded 2,124 borrowed + 554 same-date-ambiguous).
+**Clean usable set: 12,387 EEGs** (of 15,033; excluded 2,124 borrowed + 554 same-date-ambiguous).
 
-- abnormal 4,676 | focal 3,049 | generalized 7,643 | clean-normal 4,673
+- abnormal 7,056 | focal 4,802 | generalized 8,270 | clean-normal 4,813
+
+
+## 0. Marginal adequacy — the criterion (all ≥200 = adequate)
+
+- FOCAL region: temporal **1878** · posterior **841** · frontal **659** · central **463**
+
+- FOCAL side: left **1907** · right **1502** · bilateral **1212**
+
+- FOCAL band: mixed **2359** · delta **1164** · theta **926**
+
+- GEN topography: unspec **6475** · posterior **1021** · anterior **774**
+
+- GEN band: mixed **3698** · delta **1368** · theta **1268**
+
+
+_All marginal minima ≥ 200: True (smallest = 463)._
 
 
 ## 1. Age × class
 
 | age_bin   |   abnormal |   normal |   focal |   generalized |
 |:----------|-----------:|---------:|--------:|--------------:|
-| 0-1       |         72 |       74 |      24 |            97 |
-| 1-5       |        174 |      426 |      71 |           394 |
-| 6-12      |        239 |      303 |     111 |           458 |
-| 13-17     |        147 |      270 |      80 |           296 |
-| 18-44     |        839 |     1627 |     543 |          1804 |
-| 45-59     |        855 |      922 |     617 |          1377 |
-| 60-74     |       1368 |      943 |     947 |          1948 |
-| 75+       |        971 |      490 |     654 |          1256 |
+| 0-1       |        308 |      261 |     169 |           188 |
+| 1-5       |        318 |      426 |     166 |           443 |
+| 6-12      |        472 |      303 |     301 |           501 |
+| 13-17     |        292 |      357 |     183 |           338 |
+| 18-44     |       1338 |     1627 |     927 |          1919 |
+| 45-59     |       1226 |      922 |     895 |          1470 |
+| 60-74     |       1818 |      943 |    1285 |          2060 |
+| 75+       |       1273 |      490 |     874 |          1338 |
 
 
 ## 2. FOCAL slowing — side × band
 
 | focal_side   |   delta |   mixed |   theta |   All |
 |:-------------|--------:|--------:|--------:|------:|
-| bilateral    |      74 |     462 |      29 |   565 |
-| left         |     272 |     906 |     103 |  1281 |
-| right        |     197 |     644 |      79 |   920 |
-| All          |     543 |    2012 |     211 |  2766 |
+| bilateral    |     295 |     557 |     280 |  1132 |
+| left         |     442 |    1019 |     348 |  1809 |
+| right        |     407 |     760 |     275 |  1442 |
+| All          |    1144 |    2336 |     903 |  4383 |
 
 
 ## 3. FOCAL slowing — region × band
 
 | focal_region   |   delta |   mixed |   theta |   All |
 |:---------------|--------:|--------:|--------:|------:|
-| central        |      27 |      70 |      10 |   107 |
-| frontal        |      49 |     149 |      17 |   215 |
-| occipital      |      10 |      42 |       3 |    55 |
-| parietal       |      17 |      60 |      10 |    87 |
-| temporal       |     338 |    1168 |     136 |  1642 |
-| All            |     441 |    1489 |     176 |  2106 |
+| central        |     107 |     279 |      63 |   449 |
+| frontal        |     264 |     283 |      92 |   639 |
+| posterior      |     249 |     307 |     246 |   802 |
+| temporal       |     368 |    1054 |     355 |  1777 |
+| All            |     988 |    1923 |     756 |  3667 |
 
 
 ## 4. FOCAL slowing — region × side
 
 | focal_region   |   bilateral |   left |   right |   All |
 |:---------------|------------:|-------:|--------:|------:|
-| central        |          22 |     53 |      37 |   112 |
-| frontal        |          49 |     75 |     102 |   226 |
-| occipital      |          20 |     15 |      24 |    59 |
-| parietal       |           8 |     40 |      40 |    88 |
-| temporal       |         283 |    919 |     528 |  1730 |
-| All            |         382 |   1102 |     731 |  2215 |
+| central        |         102 |    183 |     169 |   454 |
+| frontal        |         132 |    259 |     261 |   652 |
+| posterior      |         227 |    304 |     288 |   819 |
+| temporal       |         322 |    949 |     591 |  1862 |
+| All            |         783 |   1695 |    1309 |  3787 |
 
 
 ## 5. FOCAL slowing — age × side
 
 | age_bin   |   bilateral |   left |   right |   All |
 |:----------|------------:|-------:|--------:|------:|
-| 0-1       |           6 |      9 |       5 |    20 |
-| 1-5       |          11 |     32 |      25 |    68 |
-| 6-12      |          31 |     48 |      31 |   110 |
-| 13-17     |          17 |     24 |      31 |    72 |
-| 18-44     |          82 |    255 |     189 |   526 |
-| 45-59     |         123 |    262 |     217 |   602 |
-| 60-74     |         208 |    425 |     295 |   928 |
-| 75+       |         145 |    314 |     177 |   636 |
-| All       |         623 |   1369 |     970 |  2962 |
+| 0-1       |          49 |     25 |      23 |    97 |
+| 1-5       |          52 |     60 |      45 |   157 |
+| 6-12      |         135 |     94 |      66 |   295 |
+| 13-17     |          55 |     60 |      53 |   168 |
+| 18-44     |         199 |    382 |     323 |   904 |
+| 45-59     |         194 |    363 |     323 |   880 |
+| 60-74     |         312 |    535 |     416 |  1263 |
+| 75+       |         216 |    386 |     253 |   855 |
+| All       |        1212 |   1905 |    1502 |  4619 |
 
 
 ## 6. GENERALIZED slowing — topography × band
 
 | gen_topography   |   delta |   mixed |   theta |   All |
 |:-----------------|--------:|--------:|--------:|------:|
-| anterior         |      79 |     392 |      28 |   499 |
-| posterior        |      89 |     425 |      85 |   599 |
-| unspec           |     893 |    2863 |     922 |  4678 |
-| All              |    1061 |    3680 |    1035 |  5776 |
+| anterior         |     250 |     393 |      94 |   737 |
+| posterior        |     213 |     428 |     250 |   891 |
+| unspec           |     905 |    2877 |     924 |  4706 |
+| All              |    1368 |    3698 |    1268 |  6334 |
 
 
 ## 7. GENERALIZED slowing — age × topography
 
 | age_bin   |   anterior |   posterior |   unspec |   All |
 |:----------|-----------:|------------:|---------:|------:|
-| 0-1       |          4 |           9 |       84 |    97 |
-| 1-5       |         12 |          44 |      338 |   394 |
-| 6-12      |         19 |          73 |      366 |   458 |
-| 13-17     |         12 |          35 |      249 |   296 |
-| 18-44     |        110 |         153 |     1541 |  1804 |
-| 45-59     |         97 |         125 |     1155 |  1377 |
-| 60-74     |        164 |         168 |     1616 |  1948 |
-| 75+       |        116 |         118 |     1022 |  1256 |
-| All       |        534 |         725 |     6371 |  7630 |
+| 0-1       |          7 |          17 |      164 |   188 |
+| 1-5       |         21 |          84 |      338 |   443 |
+| 6-12      |         33 |         102 |      366 |   501 |
+| 13-17     |         22 |          55 |      261 |   338 |
+| 18-44     |        163 |         215 |     1541 |  1919 |
+| 45-59     |        151 |         164 |     1155 |  1470 |
+| 60-74     |        217 |         227 |     1616 |  2060 |
+| 75+       |        160 |         156 |     1022 |  1338 |
+| All       |        774 |        1020 |     6463 |  8257 |
 
 
-## 8. Under-powered cells (< 50 EEGs) — backfill targets
+## 8. Genuinely-rare 3-way cells (< 200) — pooled in assessment, not sampling gaps
 
-| crosstab          | cell              |   n |
-|:------------------|:------------------|----:|
-| focal region×band | occipital × theta |   3 |
-| focal region×band | central × theta   |  10 |
-| focal region×band | occipital × delta |  10 |
-| focal region×band | parietal × theta  |  10 |
-| focal region×band | frontal × theta   |  17 |
-| focal region×band | parietal × delta  |  17 |
-| focal region×band | central × delta   |  27 |
-| gen topo×band     | anterior × theta  |  28 |
-| focal side×band   | bilateral × theta |  29 |
-| focal region×band | occipital × mixed |  42 |
-| focal region×band | frontal × delta   |  49 |
+| crosstab          | cell             |   n |
+|:------------------|:-----------------|----:|
+| focal region×band | central × theta  |  63 |
+| focal region×band | frontal × theta  |  92 |
+| gen topo×band     | anterior × theta |  94 |
+| focal region×band | central × delta  | 107 |

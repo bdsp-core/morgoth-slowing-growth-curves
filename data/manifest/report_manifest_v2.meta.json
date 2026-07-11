@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "supersedes": "report_manifest_v1 (cohort only)",
+  "frozen_utc": "2026-07-11T07:14:14Z",
+  "n_eeg": 15033,
+  "n_patients": 13710,
+  "by_src": {
+    "cohort": 12379,
+    "backfill": 2654
+  },
+  "n_clean_pair": 12909,
+  "n_with_path": 14957,
+  "n_with_text": 14241,
+  "n_focal": 5724,
+  "n_gen": 10052,
+  "n_clean_normal": 5234,
+  "region_taxonomy": "4 (frontal, temporal, central, posterior)",
+  "sha256": "fc3876ec2c29cb46084d8ebb051e59354ffc55f6e6fe247f7f2489d6633d5766",
+  "columns": [
+    "eeg_id",
+    "patient_id",
+    "eeg_datetime",
+    "src",
+    "age",
+    "sex",
+    "is_normal",
+    "is_abnormal",
+    "has_focal_slow",
+    "has_gen_slow",
+    "clean_normal",
+    "focal_region",
+    "focal_side",
+    "focal_band",
+    "gen_topography",
+    "gen_band",
+    "clean_pair",
+    "same_date_ambiguous",
+    "eeg_path",
+    "report_note_name",
+    "report_text"
+  ],
+  "deid": "BDSP de-identified; report text included (NOT reportable under IRB/DUA)"
+}
