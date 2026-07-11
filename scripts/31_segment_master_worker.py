@@ -1,39 +1,49 @@
-"""Canonical fleet worker (SAP §4–§5): per-recording -> segment_master + recording_meta + recording_labels.
+"""Canonical fleet worker (SAP §4–§5): per-recording -> segment_master + segment_summary + per-eeg sidecars.
 
-Replaces the legacy aggregate worker (scripts/30, archived-behaviour). For EACH recording on the frozen
-report manifest:
-  resolve EDF on S3 -> pull -> cap to 24 h -> bipolar -> per-15s-segment multitaper PSD ->
-  RETAIN every segment with artifact_flag/reason (flag, NOT strip) -> per (segment, region) features +
-  van Putten metrics -> stage each segment (Morgoth ss_hm_1) -> per-segment gate (SEPARATE pass; needs the
-  NORMAL/SLOWING checkpoints, RUN_GATE=1) -> write partitioned segment_master + sidecars -> mark .done.
+Replaces the legacy aggregate worker (scripts/30, archived). For EACH recording on the frozen manifest
+(v6, pre-flight-resolved):
+  resolve the EXACT EDF on S3 (decide_edf: match eeg_datetime->scans.tsv, hard-fail on ambiguity) -> pull
+  -> cap to 24 h (read-time) -> bipolar -> per-15s-segment multitaper PSD -> RETAIN every segment with
+  artifact_flag/reason (flag, NOT strip) -> PER-CHANNEL (18 bipolar) features + van Putten -> stage each
+  segment (Morgoth ss_hm_1) -> per-segment gate (SEPARATE pass; NORMAL/SLOWING checkpoints, RUN_GATE=1) ->
+  write partitioned segment_master + segment_summary + per-eeg .done/.status sidecars.
 
-Output (data/derived/segment_master/):
-  segment_master/eeg_id=<id>/part.parquet   one row per (segment, region) — the canonical table
-  recording_meta.parquet (appended)          one row per eeg_id
-  recording_labels.parquet (appended)        one row per eeg_id (from the manifest)
+Writes ONLY per-eeg_id files (crash-safe, shard-safe); the one-row-per-EEG run ledger (recording_meta /
+recording_labels) is assembled SEPARATELY by scripts/33 after all shards finish (never a global write here).
+Output under OUTPUT_ROOT (default data/derived):
+  segment_master/eeg_id=<id>/part.parquet    one row per (segment, CHANNEL) — regions derived downstream
+  segment_summary/eeg_id=<id>/part.parquet   one row per (segment): stage, artifact, p_slowing, whole-head vP
+  segment_master/_done/<id>.done             success + stats + sha256 (ledger input)
+  segment_master/_status/<id>.status         non-success outcome (noedf / ambiguous / error:*)
 
-Keyed on eeg_id (NOT bdsp_id). Env: MORGOTH2_DIR, PILOT_VENV, MORGOTH_DEVICE (staging); RUN_GATE=0 to skip
-the gate locally (no slowing checkpoints); EXPANSION_MAX_GB; RCLONE_BIN; MANIFEST.
-Run: PYTHONPATH=src python scripts/31_segment_master_worker.py [N]
+Keyed on eeg_id (NOT bdsp_id). Env: MORGOTH2_DIR, PILOT_VENV, MORGOTH_DEVICE (staging); RUN_GATE=1 for the
+gate; PANEL_ROOT for panel sources; OUTPUT_ROOT; RCLONE_BIN; MANIFEST; SHARD="i/N" for parallel runs.
+Run: PYTHONPATH=src python scripts/31_segment_master_worker.py [N]   (SHARD=i/N for the fleet)
 """
 from __future__ import annotations
-import os, sys, gc, json, time, subprocess, tempfile, shutil
+import os, sys, gc, json, time, subprocess, tempfile, shutil, hashlib
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.io import savemat
 
 from morgoth_slowing.features import extract as ex, artifact as af, vanputten as vp
-from morgoth_slowing.features.recording import _AGG, _derived
+from morgoth_slowing.features.recording import _derived, CH_NAMES
 from morgoth_slowing.io.edf import load_edf_referential
 from morgoth_slowing.fleet import ingest as fi
 
 RC = os.environ.get("RCLONE_BIN", "/opt/homebrew/bin/rclone")
-MANIFEST = os.environ.get("MANIFEST", "data/manifest/report_manifest_v3.parquet")
+# Panel EEGs (OccasionNoise / MoE) carry a RELATIVE source_path (occasionnoise/<fid>.edf, moe/<event>.mat);
+# PANEL_ROOT resolves it. Local dir for pilots; s3://<bucket>/panels or an rclone remote for the fleet
+# (the box has no scratchpad). See docs/fleet_launch.md §0b.
+PANEL_ROOT = os.environ.get("PANEL_ROOT", "").rstrip("/")
+MANIFEST = os.environ.get("MANIFEST", "data/manifest/report_manifest_v6.parquet")  # v6 = pre-flight-resolved (scripts/129)
 # OUTPUT_ROOT lets the fleet write to a durable/shared location; sync to the S3 output bucket (see
 # docs/fleet_launch.md "Outputs"). Everything the analysis plan consumes lands under here.
 OUTROOT = Path(os.environ.get("OUTPUT_ROOT", "data/derived"))
-OUT = OUTROOT / "segment_master"; OUT.mkdir(parents=True, exist_ok=True)
-DONE = OUT / "_done"; DONE.mkdir(exist_ok=True)
+OUT = OUTROOT / "segment_master"; OUT.mkdir(parents=True, exist_ok=True)          # per (segment, channel)
+SUMM = OUTROOT / "segment_summary"; SUMM.mkdir(parents=True, exist_ok=True)       # per segment (whole-head)
+DONE = OUT / "_done"; DONE.mkdir(exist_ok=True)                                  # success sidecars (per eeg_id)
+STATUS = OUT / "_status"; STATUS.mkdir(exist_ok=True)                             # non-success outcomes (per eeg_id)
 MAX_GB = float(os.environ.get("EXPANSION_MAX_GB", "3.0"))
 RUN_GATE = os.environ.get("RUN_GATE", "0") == "1"       # Morgoth gate (NORMAL/SLOWING checkpoints in M2/checkpoints)
 GATE_STEP = os.environ.get("GATE_STEP", "5")            # window step (s) for the per-window slowing head
@@ -43,17 +53,61 @@ FEATS = ["log_delta", "log_theta", "log_alpha", "log_beta", "log_gamma", "log_to
          "rel_delta", "rel_theta", "rel_alpha", "DAR", "TAR", "DTR", "low_freq_rel"]
 
 
+def _sha256(path, chunk=1 << 20):
+    """Streaming sha256 of the analyzed source file (B2 integrity stamp)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for blk in iter(lambda: f.read(chunk), b""):
+            h.update(blk)
+    return h.hexdigest()
+
+
+def _acq_time(base, rel):
+    """Read a BIDS session's scans.tsv acq_time for the EDF `rel` and normalize to YYYYMMDDHHMMSS.
+    rel = 'ses-9/eeg/sub-XXX_ses-9_task-rEEG_eeg.edf' -> scans 'ses-9/sub-XXX_ses-9_scans.tsv'."""
+    ses = rel.split("/")[0]
+    stem = Path(rel).name.split("_task-")[0]                 # 'sub-XXX_ses-9'
+    scans = f"{base}{ses}/{stem}_scans.tsv"
+    out = subprocess.run([RC, "cat", scans], capture_output=True, text=True, timeout=30)
+    for line in out.stdout.splitlines():
+        if line.endswith(".edf") or "\t" in line and "acq_time" not in line:
+            parts = line.split("\t")
+            if len(parts) >= 2 and Path(parts[0]).name == Path(rel).name:
+                return "".join(ch for ch in parts[1] if ch.isdigit())[:14]
+    return None
+
+
+def decide_edf(base, task, want, edfs, acq_fn):
+    """The ONE resolution decision — shared by the worker (resolve_edf) and the pre-flight (scripts/129)
+    so both agree exactly. `edfs` = subject's EDF rel-paths; `acq_fn(rel)` -> scans.tsv acq_time
+    (YYYYMMDDHHMMSS) for that rel. Returns (path|None, reason). Hard-fails on zero/ambiguous matches."""
+    task_edfs = [l for l in edfs if f"task-{task}" in l] or edfs
+    if not task_edfs:
+        return None, "noedf"
+    if len(task_edfs) == 1:
+        return base + task_edfs[0], "single"                       # one candidate = unambiguous
+    want = "".join(ch for ch in str(want) if ch.isdigit())[:14]
+    if len(task_edfs) > 60:                                         # pathological many-session subject:
+        return None, f"toomany:{len(task_edfs)}"                   # bound scans reads (never a real cohort row)
+    acq = {rel: acq_fn(rel) for rel in task_edfs}                  # one scans.tsv read each
+    sec = [rel for rel, a in acq.items() if a == want]            # exact second match
+    if len(sec) == 1:
+        return base + sec[0], "sec-match"
+    day = [rel for rel, a in acq.items() if a and a[:8] == want[:8]]  # fall back to the calendar day
+    if len(day) == 1:
+        return base + day[0], "day-match"                          # unique day -> safe despite time rounding
+    return None, f"ambiguous:{len(sec)}of{len(task_edfs)}"         # 0 or >1 -> refuse to guess
+
+
 def resolve_edf(row):
-    """List the subject dir and pick the EDF of the right task nearest the recording date."""
-    out = subprocess.run([RC, "lsf", row.source_subject_dir, "--recursive", "--include", "*.edf"],
+    """Resolve the EXACT session EDF by matching `eeg_datetime` to the BIDS scans.tsv acq_time.
+    BIDS sessions are ordinal (ses-2, ses-9, ...) and do NOT encode the date, so a subject with N
+    recordings needs date disambiguation. Lists the subject once, then defers to `decide_edf`."""
+    base = row.source_subject_dir
+    out = subprocess.run([RC, "lsf", base, "--recursive", "--include", "*.edf"],
                          capture_output=True, text=True, timeout=120)
-    edfs = [l for l in out.stdout.splitlines() if l.endswith(".edf") and f"task-{row.bids_task}" in l]
-    if not edfs:
-        edfs = [l for l in out.stdout.splitlines() if l.endswith(".edf")]
-    if not edfs:
-        return None
-    # prefer a session whose scans date matches eeg_datetime; else the first (single-session = unambiguous)
-    return row.source_subject_dir + sorted(edfs)[0]
+    edfs = [l for l in out.stdout.splitlines() if l.endswith(".edf")]
+    return decide_edf(base, row.bids_task, row.eeg_datetime, edfs, lambda rel: _acq_time(base, rel))
 
 
 def stage_segments(sin, sout, rid, n_seg, seg_centers_s):
@@ -130,35 +184,56 @@ def run_gate(sin, sout, rid, n_seg, centers_s):
     return p_slow, p_focal, p_gen
 
 
+_BANDS6 = ["delta", "theta", "alpha", "beta", "gamma", "total"]
+
+
 def segment_master_rows(eid, pid, edt, bip, fs, stages, gate=None):
-    """One row per (segment, region) — retain ALL segments with artifact_flag (flag, not strip)."""
+    """Two tables (SAP §5, grain decided 2026-07-11 = per CHANNEL, regions derived downstream):
+      channel_rows  — one row per (segment, channel): 18 bipolar channels, per-channel features + vP.
+      summary_rows  — one row per segment: stage, artifact, per-segment p_slowing, whole-head vP.
+    ALL segments are retained with artifact_flag (flag, not strip). Regions are a downstream groupby
+    over `channel` using recording._AGG (whole_head, L/R_temporal, L/R_parasagittal, midline)."""
     segidx = ex.segment_indices(bip.shape[0])            # capped to 24 h
-    rows = []
+    channel_rows, summary_rows = [], []
     for i, (s, e) in enumerate(segidx):
         seg = bip[s:e]
-        ok, reason = af.segment_usable(seg, fs)
+        ok, reason = af.segment_usable(seg, fs)          # per-segment (whole 18-ch) artifact
         freqs, psd = ex.multitaper_psd(seg.T, fs)        # (18, n_freq)
         stage = stages[i] if i < len(stages) else "Other"
-        base = {"eeg_id": eid, "patient_id": pid, "eeg_datetime": edt, "segment": i,
-                "t_start_s": float(s / fs), "stage": stage,
-                "artifact_flag": (not ok), "artifact_reason": ("none" if ok else reason),
-                "p_slowing": (float(gate[0][i]) if gate and i < len(gate[0]) else np.nan),
-                "p_focal": (float(gate[1]) if gate else np.nan),
-                "p_generalized": (float(gate[2]) if gate else np.nan)}
-        for reg, chans in _AGG.items():
-            bp = ex.band_powers(freqs, psd[chans])       # per-band mean over region channels
-            bpmean = {k: float(np.mean(v)) for k, v in bp.items()}
-            d = _derived(np.array([[bpmean[b] for b in ["delta", "theta", "alpha", "beta", "gamma", "total"]]]))
-            row = {**base, "region": reg, **{k: float(v[0]) for k, v in d.items()}}
-            row.update(DTABR=vp.dtabr(freqs, psd, chans), ADR=vp.adr(freqs, psd, chans),
-                       SEF95=vp.sef(freqs, psd, 0.95, chans), median_freq=vp.median_freq(freqs, psd, chans),
-                       peak_freq=vp.peak_freq(freqs, psd, chans))
-            if reg == "whole_head":
-                row.update(Q_SLOWING=vp.q_slowing(freqs, psd), Q_APG=vp.q_apg(freqs, psd),
-                           r_sBSI=vp.r_sbsi(freqs, psd), pdBSI=vp.pdbsi(freqs, psd),
-                           Q_ASYM=vp.q_asym(freqs, psd))
-            rows.append(row)
-    return rows
+        ctx = {"eeg_id": eid, "segment": i, "t_start_s": float(s / fs), "stage": stage,
+               "artifact_flag": (not ok), "artifact_reason": ("none" if ok else reason)}
+        # per-segment summary: whole-head/spatial vP + per-segment gate (can't live on one channel)
+        summary_rows.append({"patient_id": pid, "eeg_datetime": edt, **ctx,
+            "p_slowing": (float(gate[0][i]) if gate and i < len(gate[0]) else np.nan),
+            "Q_SLOWING": vp.q_slowing(freqs, psd), "Q_APG": vp.q_apg(freqs, psd),
+            "r_sBSI": vp.r_sbsi(freqs, psd), "pdBSI": vp.pdbsi(freqs, psd), "Q_ASYM": vp.q_asym(freqs, psd)})
+        bp_all = ex.band_powers(freqs, psd)              # dict band -> (18,) power, all channels at once
+        for c, ch in enumerate(CH_NAMES):
+            d = _derived(np.array([[float(bp_all[b][c]) for b in _BANDS6]]))
+            row = {**ctx, "channel": ch, **{k: float(v[0]) for k, v in d.items()}}
+            row.update(DTABR=vp.dtabr(freqs, psd, [c]), ADR=vp.adr(freqs, psd, [c]),
+                       SEF95=vp.sef(freqs, psd, 0.95, [c]), median_freq=vp.median_freq(freqs, psd, [c]),
+                       peak_freq=vp.peak_freq(freqs, psd, [c]))
+            channel_rows.append(row)
+    return channel_rows, summary_rows
+
+
+def fetch_panel(sp, ext, work):
+    """Resolve a relative panel source_path against PANEL_ROOT. Local dir -> the file in place;
+    s3://... or an rclone remote -> pull to the work dir. Returns a local path or None."""
+    if not PANEL_ROOT:                                             # allow bare local paths for old pilots
+        return Path(sp) if Path(sp).exists() else None
+    full = f"{PANEL_ROOT}/{sp}"
+    if PANEL_ROOT.startswith("s3://"):
+        dst = work / f"panel{ext}"
+        subprocess.run(["aws", "s3", "cp", full, str(dst)], check=True, capture_output=True, timeout=600)
+        return dst
+    if ":" in PANEL_ROOT.split("/")[0]:                           # rclone remote, e.g. "bdsp:prefix"
+        dst = work / f"panel{ext}"
+        subprocess.run([RC, "copyto", full, str(dst)], check=True, capture_output=True, timeout=600)
+        return dst
+    p = Path(full)                                                # local PANEL_ROOT
+    return p if p.exists() else None
 
 
 def process_one(m, work):
@@ -170,20 +245,23 @@ def process_one(m, work):
     if stype in ("edf_direct", "mat_v73"):
         from morgoth_slowing.io import panels
         sp = getattr(m, "source_path", None)
-        if not sp or not Path(sp).exists():
+        if not sp:
+            return "nopanelfile"
+        local = fetch_panel(sp, ".edf" if stype == "edf_direct" else ".mat", work)
+        if local is None:
             return "nopanelfile"
         if stype == "edf_direct":
-            data, chs, fs, _, _ = panels.read_occasion_edf(sp)     # OccasionNoise (~50 min)
+            data, chs, fs, _, _ = panels.read_occasion_edf(str(local))   # OccasionNoise (~50 min)
         else:
-            data, chs, fs = panels.read_moe_mat(sp)                # MoE (one 15-s segment)
-        ep = str(sp)
+            data, chs, fs = panels.read_moe_mat(str(local))              # MoE (one 15-s segment)
+        ep = str(sp); resolve_reason = stype
     else:
-        ep = resolve_edf(m)
-        if not ep:
-            return "noedf"
+        ep, resolve_reason = resolve_edf(m)
+        if ep is None:
+            return f"noedf:{resolve_reason}"                 # noedf / ambiguous:NofM (never guess)
         local = work / "rec.edf"
         subprocess.run([RC, "copyto", ep, str(local)], check=True, capture_output=True, timeout=600)
-        data, chs, fs = load_edf_referential(str(local))
+        data, chs, fs = load_edf_referential(str(local))     # already read-time capped to 24 h (B4)
     data = ex.cap_to_hours(data.astype(np.float32, copy=False), fs)
     n_hours = data.shape[0] / fs / 3600
     bip = ex.to_bipolar(ex.preprocess(data, fs), chs)
@@ -203,25 +281,32 @@ def process_one(m, work):
             gate = run_gate(sin, sout, eid, len(segidx), centers)
         except Exception as e:
             print(f"    gate FAIL {eid}: {type(e).__name__}: {e}")
-    rows = segment_master_rows(eid, m.patient_id, m.eeg_datetime, bip, fs, stages, gate)
-    sm = pd.DataFrame(rows)
-    n_seg, n_art = sm.segment.nunique(), int(sm[sm.region == "whole_head"].artifact_flag.sum())
+    channel_rows, summary_rows = segment_master_rows(eid, m.patient_id, m.eeg_datetime, bip, fs, stages, gate)
+    sm = pd.DataFrame(channel_rows); ss = pd.DataFrame(summary_rows)
     (OUT / f"eeg_id={eid}").mkdir(parents=True, exist_ok=True)
-    sm.to_parquet(OUT / f"eeg_id={eid}" / "part.parquet", index=False)
+    (SUMM / f"eeg_id={eid}").mkdir(parents=True, exist_ok=True)
+    sm.to_parquet(OUT / f"eeg_id={eid}" / "part.parquet", index=False)      # per (segment, channel)
+    ss.to_parquet(SUMM / f"eeg_id={eid}" / "part.parquet", index=False)     # per segment
+    # integrity hash (B2) of the source we actually analyzed + rich per-EEG stats for the run ledger (B5)
+    edf_bytes = int(Path(local).stat().st_size); edf_sha = _sha256(local)
+    n_seg = int(len(ss)); n_art = int(ss.artifact_flag.sum())
+    stage_frac = {f"frac_{k}": round(v, 4) for k, v in ss.stage.value_counts(normalize=True).items()}
     (DONE / f"{eid}.done").write_text(json.dumps({
-        "eeg_id": eid, "source_edf": ep, "code_commit": COMMIT, "n_hours": round(n_hours, 2),
-        "n_segments": int(n_seg), "n_artifact": n_art, "gate": RUN_GATE,
-        "processed_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}))
+        "eeg_id": eid, "patient_id": m.patient_id, "src_type": stype, "source_edf": ep,
+        "resolve_reason": resolve_reason, "sha256": edf_sha, "n_bytes": edf_bytes,
+        "code_commit": COMMIT, "worker": Path(__file__).name, "n_hours": round(n_hours, 2),
+        "recording_seconds": round(n_hours * 3600, 1), "n_segments": n_seg, "n_artifact": n_art,
+        "frac_artifact": round(n_art / max(n_seg, 1), 4), "stage_frac": stage_frac,
+        "gate": RUN_GATE, "p_slowing_coverage": round(float(ss.p_slowing.notna().mean()), 4),
+        "p_focal": (float(gate[1]) if gate else None), "p_generalized": (float(gate[2]) if gate else None),
+        "processed_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, default=float))
     if stype == "bids":
         local.unlink(missing_ok=True)                       # remove the pulled temp EDF (not panel sources)
-    return dict(eeg_id=eid, src_type=stype, n_seg=int(n_seg), n_art=n_art, hours=round(n_hours, 2), stages=set(stages))
+    return dict(eeg_id=eid, src_type=stype, n_seg=n_seg, n_art=n_art, hours=round(n_hours, 2), stages=set(stages))
 
 
 def main(n=10):
     man = pd.read_parquet(MANIFEST)
-    meta_cols = ["eeg_id", "patient_id", "eeg_datetime", "src", "age", "sex", "recording_seconds", "bids_task"]
-    label_cols = ["eeg_id", "is_abnormal", "has_focal_slow", "has_gen_slow", "clean_normal",
-                  "focal_side", "focal_region", "focal_band", "gen_topography", "gen_band", "clean_pair"]
     # SHARDING for the parallel AWS run: SHARD="i/N" -> worker i of N takes rows where idx % N == i.
     # ALL=1 processes the whole manifest (sharded); else the first `n` (pilot, PILOT_TASK-filtered).
     shard = os.environ.get("SHARD")
@@ -250,20 +335,23 @@ def main(n=10):
                     ok += 1
                     print(f"  OK {r['eeg_id']}: {r['n_seg']} seg, {r['n_art']} artifact, {r['hours']}h, stages={r['stages']}")
                 else:
+                    if r != "skip":                          # persist non-success outcome for the ledger (B5)
+                        (STATUS / f"{m.eeg_id}.status").write_text(json.dumps({"eeg_id": m.eeg_id, "status": r}))
                     print(f"  {r} {m.eeg_id}")
             except Exception as e:
+                (STATUS / f"{m.eeg_id}.status").write_text(json.dumps(
+                    {"eeg_id": m.eeg_id, "status": f"error:{type(e).__name__}", "detail": str(e)[:200]}))
                 print(f"  FAIL {m.eeg_id}: {type(e).__name__}: {e}")
             finally:
                 for sub in ("in", "out"):
                     shutil.rmtree(work / sub, ignore_errors=True)
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    # append the sidecars for the recordings we processed
-    done_ids = {p.stem for p in DONE.glob("*.done")}
-    sub = man[man.eeg_id.isin(done_ids)]
-    sub[[c for c in meta_cols if c in sub.columns]].to_parquet(OUT.parent / "recording_meta.parquet", index=False)
-    sub[[c for c in label_cols if c in sub.columns]].to_parquet(OUT.parent / "recording_labels.parquet", index=False)
-    print(f"\ndone: {ok}/{len(picks)} -> {OUT} (+ recording_meta/labels). segment_master partitions: {len(done_ids)}")
+    # NOTE: the worker writes ONLY per-eeg_id outputs (segment_master + segment_summary partitions +
+    # per-eeg .done). The one-row-per-EEG run ledger (recording_meta/labels) is built by a SEPARATE,
+    # shard-safe pass — scripts/33_assemble_ledger.py — AFTER all shards finish. Do NOT rewrite global
+    # parquets here: concurrent shards sharing OUTPUT_ROOT would clobber them (B5).
+    print(f"\ndone: {ok}/{len(picks)} processed. Run scripts/33_assemble_ledger.py to build the ledger.")
 
 
 if __name__ == "__main__":

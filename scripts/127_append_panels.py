@@ -37,10 +37,11 @@ def occasion_rows():
     rows = []
     for _, r in o.iterrows():
         fid = str(r["fid"])
-        edf = edfdir / (f"{fid}_fixed.edf" if (edfdir / f"{fid}_fixed.edf").exists() else f"{fid}.edf")
+        # Reference the ORIGINAL edf; the worker's header repair (_repair_edf) is idempotent, so we
+        # upload one canonical file per fid and let the box fix the header on read.
         rows.append({"eeg_id": f"ON_{fid}", "patient_id": f"ON_{fid}", "src": "panel",
                      "panel": True, "panel_set": "occasionnoise", "role": "panel",
-                     "source_type": "edf_direct", "source_path": str(edf),
+                     "source_type": "edf_direct", "source_path": f"occasionnoise/{fid}.edf",  # relative to PANEL_ROOT
                      "occasion_category": str(r.get("category", ""))})
     return pd.DataFrame(rows)
 
@@ -56,7 +57,7 @@ def moe_rows():
         pid = e.split("_")[0]; dt = e.split("_")[-1]
         rows.append({"eeg_id": f"MOE_{e}", "patient_id": pid, "eeg_datetime": dt, "src": "panel",
                      "panel": True, "panel_set": "moe", "role": "panel",
-                     "source_type": "mat_v73", "source_path": str(Path(SCRATCH) / "events_raw" / f"{e}.mat")})
+                     "source_type": "mat_v73", "source_path": f"moe/{e}.mat"})  # relative to PANEL_ROOT
     return pd.DataFrame(rows)
 
 

@@ -253,8 +253,8 @@ Multitaper PSD per segment per channel; band powers:
 
 **Band-edge fix (applied):** theta is **4–8 Hz**, not the legacy 4–7. The old 4–7/8–13 split left a 7–8 Hz
 hole that discarded ~23% of theta power (clinically theta runs to 8 Hz); closing it also improves band-word
-discrimination (0.58→0.60; `scripts/109`). Theta 4–8 is now contiguous with alpha 8–13. Features per (segment, channel/region): `log_{band}`, `rel_{band}` (delta/theta/alpha), `DAR`
-(δ/α), `TAR` (θ/α), `DTR` (δ/θ), `low_freq_rel`.
+discrimination (0.58→0.60; `scripts/109`). Theta 4–8 is now contiguous with alpha 8–13. Features per (segment, channel): `log_{band}`, `rel_{band}` (delta/theta/alpha), `log_DAR`
+(ln δ/α), `log_TAR` (ln θ/α), `log_DTR` (ln δ/θ), `low_freq_rel` — plus van Putten `DTABR`/`ADR` (raw ratios).
 
 **Prior-metric features (van Putten lineage), computed faithfully in the same pass** so the S7 benchmark
 (§8.7) uses identical PSDs (definitions/refs in `references/README.md`). Per (segment, channel/region):
@@ -287,31 +287,33 @@ segment aggregate, not a separate computation. `p_slowing` = `1 − P(class_0=no
 **One long-format master + typed sidecars.** No analysis reads anything else for primary results.
 
 ### 5.1 `segment_master` — the source of truth
-One row per **(eeg_id, segment, region)** over the whole recording. **The key is the EEG, not the
-patient** — one patient may have several EEGs, so a patient-level key would collide their recordings
-(see §5.3).
+One row per **(eeg_id, segment, channel)** over the whole recording — **18 bipolar channels**; the 6
+clinical regions are DERIVED downstream (`canonical.to_regions`), not stored (grain decided 2026-07-11,
+§5.4). Per-segment quantities that are not channel properties live in `segment_summary` (§5.2). **The key
+is the EEG, not the patient** (§5.3). Full column-level spec: `docs/data_dictionary.md` §1/§1b.
 
 | column | type | notes |
 |---|---|---|
-| eeg_id | str | **recording key** = `{patient_id}_{eeg_datetime}` (unique per EEG; matches the legacy `sub-<id>_<YYYYMMDDHHMMSS>` filename) |
-| patient_id | str | person key (= legacy `bdsp_id`, site+person); one patient → many `eeg_id` |
-| eeg_datetime | str | recording start `YYYYMMDDHHMMSS` (distinguishes a patient's EEGs) |
+| eeg_id | str | **recording key** = `{patient_id}_{eeg_datetime}` (unique per EEG) |
 | segment | int | 0-based, whole recording |
 | t_start_s | float | segment onset in seconds |
-| region | cat | 6 aggregates (+ 18 channels for the channel-grain build) |
-| stage | cat | W/N1/N2/N3/REM |
-| artifact_flag | bool | usable = ~flag |
-| artifact_reason | cat | flat / high-amp / … / none |
-| log_delta…log_total, rel_delta/theta/alpha, DAR, TAR, DTR, low_freq_rel | float | features |
-| p_slowing, p_focal, p_generalized | float | per-segment gate |
+| channel | cat | one of the 18 bipolar derivations (`Fp1-F7`, …); regions via `to_regions` |
+| stage | cat | W/N1/N2/N3/REM/Other (denormalized from `segment_summary`) |
+| artifact_flag / artifact_reason | bool / cat | usable = ~flag; flat / high-amp / … / none |
+| log_delta…log_total, rel_delta/theta/alpha, **log_DAR/log_TAR/log_DTR**, low_freq_rel | float | per-channel features (log-space ratios; raw ratio carried as van Putten `ADR`) |
+| DTABR, ADR, SEF95, median_freq, peak_freq | float | per-channel van Putten metrics |
+
+`segment_summary` [eeg_id, segment]: stage, artifact, **`p_slowing`** (per-segment gate), and the
+whole-head/spatial van Putten metrics (`Q_SLOWING`, `Q_APG`, `r_sBSI`, `pdBSI`, `Q_ASYM`). EEG-level gate
+(`p_focal`, `p_generalized`) lives in `recording_meta`.
 
 ### 5.2 Sidecars (join keys in brackets)
 - `recording_meta` [eeg_id]: patient_id, eeg_datetime, age, sex, src, clean_normal, is_abnormal,
   recording_seconds, n_segments, n_usable, stage fractions, nearest-report id, `clean_pair`.
 - `recording_labels` [eeg_id]: report-derived labels (§3.5).
-- `norms` [age-knot × stage × region × feature]: fitted GAMLSS parameters (§6).
-- `deviation_field` [eeg_id × segment × region × feature]: `z` (derived from `segment_master` + `norms`;
-  materialized for speed).
+- `norms` [age-knot × stage × region × feature]: fitted GAMLSS parameters (§6); region = derived (`to_regions`).
+- `deviation_field` [eeg_id × segment × region × feature]: `z` (derived from `segment_master` region view
+  + `norms`; materialized for speed).
 - `descriptors` [eeg_id]: the system's per-recording **description outputs** (what the sentence generator
   reads): amount (SD, centile), band, **`pred_focal_side`** (+ `side_margin`), prevalence, persistence,
   stage-accentuation, and the pooled gate probs. Report side lives in `recording_labels`; predicted side
@@ -324,13 +326,13 @@ table; `patient_id` is carried alongside for patient-clustered CIs and the repor
 Legacy tables keyed on `bdsp_id` == today's `patient_id`, which is why a patient's multiple EEGs were
 collapsed — the canonical run does not repeat that.
 
-### 5.4 Physical layout & scale (a decision for review)
-Full per-segment × **per-channel** (18) × whole-recording × 27k ≈ **1.4 B rows** — not a single parquet.
-Per-segment × **region** (6) ≈ **0.5 B rows** — large but partitionable.
-**Decided (2026-07-11):** `segment_master` is stored at **region grain** — the **6 anatomical aggregates**
-(`whole_head`, L/R temporal, L/R parasagittal, midline; validated by the pilot), **partitioned one parquet
-per recording** (`segment_master/eeg_id=.../part.parquet`). Channel-grain (18 bipolar) is computed on demand
-for the abnormal/focal subset that needs lateralization. NOTE these 6 *feature* regions are orthogonal to
+### 5.4 Physical layout & scale
+Full per-segment × **per-channel** (18) × whole-recording × 27k ≈ **1.4 B rows** — not a single parquet,
+but **partitioned one file per recording** (`segment_master/eeg_id=.../part.parquet`) it is tractable and
+loads per-EEG. **Decided (2026-07-11, supersedes an earlier region-grain draft):** `segment_master` is
+stored at **CHANNEL grain** (18 bipolar), so channel-level detail is retained upstream for focal
+lateralization; the 6 anatomical regions (`whole_head`, L/R temporal, L/R parasagittal, midline) are
+DERIVED on demand via `canonical.to_regions` (validated by the pilot). NOTE these 6 *feature* regions are orthogonal to
 the 4 *report-label* regions (frontal/temporal/central/posterior, §8.2 coverage) — features are anatomical,
 labels are localization classes. *(Prior open question about region-default vs channel-everywhere,
 and the partitioning scheme.*
@@ -607,7 +609,7 @@ script the fleet executes is **organized, named, reviewed, and tested before fre
 
 1. **Inventory & separate.** Enumerate exactly the modules the fleet runs — the extractor
    (`src/morgoth_slowing/features/extract.py`), `artifact.py`, the sleep-stager loader, the Morgoth gate
-   (`run_gate`), and the worker (`scripts/30_ingest_worker.py`) — plus the pre-fleet manifest builders
+   (`run_gate`), and the worker (`scripts/31_segment_master_worker.py`) — plus the pre-fleet manifest builders
    (§3.7). Everything else in `scripts/` is *analysis*, not fleet code; label the split. **Every external
 code/model dependency (Morgoth repo, the 6 checkpoints, the pyhealth shim, torch/timm pins, the required
 env vars incl. `KMP_DUPLICATE_LIB_OK`) is inventoried in `docs/fleet_dependencies.md`** — no piece of what
@@ -639,9 +641,11 @@ the fleet runs is undocumented.
    `channel_stage_features` / `gate_probs` or any prior aggregate. Write everything fresh → `segment_master`
    (partitioned) + sidecars (incl. per-segment features, stages, artifact flags, per-segment gate).
 7. Validate row counts, coverage, stage/artifact rates, and panel-EEG presence against Table 1 expectations.
-8. Fit norms (cross-fit) → `norms` → materialize `deviation_field`; run the describe step → `descriptors`.
-9. Run every numbered analysis script from the master → Tables 1–6, Figures 1–9 (incl. IRR/human ceiling
-   on the panel EEGs, same footing).
+8. **Repoint the downstream analysis scripts to the canonical tables** (they currently read legacy
+   `bdsp_id` tables; migrate each to `io/canonical.py` + `to_regions` — this is post-fleet work, since they
+   consume `segment_master`, which step 6 produces. Inventory + status in `docs/RUN_READINESS.md`).
+9. Fit norms (cross-fit) → `norms` → materialize `deviation_field`; describe → `descriptors`; then run the
+   repointed scripts → Tables 1–6, Figures 1–9 (incl. IRR/human ceiling on the panel EEGs, same footing).
 10. Blinded head-to-head + case review.
 11. Lock. Any re-run reproduces byte-for-byte from the manifests + `segment_master` + pinned env + code tag.
 

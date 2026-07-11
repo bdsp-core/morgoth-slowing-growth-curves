@@ -38,9 +38,9 @@ A segment is **15 s** (3000 samples @ 200 Hz), step **14 s** (1 s overlap). NOT 
 | **Grain** | per-segment | per-(recording, region, stage) **aggregate** |
 | **Coverage** | **first 600 s only** (exactly 42 seg/rec) | **whole recording** (up to 43 h) |
 | **Cohort** | cohort only (12,027 rec) | cohort+expansion (27,022 rec) |
-| **Spatial** | 6 region aggregates only | 18 channels + 6 regions (24) |
+| **Spatial** | 6 region aggregates only | 18 channels (regions DERIVED via `to_regions`) |
 | **Stages** | no (join `segment_stages`) | yes (stage is a key) |
-| **Provenance** | legacy Growth_curves `.mat` extract | the fleet (`scripts/30_ingest_worker.py`) |
+| **Provenance** | legacy Growth_curves `.mat` extract | the fleet (`scripts/31_segment_master_worker.py`) |
 
 They are NOT two versions of one thing. Neither is a superset of the other. You cannot get
 per-segment whole-recording data from either.
@@ -83,25 +83,22 @@ deleted.
 
 ---
 
-## 5. What the canonical spec WANTS but we do NOT yet have
+## 5. Canonical spec status — the gaps are now CLOSED by scripts/31 (schema frozen 2026-07-11)
 
-The target is one per-segment table over the **whole** recording, with stage + artifact flag +
-all features + Morgoth, for all 27k recordings. Gaps:
+The five gaps that motivated the clean-room re-run are resolved in the canonical worker
+(`scripts/31_segment_master_worker.py`) + tables (`data_dictionary.md` §1/§1b/§2):
 
-1. **Per-segment features over the whole recording.** `segment_features` stops at 600 s; the
-   fleet computed whole-recording features but saved only the (region,stage) *aggregate*.
-2. **Per-segment Morgoth (focal/generalized).** `gate_probs` is per-recording and cohort-only.
-   The fleet ran Morgoth on windows but persisted only the recording-level summary.
-3. **Per-segment artifact flags stored alongside.** Flat/artifact segments are *stripped*, not
-   *flagged* — so downstream cannot see which segments were dropped or why.
-4. **One spatial grain decided.** Per-segment × per-channel × whole-recording × 27k ≈ 1.4 B rows
-   (hundreds of GB) — not a single parquet. Must choose region-grain default (~470 M rows,
-   partitionable) vs channel-grain, and a partitioned physical layout (one file per recording).
-5. **A recording-level key.** ⚠ `bdsp_id` is **patient-level** (site+person, e.g. `S0001111192519`) —
-   the date lives in a separate `eeg_datetime`, and one `bdsp_id` already maps to up to 3 EEGs. Legacy
-   tables keyed on `bdsp_id` therefore *collapse* a patient's multiple recordings. The canonical run keys
-   on **`eeg_id` = `{patient_id}_{eeg_datetime}`** (one row per EEG), with `patient_id` (= legacy
-   `bdsp_id`) carried for patient-clustered CIs. Verified 2026-07-10.
+1. **Per-segment features over the whole recording.** ✅ `segment_master` is per (eeg_id, segment,
+   channel) over the whole recording (24 h cap), not the first 600 s.
+2. **Per-segment Morgoth.** ✅ `segment_summary.p_slowing` is per-segment; EEG-level `p_focal`/
+   `p_generalized` are in the ledger. (Gate = `1 − P(class 0)`, calibration post-run per SAP §4.7.)
+3. **Artifact flagged, not stripped.** ✅ every segment retained with `artifact_flag` + `artifact_reason`.
+4. **Spatial grain decided.** ✅ CHANNEL grain (18 bipolar), regions DERIVED downstream
+   (`canonical.to_regions`). Partitioned one parquet per recording (`eeg_id=<id>/part.parquet`).
+5. **Recording-level key.** ✅ `eeg_id = {patient_id}_{eeg_datetime}` (one row per EEG), `patient_id`
+   (= legacy `bdsp_id`) carried for patient-clustered CIs.
 
-See `docs/analysis_plan.md` §5 (`data_dictionary.md`, `run_manifest_schema.md`) for the canonical
-`eeg_id`-keyed schema and the fleet re-run that closes 1–5.
+Additionally frozen 2026-07-11: exact EDF resolution (`decide_edf`, match `eeg_datetime`→scans.tsv, no
+guessing), read-time 24 h cap, integrity hash + shard-safe run ledger (`scripts/33`), and a pre-flight
+KNOWN-GOOD manifest v6 (`scripts/129`/`130`) so every launched row provably resolves. See
+`docs/fleet_launch.md` for the run order and `docs/RUN_READINESS.md` for the go/no-go checklist.

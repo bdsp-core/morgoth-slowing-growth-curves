@@ -33,13 +33,18 @@ def _uv_scale(unit):
     return 1.0                             # unknown -> assume already uV (EDF convention)
 
 
-def load_edf_referential(path, target_fs=TARGET_FS):
+def load_edf_referential(path, target_fs=TARGET_FS, max_hours=24.0):
     """Return (data (n_samp, 19) float32 uV, ch_names=CANON, fs=200).
 
     Reads ONE channel at a time via pyedflib and resamples it to target_fs before moving on, so peak
     memory is ~(one raw channel + the 19-channel float32 output) rather than the whole 30-50 ch file at
     float64 (which OOMs 16 GB on multi-hour recordings). Missing canonical channels -> row-mean fill;
     raises if too few present.
+
+    B4: the 24 h coverage cap (SAP §4.2/§4.3) is applied at READ TIME — only the first `max_hours` of
+    each channel is read and the output is sized to that — so a 72 h cEEG never reads or allocates its
+    full duration (which would be ~39 GB at 19 ch float32 before any downstream cap). max_hours=None reads
+    the whole file.
     """
     import pyedflib
     from fractions import Fraction
@@ -49,6 +54,7 @@ def load_edf_referential(path, target_fs=TARGET_FS):
     try:
         labels = f.getSignalLabels()
         fss = f.getSampleFrequencies()
+        nsamp = f.getNSamples()
         up2canon = {c.upper(): c for c in CANON}
         idx = {}                           # canonical -> signal index (first occurrence)
         for i, lab in enumerate(labels):
@@ -59,15 +65,20 @@ def load_edf_referential(path, target_fs=TARGET_FS):
         if len(present) < 15:
             raise ValueError(f"only {len(present)}/19 referential channels in {path}")
 
-        # reference output length from the first present channel
+        # reference output length from the first present channel, capped to max_hours (read-time; B4)
         i0 = idx[present[0]]
-        n = int(round(f.getNSamples()[i0] * target_fs / fss[i0]))
+        n = int(round(nsamp[i0] * target_fs / fss[i0]))
+        if max_hours:
+            n = min(n, int(round(max_hours * 3600 * target_fs)))
         out = np.full((n, len(CANON)), np.nan, dtype=np.float32)
         for j, c in enumerate(CANON):
             if c not in idx:
                 continue
             i = idx[c]
-            x = f.readSignal(i).astype(np.float64) * _uv_scale(f.getPhysicalDimension(i))  # -> uV
+            n_src = nsamp[i]
+            if max_hours:                  # read only the first max_hours of THIS channel (+1 s resample pad)
+                n_src = min(n_src, int(round(max_hours * 3600 * fss[i])) + int(round(fss[i])))
+            x = f.readSignal(i, 0, n_src).astype(np.float64) * _uv_scale(f.getPhysicalDimension(i))  # -> uV
             if abs(fss[i] - target_fs) > 1e-3:
                 frac = Fraction(target_fs / fss[i]).limit_denominator(1000)
                 x = resample_poly(x, frac.numerator, frac.denominator)

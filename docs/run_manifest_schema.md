@@ -8,19 +8,26 @@ alongside the code version used for the run.
 
 ## File
 
-`data/manifest/run_manifest_v<N>.csv` (one row per recording). A companion
-`run_manifest_v<N>.meta.json` records the freeze: `{version, frozen_utc, code_git_tag, n_recordings,
-counts_by_src, counts_by_panel_set, sha256_of_csv}`. Bump `<N>` for any change; never edit a frozen
-manifest in place (that is the whole point).
+`data/manifest/report_manifest_v<N>.parquet` (one row per recording). A companion
+`report_manifest_v<N>.meta.json` records the freeze: `{version, frozen_utc, n_v6, counts_by_src, held_N,
+every_bids_row_resolved, replacements_analysis_ready, sha256}`. Bump `<N>` for any change; never edit a
+frozen manifest in place. The manifest parquet/json are gitignored (`data/*`); the freeze is pinned by
+the **tracked manifest index** `docs/run_manifest_index.md` (version + sha256 + composition + S3 location)
+so a code tag reconstructs the exact starting point.
 
-## Realized manifest (2026-07-11): `report_manifest_v5.parquet` (v4 = cohort+expansion; v3 = cohort+backfill)
+## Realized manifest (2026-07-11): **`report_manifest_v6.parquet` = the LAUNCH manifest** (v5 = pre-resolution)
 
-Built by `scripts/120` → `88` (pairing) → `121` (pool backfill) → `124` (merge) → `125` (routing).
-**27,524 EEGs** (cohort 12,303 + expansion 10,706 + backfill 2,654 + **panel 1,861** = OccasionNoise
-100 + MoE 1,761; 4-region taxonomy). Panels carry `source_type`/`source_path` (edf_direct / mat_v73) and
-need format handling before featurizing (scripts/127 docstring) — they do NOT block the main cohort run. Built by `scripts/{120,88,121,124,125,126}`. **Panels (OccasionNoise 100 + MoE)
-are appended by `scripts/127`** — their EDF metadata is external (OccasionNoise in Box; MoE in the
-scratchpad `moe/` set). Schema-aligned columns present: `panel`, `panel_set`, `role`, `n_bytes`, `sha256`
+Pipeline: `scripts/120` → `88` (pairing) → `121` (backfill) → `124` (merge) → `125` (routing) → `126`
+(expansion) → `127` (panels) → **`129` (pre-flight resolve)** → **`130` (drop-and-replace → v6)**.
+**v6 = 27,524 EEGs**, `held_N:true`, `every_bids_row_resolved:true`: cohort 10,977 + expansion 10,233 +
+backfill 2,535 + **replacement 1,918** (fresh resolvable rows that replaced the 1,918 unresolvable v5 rows,
+fully labeled+aged) + **panel 1,861** (OccasionNoise 100 + MoE 1,761). v5 was 27,524 before pre-flight. Panels carry `source_type` (edf_direct / mat_v73) + a **relative**
+`source_path` (`occasionnoise/<fid>.edf`, `moe/<event>.mat`) that the worker's `fetch_panel` resolves
+against `PANEL_ROOT` (local dir or `s3://…`; staged/uploaded by `scripts/128` → fleet_launch.md §0b). Their
+loaders (`src/morgoth_slowing/io/panels.py`) featurize them through the SAME worker path; they do NOT block
+the main cohort run. Built by `scripts/{120,88,121,124,125,126}`. **Panels (OccasionNoise 100 + MoE)
+are appended by `scripts/127`** — their source files live in the scratchpad (OccasionNoise `moe/occ/edf/`,
+MoE `events_raw/`) until `scripts/128` stages them for upload. Schema-aligned columns present: `panel`, `panel_set`, `role`, `n_bytes`, `sha256`
 (the last two stamped at pull). Carries the report
 labels + de-identified text (§11) **and** the S3 routing the pull step needs:
 
@@ -60,10 +67,12 @@ locatable subject/date were excluded.
 | `clean_pair` | bool | | report↔EEG pairing unambiguous; label analyses filter on this |
 | `notes` | str | | free text (e.g. conversion, known issues) |
 
-`age`/`sex` are **not** in the manifest — they are read at run time (EDF header / OMOP birth date) and
-land in `recording_meta`. Inclusion/exclusion (`included`, `exclusion_reason`) is decided **during** the
-run and recorded in `recording_meta`, not pre-baked here: the manifest lists candidate EEGs; the run
-records which passed. This keeps "what we tried to analyze" and "what qualified" as separate, auditable facts.
+`age`/`sex` **are** in v6 (from `AgeAtVisit`/`SexDSC`; replacements carry them too, verified
+`replacement_age_null:0`) — the run also re-reads/validates them into `recording_meta`.
+Inclusion/exclusion (`included`, `exclusion_reason`) is decided **during** the run and recorded in
+`recording_meta`, NOT pre-baked here: the manifest lists candidate EEGs (all provably resolvable); the run
+records which passed usability. This keeps "what we tried to analyze" and "what qualified" separate and
+auditable — a phantom-free candidate list up front, a usability verdict per EEG after.
 
 ## Example (illustrative)
 
@@ -82,8 +91,9 @@ ON_0007_20190104101500,ON_0007,20190104101500,cohort,true,occasionnoise,panel,bo
    `nearest_report_id` + `clean_pair`) and freeze it here — so labels are fixed before any analysis (SAP §3.3).
 3. Resolve `source_uri` for each; verify reachable; record `n_bytes` + `sha256`.
 4. Assign `bucket_key`; the pull step copies `source_uri`→`bucket_key` and re-verifies `sha256`.
-5. Write `run_manifest_v<N>.csv` + `.meta.json`; commit; tag the code (`git tag run-v<N>`).
-6. From here, the fleet reads only `bucket_key`s in this manifest. Any add/remove = new version.
+5. Write `report_manifest_v<N>.parquet` + `.meta.json`; pin its sha256 in `docs/run_manifest_index.md`
+   (tracked); commit; tag the code (`git tag run-v<N>`). For v6, pre-flight `scripts/129`→`130` runs first.
+6. From here, the fleet reads only rows in this manifest (each with a resolved EDF). Any add/remove = new version.
 
 ## PHI note
 

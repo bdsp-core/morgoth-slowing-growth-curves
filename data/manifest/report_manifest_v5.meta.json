@@ -1,7 +1,7 @@
 {
   "version": 5,
   "supersedes": "report_manifest_v4",
-  "frozen_utc": "2026-07-11T08:58:17Z",
+  "frozen_utc": "2026-07-11T09:07:27Z",
   "n_eeg": 27524,
   "by_src": {
     "cohort": 12303,
@@ -14,6 +14,6 @@
     "moe": 1761,
     "occasionnoise": 100
   },
-  "sha256": "008b34e2cc5fa9a150d564588e57ddc2db02f0ae808c3193a2d62e932e4cbe72",
+  "sha256": "1a46410e8ec13d395332f429df04e0f53a2a7696b3ea953f73039e987e00fad9",
   "panel_format_todo": "OccasionNoise EDF header fix; v7.3 .mat h5py loader; fetch full MoE .mat set"
 }

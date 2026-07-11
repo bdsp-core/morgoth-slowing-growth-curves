@@ -82,7 +82,9 @@ model set — fetch with rclone `box:` into `morgoth-viewer/morgoth_checkpoints/
 | `KMP_DUPLICATE_LIB_OK` | `TRUE` | `TRUE` | OpenMP double-init guard (required) |
 | `RUN_GATE` | `1` to run the gate | `1` | per-segment slowing + EEG-level focal/gen |
 | `GATE_STEP` | `5` | `5` | window step (s) for the slowing head |
-| `MANIFEST` | `data/manifest/report_manifest_v3.parquet` | same | the frozen EEG list |
+| `MANIFEST` | `data/manifest/report_manifest_v5.parquet` | same | the frozen EEG list (v5 = cohort+expansion+backfill+panels) |
+| `PANEL_ROOT` | `$(pwd)/panels` (local pilot) | `s3://<bucket>/panels` | where panel EDF/MAT files live (fleet_launch.md §0b); unset ⇒ panels skipped |
+| `OUTPUT_ROOT` | `data/derived` | durable disk, synced to S3 | where segment_master + sidecars land |
 
 ## 7. Exact run (one recording, end to end)
 ```bash
