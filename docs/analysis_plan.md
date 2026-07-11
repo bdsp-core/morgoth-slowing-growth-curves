@@ -27,9 +27,9 @@ We build **lifespan × sleep-stage normative growth curves** for quantitative EE
 conditioned on age, sleep stage, and scalp region, and a **two-stage system** on top:
 
 - **GATE (Morgoth foundation model): whether and what.** Presence of pathologic slowing; focal vs
-  generalized. This is the only module allowed to make the categorical call.
+  generalized (or both - they are not mutually exclusive). This is the only module allowed to make the categorical call. Morgoth can make these determinations at the level of individual 15 second segments, or at the whole EEG level. Here we rely on the 15-second segment level, and make any whole level EEG determination by pooling over the 15 second segment determinations (e.g. taking the maximum, or median, or mean). 
 - **DESCRIBE (normative deviation field): how much, where, which band, how prevalent, how persistent,
-  in which stage.** A measurement layer that never makes the categorical call.
+  in which stage(s).** A measurement layer that never makes the categorical call.
 
 **Design principle (circularity guard).** Two named objects with a hard rule:
 - `z` / `S` — the **unsupervised** normative deviation and the amount score. Because they are fit only
@@ -42,7 +42,7 @@ Every reportable sentence clause is tagged ALLOWED / PROVISIONAL / FORBIDDEN in 
 this SAP inherits that governance.
 
 **Governing principle — one clean-room computation, zero reuse.** Every number in the paper is computed
-by **one fleet run over a single frozen list of EEGs, using exactly one version of the code**. We do
+by **one fleet of computers on AWS run over a single frozen list of EEGs, using exactly one version of the code**. We do
 **not** reuse any previously computed feature, stage, gate, or aggregate — not `segment_features`, not
 `channel_stage_features`, not `gate_probs`, none of it. Reusing precomputed artifacts (built at different
 times, with different coverage, by different scripts) is the direct cause of the which-data confusion
@@ -72,6 +72,11 @@ inter-rater ceiling.
   between-rater and within-rater agreement for slowing (presence, focal/generalized, band, side/topography)
   — this *is* the human ceiling — and evaluate our system against those same EEGs, run through the
   identical pipeline, so the comparison is on one footing.
+- S7. **Benchmark against prior qEEG slowing metrics (van Putten lineage) — and adopt them if superior.**
+  Compute the published metrics *faithfully to their definitions* on the canonical data, and run a
+  three-arm head-to-head (as-published vs stage/age/sex-normed vs our features + Morgoth) on identical
+  recordings and labels. If any van Putten metric beats our chosen feature/score on a target, we **adopt
+  it** (§8.7). This is both a fair comparison and a search for anything better than what we have.
 
 **Pre-registered predictions** (state direction *and* the outcome that would falsify).
 | # | Prediction | Falsified if |
@@ -83,6 +88,8 @@ inter-rater ceiling.
 | P5 | Band call is *weak* (report only as low-confidence) | rel-power band-match > 0.8 (then promote it) |
 | P6 | Readers under-report **sleep** slowing (unsupervised path) | our sleep-slowing rate ≤ report rate |
 | P7 | Our detection meets/exceeds the human ceiling (expert-vs-consensus balanced acc ≈ 0.80) on the expert-scored EEGs | our balanced acc < between-rater ceiling |
+| P8a | Stage/age/sex-norming a van Putten metric beats the same metric as-published (their own instrument, improved by our framework) | ΔAUROC(normed − raw) ≤ 0 |
+| P8b | Our best feature/score ≥ the best van Putten metric on each target (else we adopt theirs) | any van Putten arm > ours by ΔAUROC > 0.02 → **adopt it** |
 
 *(Predictions we already know can fail are kept in — P5 is expected to be confirmed "weak," and a prior
 focal-score configuration failed against clean-normal-only negatives; both are reported as-is. We do not
@@ -113,13 +120,14 @@ De-identification and PHI handling per §11.
   < 20%).
 
 ### 3.3 Unit of analysis and the report-broadcast dedup rule
-The clinical unit is the **recording** (`bdsp_id`); the analytic unit for description is the
-**segment**. Patients may have multiple recordings.
+The clinical unit is the **recording** (a single EEG). The analytic unit for description is the
+**segment**. Patients may have multiple recordings. Note that patients are identified by subject IDs ((`bdsp_id`). )
 
-**⚠ PITFALL 1 — report broadcast.** A single report can be joined onto up to ~170 EEGs of the same
+**⚠ PITFALL 1 — report broadcast.** A single report can be joined onto to more than one EEG of the same
 patient by a naive report↔EEG join, contaminating labels. **Rule:** use the nearest-in-time
 report per recording and carry a `clean_pair` flag; all label-dependent analyses filter to
 `clean_pair`. Report the number of recordings dropped by this filter.
+>> we need to compute this now - up front - and then freeze the manifest. 
 
 ### 3.4 Reference ("normal") definition
 `clean_normal` = report explicitly normal **and** not carrying any abnormal finding flags. The
@@ -384,6 +392,46 @@ clean_pair on/off; segment overlap; band-edge (pre/post 7–8 Hz fix).
   sidecars; environment pinned (timm==0.9.16, `KMP_DUPLICATE_LIB_OK`, np.trapz→trapezoid shim); one
   `make all` from the master to all outputs.
 
+### 8.7 Benchmark against prior qEEG slowing metrics (van Putten lineage) — S7
+The published metrics are computed **faithfully to their original definitions** on the canonical data
+(features in §4.5), then compared to ours on identical recordings, whole-recording, **vigilance-matched**,
+against the same report/consensus labels. Existing scaffold: `scripts/47_vanputten_comparison.py` (to be
+rebuilt against `segment_master`).
+
+**Metrics (with definitions).**
+- **DAR** = δ/α power; **ADR** = α/δ (= 1/DAR); **DTABR** = (δ+θ)/(α+β) power [Finnigan & van Putten 2013].
+- **Relative δ, relative θ** power (already in the feature set) [ICU/encephalopathy qEEG].
+- **BSI_global** = mean over 0.5–25 Hz PSD bins of |R(f) − L(f)| / (R(f) + L(f)), R/L = summed
+  right/left hemisphere power [van Putten & Tavy 2004].
+- **pBSI** = revised **pairwise** BSI: mean over homologous pairs × PSD bins of |R − L|/(R + L)
+  [van Putten 2007] — more sensitive to focal asymmetry than the global form.
+- **pdBSI** = the **directed/signed** pairwise BSI: mean of (R − L)/(R + L) (sign preserved), giving
+  lateralization (which hemisphere) that the unsigned indices cannot.
+- **SEF95 / median_freq / peak_freq** — spectral-edge and dominant-frequency summaries used in van Putten
+  monitoring work; lower = slower.
+
+**Three arms, same labels/recordings/stages.**
+1. **As-published (raw).** The metric computed and thresholded as in the source — whole-head or pairwise,
+   **no** age/sex/stage normalization (how it is actually deployed).
+2. **Normed.** The *same* metric expressed as an age/sex/**stage**-conditioned deviation in our framework
+   (its `z` from the norms). Tests whether our contribution — lifespan + vigilance normalization — improves
+   *their* instrument (P8a). This is the fair, apples-to-apples upgrade.
+3. **Ours + Morgoth.** Our chosen feature/amount score (unsupervised) and the Morgoth gate.
+
+**Targets.** Abnormal-vs-clean-normal and generalized-vs-clean-normal for the global metrics
+(DAR/DTABR/SEF/rel-δ); focal-vs-clean-normal (and side accuracy) for the asymmetry metrics
+(BSI_global/pBSI/pdBSI). AUROC (95% CI, patient-clustered bootstrap); side via pdBSI sign vs report side.
+
+**Adoption rule (the "or use theirs" clause, P8b).** Pre-registered and symmetric: if any van Putten arm
+beats our best on a target by **ΔAUROC > 0.02** (CIs excluding 0), we **adopt** that metric — add it to the
+feature set (and, for lateralization, use pdBSI sign) — and report the swap transparently. If ours wins or
+ties, we report the honest margin. Either way the reader sees the head-to-head, not just our victory.
+
+**Expectation (not a gate).** Prior in-house numbers (legacy first-600 s data): raw DAR ≈ 0.68 / DTABR
+≈ 0.68 / BSI ≈ 0.74; our age/sex-normed DAR deviation ≈ 0.71; Morgoth p_abnormal ≈ 0.95. The re-run
+re-computes all of these whole-recording and vigilance-matched, and adds the normed-BSI/pdBSI arms that
+the legacy run left as NaN (a normalization bug, not a null result).
+
 ---
 
 ## 9. Figures (planned)
@@ -398,6 +446,7 @@ clean_pair on/off; segment overlap; band-edge (pre/post 7–8 Hz fix).
 | 6 | Descriptor reliability: split-half amount, prevalence ICC; band low-confidence agreement. |
 | 7 | Case vignettes: raw EEG + our governed sentence vs report, including a "reader under-reports sleep slowing" case (unsupervised path). |
 | 8 | Human ceiling: our ROC on the panel EEGs (§3.6) with **each expert overlaid as an operating point**, plus a κ/agreement panel (between- vs within-rater, per axis) and our `z` vs consensus-proportion scatter. |
+| 9 | Benchmark: grouped-bar AUROC for van Putten metrics — as-published vs normed vs ours vs Morgoth — for abnormal/generalized/focal (the S7 three-arm comparison). |
 
 ## 10. Tables (planned)
 
@@ -426,6 +475,7 @@ localization macro-F1 — each with its claims-table status (ALLOWED/PROVISIONAL
 (presence, focal/gen, band, side/topography) — prevalence, Fleiss κ, median pairwise Cohen κ [CI], Gwet
 AC1, within-rater κ (OccasionNoise re-read), expert-vs-consensus balanced accuracy, and **our system's**
 balanced accuracy against consensus on the same EEGs.
+**Table 6 — Benchmark vs prior qEEG slowing metrics (van Putten lineage), S7:** per target (abnormal / generalized / focal) — AUROC [95% CI] for each metric in three arms (as-published, age/sex/stage-normed, ours+Morgoth), plus pdBSI side accuracy; the **adopted** column flags any metric that met the ΔAUROC>0.02 adoption rule (P8b).
 
 ---
 
