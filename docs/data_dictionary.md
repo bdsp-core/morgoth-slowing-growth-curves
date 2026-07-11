@@ -40,11 +40,19 @@ for the focal subset (SAP §5.3).
 | `TAR` | float32 | ratio | theta/alpha power ratio |
 | `DTR` | float32 | ratio | delta/theta power ratio |
 | `low_freq_rel` | float32 | 0–1 | (delta+theta) / total |
+| `DTABR` | float32 | ratio | (delta+theta)/(alpha+beta) — van Putten/Finnigan; §8.7 benchmark |
+| `ADR` | float32 | ratio | alpha/delta (= 1/DAR); carried for readability |
+| `SEF95` | float32 | Hz | spectral edge frequency (95% of power below) |
+| `median_freq` | float32 | Hz | median (SEF50) frequency |
+| `peak_freq` | float32 | Hz | dominant/peak frequency |
+| `BSI_global` | float32 | 0–1 | van Putten & Tavy 2004 global symmetry index; **whole_head row only** (NaN elsewhere) |
+| `pBSI` | float32 | 0–1 | revised pairwise BSI (van Putten 2007); **whole_head row only** |
+| `pdBSI` | float32 | −1..1 | directed/signed pairwise BSI (+ = right>left); **whole_head row only** |
 | `p_slowing` | float32 | 0–1 | per-segment Morgoth gate: P(pathologic slowing) |
 | `p_focal` | float32 | 0–1 | per-segment Morgoth gate: P(focal) |
 | `p_generalized` | float32 | 0–1 | per-segment Morgoth gate: P(generalized) |
 
-Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usable = ~artifact_flag`.
+Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usable = ~artifact_flag`. van Putten-lineage metrics (§8.7): `DTABR`,`ADR`,`SEF95`,`median_freq`,`peak_freq` are per-region; `BSI_global`,`pBSI`,`pdBSI` are bilateral and populated only on the `whole_head` row.
 
 ---
 
