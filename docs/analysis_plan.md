@@ -40,6 +40,16 @@ conditioned on age, sleep stage, and scalp region, and a **two-stage system** on
 Every reportable sentence clause is tagged ALLOWED / PROVISIONAL / FORBIDDEN in `docs/claims_table.md`;
 this SAP inherits that governance.
 
+**Governing principle — one clean-room computation, zero reuse.** Every number in the paper is computed
+by **one fleet run over a single frozen list of EEGs, using exactly one version of the code**. We do
+**not** reuse any previously computed feature, stage, gate, or aggregate — not `segment_features`, not
+`channel_stage_features`, not `gate_probs`, none of it. Reusing precomputed artifacts (built at different
+times, with different coverage, by different scripts) is the direct cause of the which-data confusion
+this plan exists to end. Instead: pull whatever EEGs the frozen list names into the bucket, run the
+identical pipeline on **all** of them (including the expert-scored EEGs of §3.6), and write everything
+fresh into `segment_master`. The old derived tables are retained only for historical reference and are
+never an input to a primary result.
+
 ---
 
 ## 2. Objectives and pre-registered hypotheses
@@ -56,7 +66,11 @@ inter-rater ceiling.
 - S3. Reliability of each quantitative descriptor (amount, prevalence, band, persistence).
 - S4. Convergent validity vs report band/side/topography; divergent behavior where reports are known
   unreliable (the "we see what readers miss" analysis — **unsupervised path only**).
-- S5. Position system performance relative to the human ceiling (κ) — the honest bar.
+- S5. Position system performance relative to the human ceiling — the honest bar.
+- S6. **Inter-rater reliability (IRR).** On the EEGs scored by multiple experts (§3.6), measure
+  between-rater and within-rater agreement for slowing (presence, focal/generalized, band, side/topography)
+  — this *is* the human ceiling — and evaluate our system against those same EEGs, run through the
+  identical pipeline, so the comparison is on one footing.
 
 **Pre-registered predictions** (state direction *and* the outcome that would falsify).
 | # | Prediction | Falsified if |
@@ -67,6 +81,7 @@ inter-rater ceiling.
 | P4 | Prevalence descriptor is reliable | ICC < 0.8 |
 | P5 | Band call is *weak* (report only as low-confidence) | rel-power band-match > 0.8 (then promote it) |
 | P6 | Readers under-report **sleep** slowing (unsupervised path) | our sleep-slowing rate ≤ report rate |
+| P7 | Our detection meets/exceeds the human ceiling (expert-vs-consensus balanced acc ≈ 0.80) on the expert-scored EEGs | our balanced acc < between-rater ceiling |
 
 *(Predictions we already know can fail are kept in — P5 is expected to be confirmed "weak," and a prior
 focal-score configuration failed against clean-normal-only negatives; both are reported as-is. We do not
@@ -117,6 +132,27 @@ From report text (read from the PHI-safe scratchpad extract, never committed):
   handling; a report mentioning "no focal slowing" must not set `has_focal_slow`. Severity adjectives
   (mild/moderate/marked) are **not** treated as quantitative (they are null across combinations) and are
   FORBIDDEN as an output.
+
+### 3.6 Expert-panel (multi-rater) EEGs — for inter-rater reliability and the human ceiling
+Two datasets provide EEGs each scored by **multiple** electroencephalographers. **Both are pulled into
+the bucket and run through the identical pipeline (§4) as part of the one clean-room re-run** — their
+`segment_master` rows are computed exactly like every other recording, so our system's output on a given
+EEG is directly comparable to that EEG's expert panel. They are tagged with a `panel` flag and a
+`panel_set` value in `recording_meta`.
+
+| Set | Composition | Scoring | Use |
+|---|---|---|---|
+| **OccasionNoise** | 100 EEGs (EDF, 20 ch, 200 Hz, ~50 min; age/sex in EDF header) | 18 experts, recording-level focal/generalized × epileptiform/non-epileptiform; **Part I / Part II re-read by 15 raters** (within-rater test-retest); signed-report category | External test set + within- and between-rater IRR; overlay each expert as an operating point on our ROC |
+| **MoE** | ~1,962 events (rounds r1–r3, disjoint) | 18–21 experts, **band-resolved** focal/gen slowing (δ/θ/α/β); rater coverage 7–1000 events | Between-rater IRR incl. band; band-agreement analogue to ours |
+
+Handling rules:
+- **`icare_*` cardiac-arrest events are excluded** from the MoE panel (different population from the norms).
+- **Author-as-rater:** `bwestove` (MBW) is one panel rater — disclosed, and **excluded** when the panel is
+  used to *validate* this system (kept only in the pure between-rater ceiling estimate). Rater identities
+  anonymized R01…Rnn; never committed.
+- **Consensus label:** for panel EEGs, the multi-rater consensus (majority / adjudicated) is a
+  higher-quality reference than a single signed report; the **consensus proportion** (fraction of experts
+  who saw slowing) is a graded human *conspicuity* target we may test our `z` against (pre-registered).
 
 ---
 
@@ -296,11 +332,37 @@ recordings). Primary metrics pre-specified; α = 0.05; multiplicity per §8.6.
 - **Localization:** side/lobe confusion vs report (data-driven max-deviation lobe + supervised LR),
   **macro-F1** (not accuracy — the majority/temporal default inflates accuracy).
 
-### 8.3 Human ceiling (S5) — the honest bar
-Report the MoE inter-rater ceiling (Fleiss κ 0.37 focal / 0.45 generalized; within-rater 0.56–0.64; band
-κ 0.09–0.38) and a **blinded head-to-head**: our generated description vs the report sentence, scored by
-independent neurophysiologists, with rater usernames anonymized R01…Rnn. System performance is always
-reported *relative to* this ceiling, not against an implicit gold standard.
+### 8.3 Inter-rater reliability and the human ceiling (S5, S6) — the honest bar
+Computed on the expert-panel EEGs of §3.6, which are run through the **identical** pipeline so system and
+experts are scored on one footing.
+
+**(a) Between-rater agreement (the ceiling).** For each axis — presence of slowing, focal vs generalized,
+band (δ/θ/α/β), side/topography — report **Fleiss' κ** (all raters) and **median pairwise Cohen κ**
+[95% CI, bootstrap over rater pairs], with **prevalence and Gwet's AC1** alongside (κ is unstable at the
+extreme prevalences here — e.g. focal-alpha ≈ 0.5% — so AC1 is the robustness check). Prior estimates to
+reproduce: focal-slowing Fleiss κ ≈ 0.37, generalized ≈ 0.45; band far worse (focal-θ κ ≈ 0.09, focal-δ
+≈ 0.35); band agreement *conditional on both raters calling slowing* ≈ 0.54 focal / 0.27 generalized.
+Restrict to raters with ≥200 votes and pairs with ≥100 co-rated events.
+
+**(b) Within-rater agreement (test–retest).** On the OccasionNoise Part I / Part II re-reads (15 raters),
+report within-rater κ per axis (prior ≈ 0.56 focal / 0.64 generalized). This bounds how reproducible a
+single expert is — the true ceiling on any single-reader reference label.
+
+**(c) Expert-vs-consensus.** Balanced accuracy of each expert against the panel consensus (prior ≈ 0.80
+focal / 0.81 generalized); this is the number our detector must **meet or beat** (P7).
+
+**(d) System vs the panel, same footing.** Run our unchanged gate+describe on the panel EEGs; plot our
+ROC and **overlay each expert as an operating point** (sensitivity/specificity vs consensus). Report our
+balanced accuracy against consensus next to the expert distribution. `bwestove` excluded from any
+system-validation comparison (kept only in the pure between-rater ceiling).
+
+**(e) Graded conspicuity.** Correlate our unsupervised `z`/amount `S` with the **consensus proportion**
+(fraction of experts who saw slowing) — a human graded target — as an honest, pre-registered test of a
+severity-like axis (which single-report severity adjectives failed to provide).
+
+**(f) Blinded head-to-head.** Independent neurophysiologists score our generated description vs the report
+sentence, blinded to source; rater ids anonymized R01…Rnn. System performance is always reported
+*relative to* this ceiling, never against an implicit gold standard.
 
 ### 8.4 External validation
 Phase-A external check (prior AUROC ≈ 0.903, with the two failed pre-registered predictions reported
@@ -334,6 +396,7 @@ clean_pair on/off; segment overlap; band-edge (pre/post 7–8 Hz fix).
 | 5 | Focal/generalized: side/lobe confusion (macro-F1) + generalized A–P gradient distribution. |
 | 6 | Descriptor reliability: split-half amount, prevalence ICC; band low-confidence agreement. |
 | 7 | Case vignettes: raw EEG + our governed sentence vs report, including a "reader under-reports sleep slowing" case (unsupervised path). |
+| 8 | Human ceiling: our ROC on the panel EEGs (§3.6) with **each expert overlaid as an operating point**, plus a κ/agreement panel (between- vs within-rater, per axis) and our `z` vs consensus-proportion scatter. |
 
 ## 10. Tables (planned)
 
@@ -357,7 +420,11 @@ stratified by group. Overall + by `src` (cohort / expansion) and by clean-normal
 human ceiling.
 **Table 3 — Descriptor reliability & validity:** amount ICC, prevalence ICC, band agreement, A–P AUROC,
 localization macro-F1 — each with its claims-table status (ALLOWED/PROVISIONAL).
-**Table 4 — Pre-registered predictions:** P1–P6, threshold, result, confirmed/falsified.
+**Table 4 — Pre-registered predictions:** P1–P7, threshold, result, confirmed/falsified.
+**Table 5 — Inter-rater reliability & human ceiling** (on the §3.6 panel EEGs, same pipeline): per axis
+(presence, focal/gen, band, side/topography) — prevalence, Fleiss κ, median pairwise Cohen κ [CI], Gwet
+AC1, within-rater κ (OccasionNoise re-read), expert-vs-consensus balanced accuracy, and **our system's**
+balanced accuracy against consensus on the same EEGs.
 
 ---
 
@@ -370,20 +437,28 @@ localization macro-F1 — each with its claims-table status (ALLOWED/PROVISIONAL
   live only in the scratchpad; `viewer/data/` is gitignored.
 - MoE rater usernames (incl. the author) are anonymized R01…Rnn and never committed.
 
-## 12. Build order (the one clean re-run)
+## 12. Build order (the one clean re-run — zero reuse)
 1. Freeze this SAP after review.
-2. Finalize the extractor (band-edge fix in) and the fleet worker to **persist per-segment features,
-   stages, artifact flags, and per-segment gate** over the whole recording, both cohorts.
-3. Run the fleet once → write `segment_master` (partitioned) + sidecars; validate row counts, coverage,
-   stage/artifact rates against Table 1 expectations.
-4. Fit norms (cross-fit) → `norms` → materialize `deviation_field`.
-5. Run every numbered analysis script from the master → Tables 1–4, Figures 1–7.
-6. Blinded head-to-head + case review.
-7. Lock. Any re-run reproduces byte-for-byte from `segment_master` + pinned env.
+2. **Freeze the EEG list.** One manifest enumerating every recording in the run: both cohorts (§3.1) **and**
+   the expert-panel EEGs (§3.6, OccasionNoise + MoE, `icare_*` excluded). This manifest is the single
+   source of "which EEGs."
+3. **Pull to the bucket.** Copy every EEG on the manifest into the bucket. Nothing is analyzed from a
+   prior location or a prior computation.
+4. Finalize the extractor (band-edge fix in) and the fleet worker to **persist per-segment features,
+   stages, artifact flags, and per-segment gate** over the whole recording. One code version, tagged.
+5. **Run the fleet once over the entire manifest** — cohort, expansion, and panel EEGs through the
+   *identical* code path. No reuse of `segment_features` / `channel_stage_features` / `gate_probs` or any
+   prior aggregate. Write everything fresh → `segment_master` (partitioned) + sidecars.
+6. Validate row counts, coverage, stage/artifact rates, and panel-EEG presence against Table 1 expectations.
+7. Fit norms (cross-fit) → `norms` → materialize `deviation_field`.
+8. Run every numbered analysis script from the master → Tables 1–5, Figures 1–8 (incl. IRR/human ceiling
+   on the panel EEGs, same footing).
+9. Blinded head-to-head + case review.
+10. Lock. Any re-run reproduces byte-for-byte from the manifest + `segment_master` + pinned env + code tag.
 
 ---
 
-### Appendix A — The four pitfalls this plan exists to prevent
+### Appendix A — The five pitfalls this plan exists to prevent
 1. **Which data?** Three provenances at three grains/coverages caused constant confusion → ONE
    `segment_master` (whole-recording, per-segment) + typed sidecars + data dictionary; `src` column, no
    filename aliases.
@@ -391,3 +466,6 @@ localization macro-F1 — each with its claims-table status (ALLOWED/PROVISIONAL
 3. **Report broadcast / label contamination.** One report → many EEGs; flag-level labels → `clean_pair`
    + finding-level extraction with negation.
 4. **Silent stripping.** Artifact segments removed, not flagged → retain + `artifact_flag`.
+5. **Reuse.** Mixing precomputed artifacts built at different times/coverage/code caused the confusion
+   this whole plan addresses → **zero reuse**: one frozen EEG manifest, one code version, one fleet run
+   over *all* recordings (cohort + expansion + expert panel), everything written fresh (§12).
