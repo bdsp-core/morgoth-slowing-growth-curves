@@ -44,9 +44,10 @@ if MODE == "case2":
         "WE MISS IT: rhythmic morphology (GRDA/FIRDA) that doesn't raise mean power",
         "WE'RE WRONG: our age-norm over-corrects genuinely pathological slowing",
         "WE MISS IT: real slowing, no clear reason (genuine miss)",
+        "COVERAGE: long cEEG — we analyzed only the first 10 min; slowing is elsewhere",
         "GATE WRONG: Morgoth false-positive (no real slowing)",
     ]
-    CASE_FIELDS = ["age", "dominant_stage", "stage_mix", "report_gen_band", "amount_median", "prevalence", "p_generalized"]
+    CASE_FIELDS = ["age", "recording_hours", "our_window", "dominant_stage", "stage_mix", "report_gen_band", "amount_median", "p_generalized"]
 else:
     SIGDIR = HERE / "data" / "signals"
     REVIEW_SET = ROOT / "data" / "derived" / "review_set.jsonl"
