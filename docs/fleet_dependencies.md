@@ -57,7 +57,11 @@ model set — fetch with rclone `box:` into `morgoth-viewer/morgoth_checkpoints/
 
 ## 4. Python environment
 
-- **torch 2.13.0**, **timm 0.9.16** (pinned — the Morgoth model class expects this timm API).
+- **timm 0.9.16** (HARD pin — the Morgoth model class expects that timm API). **torch ≥ 2.1** (soft): the
+  pilot used 2.13.0 on Python 3.14/macOS-arm, but that version isn't published for every Python/platform
+  (some cap at 2.8.0) — install the newest torch your env offers and run the smoke test. The only
+  torch-version-sensitive spot (EEG-level nested-tensor fast path) is neutralized in
+  `scripts/shims/eeg_level_wrap.py` (now degrades gracefully if the toggle is absent).
 - **`KMP_DUPLICATE_LIB_OK=TRUE`** — REQUIRED. Without it the Morgoth subprocess dies on an OpenMP
   double-init (`libomp.dylib already initialized`). The worker now sets it inside every Morgoth command;
   also export it in the parent shell.
