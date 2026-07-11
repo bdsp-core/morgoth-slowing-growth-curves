@@ -127,7 +127,7 @@ recording** = `eeg_id` = `{patient_id}_{eeg_datetime}` (a patient may have sever
 **⚠ PITFALL 1 — report broadcast.** A single report can be joined onto more than one EEG of the same
 patient by a naive report↔EEG join, contaminating labels. **Rule:** assign each EEG its nearest-in-time
 report and carry a `clean_pair` flag; all label-dependent analyses filter to `clean_pair`.
-**This pairing is computed UP FRONT — before the run — and frozen into the manifest** (§12 step 2, and
+**This pairing is computed UP FRONT — before the run — and frozen into the manifest** (§13 step 2, and
 `run_manifest_schema.md`), so "which report belongs to which EEG" is fixed once and never re-derived
 mid-analysis. Report the number of EEGs dropped by the filter.
 
@@ -173,6 +173,32 @@ Handling rules:
   higher-quality reference than a single signed report; the **consensus proportion** (fraction of experts
   who saw slowing) is a graded human *conspicuity* target we may test our `z` against (pre-registered).
 
+
+### 3.7 The frozen report↔EEG manifest (built up front)
+Before the fleet runs we compute and **freeze** the mapping of every EEG to its report, plus all
+report-derived features and metadata — so labels are fixed once (§3.3) and pairing quality can be reviewed
+by eye before committing compute.
+
+**Contents** (one row per `eeg_id`):
+- identity + path: `eeg_id`, `patient_id`, `eeg_datetime`, EEG file path (→ run manifest, `run_manifest_schema.md`);
+- pairing: `nearest_report_id`, `clean_pair` (§3.3);
+- **report text: LOCAL only** (scratchpad, PHI) — for the pairing review; never committed;
+- report features: every extracted label (`is_abnormal`, `has_focal_slow`/`has_gen_slow`,
+  `focal_side`/`region`/`band`, `gen_band`/`topography`/`state`, `gen_class`, `report_stratum`, `n_report_chars`);
+- metadata: `age`, `sex`, `recording_seconds` (EDF-header duration), `src`, `panel`/`panel_set`.
+
+**Code (already built; in `scripts/`):**
+- `scripts/20_extract_report_labels.py` — report text → labels incl. the v2 laterality extractor (§3.5);
+  publishes PHI-free labels only, raw text kept local.
+- `scripts/88_report_pairing_audit.py` — nearest-in-time pairing → `clean_pair` (the report-broadcast fix,
+  §3.3 / PITFALL 1).
+- `scripts/60_build_unified_labels.py` — assembles the unified label table (identity + all report features
+  + provenance).
+- a thin assembler (to write) joins these with EDF duration + OMOP age → the frozen manifest.
+
+**Filename:** committed PHI-free `data/manifest/report_manifest_v<N>.parquet` (+ `.meta.json` freeze record:
+version, UTC, code tag, counts, sha256); the with-text version lives only in the scratchpad. Versioned and
+frozen exactly like the run manifest (immutable; add/remove → new version).
 ---
 
 ## 4. Signal processing and feature extraction (the canonical pipeline)
@@ -558,24 +584,46 @@ balanced accuracy against consensus on the same EEGs.
   live only in the scratchpad; `viewer/data/` is gitignored.
 - MoE rater usernames (incl. the author) are anonymized R01…Rnn and never committed.
 
-## 12. Build order (the one clean re-run — zero reuse)
+## 12. Code organization, review, and testing (pre-fleet gate)
+The fleet runs one code version over ~27k+ EEGs; a bug found afterwards means re-running everything. So every
+script the fleet executes is **organized, named, reviewed, and tested before freeze** — a hard gate.
+
+1. **Inventory & separate.** Enumerate exactly the modules the fleet runs — the extractor
+   (`src/morgoth_slowing/features/extract.py`), `artifact.py`, the sleep-stager loader, the Morgoth gate
+   (`run_gate`), and the worker (`scripts/30_ingest_worker.py`) — plus the pre-fleet manifest builders
+   (§3.7). Everything else in `scripts/` is *analysis*, not fleet code; label the split.
+2. **Name & document.** Each fleet module gets a one-line purpose header and a row in `DATA_INVENTORY.md` /
+   `data_dictionary.md`. No dead code on the fleet path (cf. the retired `bandpower.py`).
+3. **Unit tests** for the load-bearing functions: band powers on a synthetic PSD with known integrals;
+   `usable_mask` on flat/high-amp fixtures; segment indexing and the 24 h cap; the van Putten metrics against
+   hand-computed values; stage-grid alignment (a regression test for the cross-correlation misalignment bug).
+4. **Golden-recording test.** Run the whole pipeline end-to-end on a few known recordings and diff
+   `segment_master` against a checked-in expected output (schema, row counts, coverage, feature ranges).
+5. **Review.** A second reader (or an adversarial `/code-review`) signs off on the fleet path.
+6. **Freeze.** Tag the reviewed code (`git tag run-v<N>`); the fleet runs only that tag.
+
+---
+
+## 13. Build order (the one clean re-run — zero reuse)
 1. Freeze this SAP after review.
-2. **Freeze the EEG list.** One manifest (format: `docs/run_manifest_schema.md`) enumerating every recording
-   in the run: both cohorts (§3.1) **and** the expert-panel EEGs (§3.6, OccasionNoise + MoE, `icare_*`
-   excluded). This manifest is the single source of "which EEGs"; commit it and tag the code version.
-3. **Pull to the bucket.** Copy every EEG on the manifest into the bucket. Nothing is analyzed from a
-   prior location or a prior computation.
-4. Finalize the extractor (band-edge fix in) and the fleet worker to **persist per-segment features,
-   stages, artifact flags, and per-segment gate** over the whole recording. One code version, tagged.
-5. **Run the fleet once over the entire manifest** — cohort, expansion, and panel EEGs through the
-   *identical* code path. No reuse of `segment_features` / `channel_stage_features` / `gate_probs` or any
-   prior aggregate. Write everything fresh → `segment_master` (partitioned) + sidecars.
-6. Validate row counts, coverage, stage/artifact rates, and panel-EEG presence against Table 1 expectations.
-7. Fit norms (cross-fit) → `norms` → materialize `deviation_field`.
-8. Run every numbered analysis script from the master → Tables 1–5, Figures 1–8 (incl. IRR/human ceiling
+2. **Code-review gate (§12):** organize, test, review, and **tag** the fleet code (`git tag run-v<N>`).
+3. **Freeze the report↔EEG manifest (§3.7)** — pairing (`clean_pair`) + all report features + metadata,
+   computed up front so labels are fixed before any analysis; commit the PHI-free version.
+4. **Freeze the EEG run list** (`run_manifest_schema.md`): both cohorts (§3.1) **and** the expert-panel EEGs
+   (§3.6). Exclusion is **label-based only** (isoelectric / burst-suppression), never cohort-based. This is
+   the single source of "which EEGs."
+5. **Pull to the bucket.** Copy every EEG on the run list into the bucket. Nothing is analyzed from a prior
+   location or a prior computation.
+6. **Run the fleet once over the entire manifest** — cohort, expansion, and panel EEGs through the tagged,
+   *identical* code path, **up to the first 24 h** per recording. No reuse of `segment_features` /
+   `channel_stage_features` / `gate_probs` or any prior aggregate. Write everything fresh → `segment_master`
+   (partitioned) + sidecars (incl. per-segment features, stages, artifact flags, per-segment gate).
+7. Validate row counts, coverage, stage/artifact rates, and panel-EEG presence against Table 1 expectations.
+8. Fit norms (cross-fit) → `norms` → materialize `deviation_field`; run the describe step → `descriptors`.
+9. Run every numbered analysis script from the master → Tables 1–6, Figures 1–9 (incl. IRR/human ceiling
    on the panel EEGs, same footing).
-9. Blinded head-to-head + case review.
-10. Lock. Any re-run reproduces byte-for-byte from the manifest + `segment_master` + pinned env + code tag.
+10. Blinded head-to-head + case review.
+11. Lock. Any re-run reproduces byte-for-byte from the manifests + `segment_master` + pinned env + code tag.
 
 ---
 
@@ -583,10 +631,10 @@ balanced accuracy against consensus on the same EEGs.
 1. **Which data?** Three provenances at three grains/coverages caused constant confusion → ONE
    `segment_master` (whole-recording, per-segment) + typed sidecars + data dictionary; `src` column, no
    filename aliases.
-2. **Coverage.** First-600 s vs whole recording → whole recording everywhere; intended use is any length.
+2. **Coverage.** First-600 s vs whole recording → analyze **up to the first 24 h** everywhere; intended use is EEG of any length (capped at 24 h).
 3. **Report broadcast / label contamination.** One report → many EEGs; flag-level labels → `clean_pair`
    + finding-level extraction with negation.
 4. **Silent stripping.** Artifact segments removed, not flagged → retain + `artifact_flag`.
 5. **Reuse.** Mixing precomputed artifacts built at different times/coverage/code caused the confusion
    this whole plan addresses → **zero reuse**: one frozen EEG manifest, one code version, one fleet run
-   over *all* recordings (cohort + expansion + expert panel), everything written fresh (§12).
+   over *all* recordings (cohort + expansion + expert panel), everything written fresh (§13).

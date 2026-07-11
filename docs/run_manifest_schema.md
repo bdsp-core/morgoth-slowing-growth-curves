@@ -1,7 +1,7 @@
 # Run manifest — the frozen EEG list
 
 The **single source of truth for "which EEGs are in the run."** The clean-room fleet run
-(`docs/analysis_plan.md` §12) consumes exactly this manifest and nothing else: every recording it names is
+(`docs/analysis_plan.md` §13) consumes exactly this manifest and nothing else: every recording it names is
 pulled to the bucket and put through the identical pipeline; no recording outside it is analyzed, and no
 prior computation is reused. Freezing the manifest is build-order step 2; it is committed and tagged
 alongside the code version used for the run.
