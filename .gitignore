@@ -9,6 +9,9 @@ data/*
 *.parquet
 *.mat
 
+# Staged panel source tree (2.4 GB; upload to S3, never commit) — see scripts/128_stage_panels.py
+panels/
+
 # Local config with credentials/paths
 config/config.yaml
 

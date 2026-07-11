@@ -59,9 +59,11 @@ def _derived(bp: np.ndarray) -> dict:
         "log_alpha": np.log(a + EPS), "log_beta": np.log(b + EPS),
         "log_gamma": np.log(g + EPS), "log_total": np.log(tot + EPS),
         "rel_delta": d / (tot + EPS), "rel_theta": th / (tot + EPS), "rel_alpha": a / (tot + EPS),
-        "DAR": np.log((d + EPS) / (a + EPS)),   # delta/alpha (slowing high)
-        "TAR": np.log((th + EPS) / (a + EPS)),  # theta/alpha
-        "DTR": np.log((d + EPS) / (th + EPS)),  # delta/theta
+        # NAME MATCHES VALUE: these are natural-LOG band-power ratios (log space for GAMLSS), not raw
+        # ratios. The raw ratios are carried separately as van Putten ADR/DTABR. (renamed from DAR/TAR/DTR)
+        "log_DAR": np.log((d + EPS) / (a + EPS)),   # log(delta/alpha) — slowing high
+        "log_TAR": np.log((th + EPS) / (a + EPS)),  # log(theta/alpha)
+        "log_DTR": np.log((d + EPS) / (th + EPS)),  # log(delta/theta)
         "low_freq_rel": (d + th) / (tot + EPS),
     }
 

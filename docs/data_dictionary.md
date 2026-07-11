@@ -12,24 +12,26 @@ ratios dimensionless. Missing = NaN, never silently imputed (SAP §8.6). Segment
 
 ---
 
-## 1. `segment_master` — source of truth (per segment × region, whole recording)
+## 1. `segment_master` — source of truth (per segment × **channel**, whole recording)
 
-Grain: one row per **(eeg_id, segment, region)** — the key is the EEG, not the patient (one patient
-can have several EEGs). Partitioned one parquet per recording (`segment_master/eeg_id=<id>/part.parquet`). Region grain is canonical; channel grain built on demand
-for the focal subset (SAP §5.4).
+Grain (decided 2026-07-11): one row per **(eeg_id, segment, channel)** — the 18 bipolar channels, so the
+raw feature store keeps channel-level detail. The 6 clinical regions (whole_head, L/R_temporal,
+L/R_parasagittal, midline) are **DERIVED downstream** (`canonical.to_regions`), not stored. The key is the
+EEG, not the patient. Partitioned one parquet per recording (`segment_master/eeg_id=<id>/part.parquet`).
+Per-segment quantities that are not channel properties (stage, artifact, gate, whole-head/spatial van
+Putten metrics) live in the companion **`segment_summary`** (§1b), joined on `(eeg_id, segment)`. EEG-level
+gate (`p_focal`, `p_generalized`) lives in the ledger `recording_meta` (§2).
 
 | column | type | units / allowed | definition |
 |---|---|---|---|
-| `eeg_id` | str | `{patient_id}_{eeg_datetime}` | **recording key** (unique per EEG); joins to all sidecars |
-| `patient_id` | str | site+person (= legacy `bdsp_id`) | person key; one patient → many `eeg_id` |
-| `eeg_datetime` | str | `YYYYMMDDHHMMSS` | recording start; distinguishes a patient's EEGs |
+| `eeg_id` | str | `{patient_id}_{eeg_datetime}` | **recording key**; the partition; joins to summary + ledger |
 | `segment` | int32 | 0-based | segment index over the **whole** recording |
 | `t_start_s` | float32 | seconds | onset of the 15 s segment (step 14 s) |
-| `region` | category | see §5 | 6 aggregates (+18 bipolar channels in the channel-grain build) |
-| `stage` | category | `W`,`N1`,`N2`,`N3`,`REM` | per-segment sleep stage (Morgoth stager) |
-| `artifact_flag` | bool | — | True = segment failed usability check (retained, not dropped) |
+| `channel` | category | 18 bipolar derivations | `Fp1-F7`,`F7-T3`,… (double-banana; recording.CH_NAMES) |
+| `stage` | category | `W`,`N1`,`N2`,`N3`,`REM`,`Other` | per-segment sleep stage (denormalized from summary) |
+| `artifact_flag` | bool | — | True = segment failed usability (retained, not dropped; per-segment) |
 | `artifact_reason` | category | `none`,`flat`,`high_amp`,`other` | why flagged (`none` when usable) |
-| `log_delta` | float32 | ln µV² | ln power 1–4 Hz |
+| `log_delta` | float32 | ln µV² | ln power 1–4 Hz (this channel) |
 | `log_theta` | float32 | ln µV² | ln power 4–8 Hz |
 | `log_alpha` | float32 | ln µV² | ln power 8–13 Hz |
 | `log_beta` | float32 | ln µV² | ln power 13–30 Hz |
@@ -38,25 +40,36 @@ for the focal subset (SAP §5.4).
 | `rel_delta` | float32 | 0–1 | delta / total |
 | `rel_theta` | float32 | 0–1 | theta / total |
 | `rel_alpha` | float32 | 0–1 | alpha / total |
-| `DAR` | float32 | ratio | delta/alpha power ratio |
-| `TAR` | float32 | ratio | theta/alpha power ratio |
-| `DTR` | float32 | ratio | delta/theta power ratio |
+| `log_DAR` | float32 | ln ratio | **ln**(delta/alpha) — name matches value; log space for GAMLSS (renamed from `DAR`) |
+| `log_TAR` | float32 | ln ratio | **ln**(theta/alpha) (renamed from `TAR`) |
+| `log_DTR` | float32 | ln ratio | **ln**(delta/theta) (renamed from `DTR`) |
 | `low_freq_rel` | float32 | 0–1 | (delta+theta) / total |
 | `DTABR` | float32 | ratio | (delta+theta)/(alpha+beta) — van Putten/Finnigan; §8.7 benchmark |
-| `ADR` | float32 | ratio | alpha/delta (= 1/DAR); carried for readability |
+| `ADR` | float32 | ratio | alpha/delta — the **raw** ratio (van Putten); `exp(-log_DAR)` |
 | `SEF95` | float32 | Hz | spectral edge frequency (95% of power below) |
 | `median_freq` | float32 | Hz | median (SEF50) frequency |
 | `peak_freq` | float32 | Hz | dominant/peak frequency |
-| `Q_SLOWING` | float32 | ratio | P[2–8]/P[2–25] diffuse slowing (Lodder & van Putten 2013; abn>0.6); **whole_head row only** |
-| `Q_APG` | float32 | 0–1 | P_ant/(P_ant+P_pos) alpha A–P gradient (Lodder & van Putten 2013); **whole_head row only** |
-| `r_sBSI` | float32 | 0–1 | revised **power-based** BSI, hemisphere-mean per PSD bin 0.5–25 Hz (van Putten 2007); **whole_head row only** |
-| `pdBSI` | float32 | −1..1 | our signed extension of r_sBSI (+ = right>left → side); **whole_head row only** |
-| `Q_ASYM` | float32 | 0–1 | normalized homologous-pair spectral difference (Lodder & van Putten 2013); populated on the **8 pair rows** (Fp1-Fp2 … O1-O2) |
-| `p_slowing` | float32 | 0–1 | per-segment Morgoth gate: P(pathologic slowing) |
-| `p_focal` | float32 | 0–1 | per-segment Morgoth gate: P(focal) |
-| `p_generalized` | float32 | 0–1 | per-segment Morgoth gate: P(generalized) |
 
-Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usable = ~artifact_flag`. van Putten-lineage metrics (§8.7): `DTABR`,`ADR`,`SEF95`,`median_freq`,`peak_freq` are per-region; `Q_SLOWING`,`Q_APG`,`r_sBSI`,`pdBSI` are bilateral (whole_head row only); `Q_ASYM` is per homologous pair.
+Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). The raw ratios are carried as
+van Putten `ADR`/`DTABR`; the log-space ratios are `log_DAR`/`log_TAR`/`log_DTR` (natural log) — the
+name states which. `usable = ~artifact_flag`. Regions: `canonical.to_regions()` averages member channels
+(whole_head = all 18).
+
+## 1b. `segment_summary` — one row per (eeg_id, segment)
+
+Per-segment context + whole-head/spatial metrics that are not per-channel. Partitioned
+`segment_summary/eeg_id=<id>/part.parquet`; join to `segment_master` on `(eeg_id, segment)`.
+
+| column | type | units / allowed | definition |
+|---|---|---|---|
+| `eeg_id`,`patient_id`,`eeg_datetime` | str | | keys/provenance |
+| `segment`,`t_start_s`,`stage`,`artifact_flag`,`artifact_reason` | | | per-segment context (source of truth) |
+| `p_slowing` | float32 | 0–1 | **per-segment** Morgoth gate: P(pathologic slowing) = 1 − P(class 0) |
+| `Q_SLOWING` | float32 | ratio | P[2–8]/P[2–25] diffuse slowing (Lodder & van Putten 2013; abn>0.6) |
+| `Q_APG` | float32 | 0–1 | P_ant/(P_ant+P_pos) alpha A–P gradient (Lodder & van Putten 2013) |
+| `r_sBSI` | float32 | 0–1 | revised **power-based** BSI, hemisphere-mean per PSD bin 0.5–25 Hz (van Putten 2007) |
+| `pdBSI` | float32 | −1..1 | our signed extension of r_sBSI (+ = right>left → side) |
+| `Q_ASYM` | float32 | 0–1 | max normalized homologous-pair spectral difference (Lodder & van Putten 2013) |
 
 ---
 
@@ -72,17 +85,26 @@ Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usabl
 | `panel_set` | category | `none`,`occasionnoise`,`moe` | which expert panel |
 | `age` | float32 | years | age at recording (fractional where available) |
 | `sex` | category | `F`,`M`,`unknown` | recorded sex (norms pool sexes; SAP §6.2) |
-| `recording_seconds` | float32 | s | analyzed duration |
+| `source_edf` | str | | the EXACT source pulled (BIDS session path or panel source_path) — provenance |
+| `resolve_reason` | category | `single`,`sec-match`,`day-match`,`edf_direct`,`mat_v73` | how the EDF was resolved (scripts/31 `decide_edf`) |
+| `sha256` | str | | integrity hash of the analyzed source file (B2) |
+| `n_bytes` | int64 | | size of the analyzed source file |
+| `recording_seconds` | float32 | s | analyzed duration (≤ 24 h cap) |
 | `n_segments` | int32 | | total segments |
-| `n_usable` | int32 | | segments with `artifact_flag=False` |
-| `frac_artifact` | float32 | 0–1 | 1 − n_usable/n_segments |
-| `frac_W`…`frac_REM` | float32 | 0–1 | segment-weighted stage fractions |
+| `n_artifact` | int32 | | segments with `artifact_flag=True` |
+| `n_usable` | int32 | | `n_segments − n_artifact` |
+| `usable_fraction` | float32 | 0–1 | n_usable / n_segments |
+| `stage_frac` | struct | | segment-weighted stage fractions (`frac_W`…`frac_REM`) |
+| `p_slowing_coverage` | float32 | 0–1 | fraction of segments with a non-null gate `p_slowing` |
+| `p_focal` | float32 | 0–1 | **EEG-level** Morgoth gate: P(focal) — one value per recording |
+| `p_generalized` | float32 | 0–1 | **EEG-level** Morgoth gate: P(generalized) |
+| `code_commit` | str | | git short SHA of the worker that produced the row |
 | `clean_normal` | bool | | report normal AND no abnormal flags (norm-fit set) |
 | `is_abnormal` | bool | | any abnormal finding in report |
-| `nearest_report_id` | str | | id of nearest-in-time report |
 | `clean_pair` | bool | | report↔EEG pairing unambiguous (SAP §3.3) |
-| `included` | bool | | passes inclusion/exclusion (SAP §3.2) |
-| `exclusion_reason` | category | `none`,`burst_supp`,`too_short`,`low_usable`,`other` | if `included=False` |
+| `processed` | bool | | a `.done` sidecar exists (featurized successfully) |
+| `included` | bool | | processed AND passes usability (SAP §3.2: ≥5 min, ≥20 usable seg, ≥0.20 usable frac) |
+| `exclusion_reason` | category | `noedf`,`ambiguous:NofM`,`nopanelfile`,`error:*`,`unusable:short_or_artifact`,`not_processed` | if `included=False` |
 
 ---
 
@@ -131,7 +153,7 @@ The expert-panel scores that supply inter-rater reliability and the human ceilin
 `Fp2-F8`,`F8-T4`,`T4-T6`,`T6-O2`,`Fp1-F3`,`F3-C3`,`C3-P3`,`P3-O1`,`Fp2-F4`,`F4-C4`,`C4-P4`,`P4-O2`,
 `Fz-Cz`,`Cz-Pz`.
 **Stages:** `W`,`N1`,`N2`,`N3`,`REM`. **Features:** `log_{delta,theta,alpha,beta,gamma,total}`,
-`rel_{delta,theta,alpha}`, `DAR`,`TAR`,`DTR`,`low_freq_rel`.
+`rel_{delta,theta,alpha}`, `log_DAR`,`log_TAR`,`log_DTR`,`low_freq_rel`.
 
 ---
 

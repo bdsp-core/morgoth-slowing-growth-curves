@@ -40,10 +40,12 @@ for provenance, never an input to the run).
 
 ## The frozen run manifest
 
-`data/manifest/report_manifest_v3.parquet` — the EEG list the clean-room run ingests: **14,957 EEGs /
-13,642 patients** (cohort + pool backfill), 4-region taxonomy, report labels + de-identified text + S3
-routing. Built by `scripts/{120,88,121,124,125}`. Coverage adequacy: [docs/coverage_report.md](docs/coverage_report.md)
-+ [figures/coverage/coverage_overview.png](figures/coverage/coverage_overview.png) (all marginals ≥200).
+`data/manifest/report_manifest_v6.parquet` — the KNOWN-GOOD EEG list the clean-room run ingests:
+**≥27,524 EEGs** (cohort + expansion + backfill + OccasionNoise/MoE panels), report labels + de-identified
+text + S3 routing. Built by `scripts/{120,88,121,124,125,126,127}`, then **pre-flight resolved**
+(`scripts/129`) so every BIDS row provably maps to one real EDF, with unresolvable rows drop-and-replaced
+(`scripts/130`, N held). Earlier drafts: v3 (14,957, cohort+backfill), v5 (27,524, +panels). Coverage:
+[docs/coverage_report.md](docs/coverage_report.md). Go/no-go: [docs/RUN_READINESS.md](docs/RUN_READINESS.md).
 
 ## Layout
 
@@ -55,8 +57,9 @@ src/morgoth_slowing/
   fleet/         ingest.py — shared fleet-ingest helpers
   report/        parse.py — report NLP; phrase generation
   norms/ scoring/ viz/
-scripts/         keep-set: 1 fleet worker (30) + pre-fleet builders (20,60,88,120–125)
-                 + current analysis (47,85–116, gamlss_fit.R); scripts/archive/ = legacy
+scripts/         fleet path: worker (31) + ledger (33) + verify (32) + pre-flight (129,130) +
+                 manifest builders (120–128); analysis (47,85–116, gamlss_fit.R) = post-fleet rebuild;
+                 scripts/archive/ = legacy (incl. old worker 30)
 data/manifest/   frozen run + report manifests
 references/      van Putten qEEG sources (README + .bib; PDFs gitignored)
 tests/
