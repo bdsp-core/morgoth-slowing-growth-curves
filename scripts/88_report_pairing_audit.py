@@ -45,21 +45,35 @@ def main():
     meta = pd.read_csv("metadata/cohort_metadata.csv", dtype={"eeg_datetime": str})
     meta["pid"] = meta.bdsp_id.str.replace(r"^S000\d", "", regex=True)
     meta["date"] = meta.eeg_datetime.str[:8]
-    j = meta[["bdsp_id", "pid", "date"]].merge(
+    # KEY the output on eeg_id = {bdsp_id}_{eeg_datetime} (one row per EEG), not bdsp_id (per patient),
+    # so a patient's multiple EEGs no longer collide (DATA_INVENTORY §5 / analysis_plan §5.3).
+    meta["eeg_id"] = meta.bdsp_id.astype(str) + "_" + meta.eeg_datetime.astype(str)
+    meta = meta.drop_duplicates("eeg_id")
+
+    # the report pairing resolves at (pid, date) granularity (derived eeg_datetime != report StartTime, but
+    # the DATE aligns). Two EEGs on DIFFERENT dates each get their own date's pairing (resolved by eeg_id);
+    # two EEGs on the SAME date share one report row and cannot be told apart -> same_date_ambiguous.
+    meta["same_date_ambiguous"] = meta.duplicated(["pid", "date"], keep=False)
+
+    j = meta[["eeg_id", "bdsp_id", "pid", "date", "same_date_ambiguous"]].merge(
         r[["pid", "date", "shared", "is_owner", "clean_pair", "absd"]], on=["pid", "date"], how="left")
     j["clean_pair"] = j.clean_pair.fillna(False)
 
     n = len(j)
-    print(f"cohort recordings              : {n:,}")
+    print(f"cohort recordings (eeg_id)      : {n:,}")
     print(f"  matched a report row         : {j.shared.notna().sum():,} ({j.shared.notna().mean():.1%})")
     print(f"  report shared w/ another EEG  : {(j.shared == True).sum():,}")
     print(f"  ... and OURS is not the owner : {((j.shared == True) & (~j.is_owner.fillna(False))).sum():,}")
     print(f"CLEANLY PAIRED                  : {j.clean_pair.sum():,} ({j.clean_pair.mean():.1%})")
     print(f"BORROWED / UNMATCHED text       : {(~j.clean_pair).sum():,} ({1 - j.clean_pair.mean():.1%})")
+    print(f"SAME-DATE AMBIGUOUS (>1 EEG/day): {j.same_date_ambiguous.sum():,} "
+          f"({j.loc[j.same_date_ambiguous,'pid'].nunique():,} patients) — which same-date EEG the report "
+          f"describes is undeterminable")
 
     j["abs_time_diff_h"] = j.absd / 3600.0
-    j[["bdsp_id", "shared", "is_owner", "clean_pair", "abs_time_diff_h"]].to_parquet(OUT)
-    print(f"\nwrote {OUT}")
+    j[["eeg_id", "bdsp_id", "shared", "is_owner", "clean_pair", "same_date_ambiguous",
+       "abs_time_diff_h"]].to_parquet(OUT)
+    print(f"\nwrote {OUT} (keyed on eeg_id)")
 
 
 if __name__ == "__main__":

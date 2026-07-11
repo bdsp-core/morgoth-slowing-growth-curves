@@ -51,18 +51,17 @@ def build_core() -> pd.DataFrame:
     keep = ["eeg_id", "patient_id", "eeg_datetime"] + [c for c in FEATURE_COLS + META_COLS if c in lu.columns]
     m = lu[keep].copy()
 
-    # clean_pair (scripts/88) is keyed on bdsp_id only and lacks eeg_datetime, so it is ambiguous for
-    # patients with >1 EEG. Join exactly for single-EEG patients; flag the rest for an 88 re-run w/ eeg_id.
+    # clean_pair from scripts/88, now keyed on eeg_id (one row per EEG) — join is exact per EEG.
     rp = pd.read_parquet(DER / "report_pairing.parquet")
-    rp_unique = rp.drop_duplicates("bdsp_id", keep=False)[["bdsp_id", "clean_pair", "abs_time_diff_h"]]
-    m = m.merge(rp_unique.rename(columns={"bdsp_id": "patient_id"}), on="patient_id", how="left")
-    multi = m.groupby("patient_id")["eeg_id"].transform("size") > 1
-    m["pair_ambiguous"] = multi & m["clean_pair"].isna()
-    m.loc[multi, "clean_pair"] = m.loc[multi, "clean_pair"]            # left as NaN where ambiguous
-    n_amb = int(m["pair_ambiguous"].sum())
+    if "eeg_id" not in rp.columns:
+        raise SystemExit("report_pairing.parquet is not eeg_id-keyed — re-run scripts/88 first.")
+    m = m.merge(rp[["eeg_id", "clean_pair", "same_date_ambiguous", "abs_time_diff_h"]], on="eeg_id", how="left")
+    m["clean_pair"] = m["clean_pair"].fillna(False)
+    m["same_date_ambiguous"] = m["same_date_ambiguous"].fillna(False)
+    n_amb = int(m["same_date_ambiguous"].sum())
     if n_amb:
-        print(f"  {n_amb} rows ({m.loc[m.pair_ambiguous,'patient_id'].nunique()} multi-EEG patients) have "
-              f"AMBIGUOUS clean_pair — re-run scripts/88 emitting eeg_datetime/eeg_id before freeze.")
+        print(f"  {n_amb} EEGs are SAME-DATE ambiguous (>1 EEG/day, which one the report describes is "
+              f"undeterminable) — flagged, excluded from clean-label analyses.")
     m["nearest_report_id"] = m.get("report_note_name")
     m["recording_seconds"] = np.nan
     m["eeg_path"] = pd.NA
@@ -117,9 +116,14 @@ def enrich_from_csv(m: pd.DataFrame, csv_path: Path, with_text: bool):
     return j.drop(columns=["recording_seconds_csv", "eeg_path_csv", "reports", "impression"]), text
 
 
+# note-name filenames embed order/encounter identifiers (health-system) — never in the committed file
+PHI_COLS = ["report_note_name", "nearest_report_id"]
+
+
 def freeze(m: pd.DataFrame, version: int, text: pd.DataFrame | None, scratch: Path | None):
     path = OUT / f"report_manifest_v{version}.parquet"
-    m.to_parquet(path, index=False)
+    committed = m.drop(columns=[c for c in PHI_COLS if c in m.columns])
+    committed.to_parquet(path, index=False)
     sha = hashlib.sha256(path.read_bytes()).hexdigest()
     meta = {
         "version": version,
@@ -127,12 +131,12 @@ def freeze(m: pd.DataFrame, version: int, text: pd.DataFrame | None, scratch: Pa
         "n_eeg": int(len(m)),
         "n_patients": int(m["patient_id"].nunique()),
         "n_clean_pair": int((m["clean_pair"] == True).sum()),
-        "n_pair_ambiguous": int(m["pair_ambiguous"].sum()),
+        "n_same_date_ambiguous": int(m["same_date_ambiguous"].sum()),
         "n_with_duration": int(m["recording_seconds"].notna().sum()),
         "n_abnormal": int((m.get("is_abnormal") == 1).sum()) if "is_abnormal" in m else None,
         "sha256": sha,
-        "columns": list(m.columns),
-        "phi": "free (no report text; text in scratchpad withtext version only)",
+        "columns": list(committed.columns),
+        "phi": "free (note-name filenames + report text excluded; both in scratchpad version only)",
     }
     (OUT / f"report_manifest_v{version}.meta.json").write_text(json.dumps(meta, indent=2))
     print(f"  wrote {path} ({len(m)} EEGs) + meta (sha256 {sha[:12]}…)")
