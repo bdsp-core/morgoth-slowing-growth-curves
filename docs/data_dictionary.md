@@ -166,3 +166,25 @@ materialized for speed. Same partitioning as `segment_master`.
 | `feature` | category | feature name |
 | `z` | float32 | BCT z-score vs age/stage/region-matched normals |
 | `centile` | float32 | 0–100, Φ(z)·100 |
+
+---
+
+## 8. `descriptors` — system description outputs (one row per EEG)
+
+What the sentence generator reads (SAP §7.2, §7.4). Report-derived labels live in `recording_labels`
+(§3); this table is our *measured* description. Report side vs predicted side are compared, never merged.
+
+| column | type | allowed | definition |
+|---|---|---|---|
+| `eeg_id` | str | | recording key |
+| `gate_focal`,`gate_generalized`,`gate_slowing` | float32 | 0–1 | pooled per-recording gate probs |
+| `amount_sd` | float32 | SD | amount score `S` (age/stage-normed), max-alert stage |
+| `amount_centile` | float32 | 0–100 | Φ(amount_sd)·100 |
+| `band_call` | category | `delta`,`theta`,`mixed` | low-confidence band (PROVISIONAL) |
+| `pred_focal_side` | category | `left`,`right`,`bilateral`,`none` | our predicted side from signed L−R deviation / pdBSI / Q_ASYM (§7.4) |
+| `side_margin` | float32 | SD | pooled L−R lateralized excess (sign = side; magnitude = confidence) |
+| `pred_region` | category | frontal/temporal/central/parietal/occipital/na | max-deviation lobe (PROVISIONAL) |
+| `ap_topography` | category | `anterior`,`posterior`,`diffuse` | generalized A–P call (Q_APG) |
+| `prevalence` | float32 | 0–1 | fraction of alert-stage segments over the normal centile |
+| `persistence_min` | float32 | min | longest run of abnormal segments |
+| `sleep_only` | bool | | slowing present only in sleep stages |
