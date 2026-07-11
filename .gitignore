@@ -62,3 +62,6 @@ fleet/manifest_pilot.jsonl
 fleet/manifest_full.jsonl
 PREFLATSTRIP.parquet
 band_test_features.parquet
+
+# Copyrighted reference PDFs — not committed (see references/README.md)
+references/*.pdf

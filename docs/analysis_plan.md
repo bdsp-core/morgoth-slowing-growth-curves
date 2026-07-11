@@ -157,12 +157,13 @@ EEG is directly comparable to that EEG's expert panel. They are tagged with a `p
 | **MoE** | ~1,962 events (rounds r1–r3, disjoint) | 18–21 experts, **band-resolved** focal/gen slowing (δ/θ/α/β); rater coverage 7–1000 events | Between-rater IRR incl. band; band-agreement analogue to ours |
 
 Handling rules:
-- **`icare_*` cardiac-arrest events are excluded** from the MoE panel (different population from the norms).
->> no, this is not accurate -- they do not need to be excluded just because they are in icare. the reason to exclude would be based on labels, e.g. isoelectric = exclude. 
-- **Author-as-rater:** `bwestove` (MBW) is one panel rater — disclosed, and **excluded** when the panel is
-  used to *validate* this system (kept only in the pure between-rater ceiling estimate). Rater identities
-  anonymized R01…Rnn; never committed.
-  >> not necessary to exclude
+- **Exclusion is label-based, not cohort-based.** `icare_*` (cardiac-arrest) events are **not** dropped
+  merely for being cardiac-arrest — a cardiac-arrest EEG that shows slowing is in-domain. Exclude only on
+  **label/state** (isoelectric, predominant burst-suppression, electrocerebral inactivity), the same rule
+  as §3.2.
+- **Author-as-rater:** `bwestove` (MBW) is one panel rater — **disclosed and retained** (exclusion not
+  necessary: the ceiling is a between-rater agreement measure and validation is against the panel
+  *consensus*, not against any single rater). Rater identities anonymized R01…Rnn; never committed.
 - **Consensus label:** for panel EEGs, the multi-rater consensus (majority / adjudicated) is a
   higher-quality reference than a single signed report; the **consensus proportion** (fraction of experts
   who saw slowing) is a graded human *conspicuity* target we may test our `z` against (pre-registered).
@@ -172,7 +173,7 @@ Handling rules:
 ## 4. Signal processing and feature extraction (the canonical pipeline)
 
 One extractor (`src/morgoth_slowing/features/extract.py`), one parameterization, applied identically to
-every recording in both cohorts and over the **whole recording**.
+every recording in both cohorts, over the analyzed span (up to the first 24 h; §4.3).
 
 ### 4.1 Preprocessing
 - Reference montage → longitudinal bipolar **double-banana** (18 channels: Fp1-F7 … Cz-Pz).
@@ -180,12 +181,12 @@ every recording in both cohorts and over the **whole recording**.
 
 ### 4.2 Segmentation
 - **Segment = 15 s = 3000 samples @ 200 Hz; step = 14 s (2800 samples, 1 s overlap).** *Not 10 s.*
-- Segments are indexed `0..K-1` over the **entire** recording (K up to ~11,000 for multi-hour cEEG).
+- Segments are indexed `0..K-1` over the analyzed span (≤24 h; K up to ~6,170 at the 24 h cap, §4.3).
 
-**⚠ PITFALL 3 — coverage.** The legacy description table used only the first 600 s (42 segments). The
-intended use is EEG of *any* length. **Rule:** every per-segment feature, stage, artifact flag, and gate
-output is computed over the **whole recording**; "first-600 s" is never a coverage default anywhere.
->> revise this to say: we use up to the first 24 hours of EEG
+**⚠ PITFALL 3 — coverage.** The legacy description table used only the first 600 s (42 segments). **Rule:**
+every per-segment feature, stage, artifact flag, and gate output is computed over **up to the first 24 h**
+of the recording (`MAX_ANALYZE_HOURS = 24`): recordings ≤24 h are analyzed in full; longer cEEG is capped at
+the first 24 h. "First-600 s" is never a coverage default anywhere.
 
 ### 4.3 Artifact detection — flag, do not strip
 Per segment, `artifact.usable_mask` computes a **flag** (and reason: flat/high-amplitude/etc.), including
@@ -217,7 +218,13 @@ Multitaper PSD per segment per channel; band powers:
 hole that discarded ~23% of theta power (clinically theta runs to 8 Hz); closing it also improves band-word
 discrimination (0.58→0.60; `scripts/109`). Theta 4–8 is now contiguous with alpha 8–13. Features per (segment, channel/region): `log_{band}`, `rel_{band}` (delta/theta/alpha), `DAR`
 (δ/α), `TAR` (θ/α), `DTR` (δ/θ), `low_freq_rel`.
->> i updated the band powers definition above to make theta be 4-8
+
+**Prior-metric features (van Putten lineage), computed faithfully in the same pass** so the S7 benchmark
+(§8.7) uses identical PSDs (definitions/refs in `references/README.md`). Per (segment, channel/region):
+`DTABR` = (δ+θ)/(α+β), `ADR` = α/δ, `SEF95`, `median_freq`, `peak_freq`. Per (segment, **whole_head**):
+`Q_SLOWING` = P[2–8]/P[2–25] (Lodder & van Putten 2013 — their best-agreeing slowing metric, κ=0.76),
+`Q_APG` = P_ant/(P_ant+P_pos) on alpha, `r_sBSI` (revised **power-based** BSI, hemisphere-mean per PSD bin
+0.5–25 Hz; van Putten 2007), `pdBSI` (our signed extension → side). Per (segment, homologous pair): `Q_ASYM`.
 
 ### 4.6 Spatial units
 - **18 bipolar channels** (for lateralization / lobe localization), and
@@ -415,17 +422,36 @@ The published metrics are computed **faithfully to their original definitions** 
 against the same report/consensus labels. Existing scaffold: `scripts/47_vanputten_comparison.py` (to be
 rebuilt against `segment_master`).
 
-**Metrics (with definitions).**
-- **DAR** = δ/α power; **ADR** = α/δ (= 1/DAR); **DTABR** = (δ+θ)/(α+β) power [Finnigan & van Putten 2013].
-- **Relative δ, relative θ** power (already in the feature set) [ICU/encephalopathy qEEG].
-- **BSI_global** = mean over 0.5–25 Hz PSD bins of |R(f) − L(f)| / (R(f) + L(f)), R/L = summed
-  right/left hemisphere power [van Putten & Tavy 2004].
-- **pBSI** = revised **pairwise** BSI: mean over homologous pairs × PSD bins of |R − L|/(R + L)
-  [van Putten 2007] — more sensitive to focal asymmetry than the global form.
-- **pdBSI** = the **directed/signed** pairwise BSI: mean of (R − L)/(R + L) (sign preserved), giving
-  lateralization (which hemisphere) that the unsigned indices cannot.
-- **SEF95 / median_freq / peak_freq** — spectral-edge and dominant-frequency summaries used in van Putten
-  monitoring work; lower = slower.
+**Metrics (definitions taken from the primary sources in `references/`; see `references/README.md`).**
+
+*Slowing (global) — the headline comparators:*
+- **Q_SLOWING** = `P[2–8 Hz] / P[2–25 Hz]` (mean spectrum over scalp) [Lodder & van Putten 2013]. Abnormal
+  if > 0.6. **This is van Putten's own slowing metric and it had the best report agreement of their five
+  (κ = 0.76).** It is the primary thing our slowing score must beat or adopt (P8b).
+- **DAR** = δ/α; **ADR** = α/δ (= 1/DAR); **DTABR** = (δ+θ)/(α+β) [Finnigan & van Putten 2013].
+- **Relative δ, relative θ** (already in the feature set).
+- **SEF95 / median_freq / peak_freq** — spectral-edge & dominant-frequency summaries; lower = slower.
+
+*Anterior–posterior gradient (generalized):*
+- **Q_APG** = `P_ant / (P_ant + P_pos)` on **alpha**, eyes-closed, Laplacian montage [Lodder & van Putten
+  2013]. Normal < 0.4, abnormal > 0.6 (posterior→anterior shift). Adopt as the A–P comparator.
+
+*Asymmetry / lateralization (focal):*
+- **r-sBSI** (revised BSI) = `(1/K) Σ_n |R*_n − L*_n|/(R*_n + L*_n)`, `R*_n = mean over right-hemisphere
+  channels of PSD **power** (squared coeff) at bin n`; **0.5–25 Hz** [van Putten 2007]. (Corrects our earlier
+  note: it is **power-based and hemisphere-mean per frequency**, ~2× more sensitive than the 2004
+  amplitude sBSI — not a per-pair mean.)
+- **pdBSI** — **our own signed extension** of r-sBSI (drop the |·| so the sign gives the side); NOT a
+  van Putten metric, labelled as ours.
+- **Q_ASYM(c)** = normalized spectral difference per homologous pair c ∈ {Fp1,Fp2},{F7,F8},{F3,F4},{T3,T4},
+  {C3,C4},{T5,T6},{P3,P4},{O1,O2}; asymmetric if any pair > 0.5 [Lodder & van Putten 2013].
+
+*Noted but not adopted by default (flagged for MBW):*
+- **r-tBSI** (revised temporal BSI, diffuse change vs a within-recording reference t0) [van Putten 2007] —
+  a monitoring metric; our normative deviation is its cross-sectional analogue, so it is not computed as-is.
+- **Q_REAC** = `1 − P_EO/P_EC` (alpha reactivity) — needs reliable eyes-open/closed states; adopt only if
+  those annotations exist. **Q_ALPHA** = alpha (PDR) peak frequency vs age norm — **PDR grading was scoped
+  out by MBW** (separate from slowing); include only on MBW's decision.
 
 **Three arms, same labels/recordings/stages.**
 1. **As-published (raw).** The metric computed and thresholded as in the source — whole-head or pairwise,
@@ -436,8 +462,9 @@ rebuilt against `segment_master`).
 3. **Ours + Morgoth.** Our chosen feature/amount score (unsupervised) and the Morgoth gate.
 
 **Targets.** Abnormal-vs-clean-normal and generalized-vs-clean-normal for the global metrics
-(DAR/DTABR/SEF/rel-δ); focal-vs-clean-normal (and side accuracy) for the asymmetry metrics
-(BSI_global/pBSI/pdBSI). AUROC (95% CI, patient-clustered bootstrap); side via pdBSI sign vs report side.
+(Q_SLOWING/DAR/DTABR/SEF/rel-δ) and, for generalized topography, Q_APG; focal-vs-clean-normal (and side
+accuracy) for the asymmetry metrics (r-sBSI/Q_ASYM/pdBSI). AUROC (95% CI, patient-clustered bootstrap);
+side via pdBSI sign and per-pair Q_ASYM vs report side.
 
 **Adoption rule (the "or use theirs" clause, P8b).** Pre-registered and symmetric: if any van Putten arm
 beats our best on a target by **ΔAUROC > 0.02** (CIs excluding 0), we **adopt** that metric — add it to the
@@ -446,8 +473,9 @@ ties, we report the honest margin. Either way the reader sees the head-to-head, 
 
 **Expectation (not a gate).** Prior in-house numbers (legacy first-600 s data): raw DAR ≈ 0.68 / DTABR
 ≈ 0.68 / BSI ≈ 0.74; our age/sex-normed DAR deviation ≈ 0.71; Morgoth p_abnormal ≈ 0.95. The re-run
-re-computes all of these whole-recording and vigilance-matched, and adds the normed-BSI/pdBSI arms that
-the legacy run left as NaN (a normalization bug, not a null result).
+re-computes all of these whole-recording and vigilance-matched, adds Q_SLOWING/Q_APG/Q_ASYM from the
+Lodder & van Putten (2013) paper (their Q_SLOWING agreed with reports at κ=0.76 — a strong bar), and fixes
+the normed-BSI arm the legacy run left as NaN (a normalization bug, not a null result).
 
 ---
 
