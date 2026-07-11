@@ -57,20 +57,35 @@ model set — fetch with rclone `box:` into `morgoth-viewer/morgoth_checkpoints/
 
 ## 4. Python environment
 
-- **timm 0.9.16** (HARD pin — the Morgoth model class expects that timm API). **torch ≥ 2.1** (soft): the
-  pilot used 2.13.0 on Python 3.14/macOS-arm, but that version isn't published for every Python/platform
-  (some cap at 2.8.0) — install the newest torch your env offers and run the smoke test. The only
-  torch-version-sensitive spot (EEG-level nested-tensor fast path) is neutralized in
-  `scripts/shims/eeg_level_wrap.py` (now degrades gracefully if the toggle is absent).
+> **TWO separate venvs (verified 2026-07-11 by the smoke test).** The worker (`scripts/31`) and the Morgoth
+> subprocess do NOT share an environment:
+> - **Worker venv** — this repo's `requirements.txt`. Runs featurize + van Putten + orchestration. Imports
+>   **neither torch nor timm** (the only torch importer, `scripts/shims/eeg_level_wrap.py`, runs inside
+>   Morgoth's env). Needs the **`aws` CLI** on `PATH` (panel fetch + output sync — `boto3` alone insufficient).
+> - **Morgoth venv** — `morgoth2/requirements.txt` (e.g. `morgoth2/.venv`: **timm 1.0.11**, numpy 1.26.4,
+>   pandas 1.5.3, `tensorboardX`, `einops`, `mat73`, `hdf5storage`, …). **`PILOT_VENV` MUST point here.**
+>   Pointing it at the worker venv → staging/gate die with a bare `CalledProcessError` (missing
+>   `tensorboardX`; stderr swallowed). `apex`/`pyhealth` are NOT needed for `--predict` (pyhealth is shimmed;
+>   apex is CUDA-only). Install the newest torch that env offers (≥2.1) and run the smoke test; the only
+>   torch-version-sensitive spot (EEG-level nested-tensor fast path) is neutralized in `eeg_level_wrap.py`
+>   (degrades gracefully if the toggle is absent).
+> - **timm: resolved.** The old "the model class expects timm 0.9.16" claim is **false** — the smoke test
+>   passed on Morgoth's **timm 1.0.11**. torch/timm have been removed from this repo's `requirements.txt`;
+>   only `morgoth2/requirements.txt` governs the Morgoth env.
+
 - **`KMP_DUPLICATE_LIB_OK=TRUE`** — REQUIRED. Without it the Morgoth subprocess dies on an OpenMP
   double-init (`libomp.dylib already initialized`). The worker now sets it inside every Morgoth command;
   also export it in the parent shell.
 - **`PYTORCH_ENABLE_MPS_FALLBACK=1`**, `OMP_NUM_THREADS=1` (set in the Morgoth commands).
 - `np.trapz → np.trapezoid` shim lives in `extract.py` (numpy ≥ 2).
 
-## 5. Data access (rclone)
+## 5. Data access (rclone + aws CLI)
 
-- Binary: `/opt/homebrew/bin/rclone` (env `RCLONE_BIN`).
+- Binary: `/opt/homebrew/bin/rclone` (env `RCLONE_BIN`). Downloaded rclone on Apple-Silicon must be
+  ad-hoc signed (`codesign --force --sign - rclone`) or it is SIGKILLed on exec.
+- **`aws` CLI** — REQUIRED binary on `PATH`. The worker shells out to `aws s3 cp` to pull panel
+  sources (`PANEL_ROOT=s3://…`) and to sync outputs; `boto3` alone is not enough. Missing `aws` →
+  panel rows fail `FileNotFoundError: 'aws'`.
 - Remotes: **`s3:`** — `bdsp-opendata-repository/EEG/bids/...` (pull EDFs, read-only);
   **`box:`** — checkpoint/model archive (if not local); **`bdsp:`** — legacy EDF copy path.
 
@@ -80,7 +95,7 @@ model set — fetch with rclone `box:` into `morgoth-viewer/morgoth_checkpoints/
 |---|---|---|---|
 | `MORGOTH2_DIR` | `~/GithubRepos/morgoth2` | box checkout | Morgoth code + `checkpoints/` |
 | `MORGOTH_DEVICE` | `mps` | `cuda` | inference device |
-| `PILOT_VENV` | `$(which python3)` | box venv python | python with torch/timm |
+| `PILOT_VENV` | `morgoth2/.venv/bin/python` | Morgoth venv python | **Morgoth's** venv (morgoth2/requirements.txt: timm 1.0.11, tensorboardX, …) — NOT the worker venv (§4) |
 | `MORGOTH_SHIMS` | `scripts/shims` | same | pyhealth shim on PYTHONPATH |
 | `RCLONE_BIN` | `/opt/homebrew/bin/rclone` | box rclone | S3/Box access |
 | `KMP_DUPLICATE_LIB_OK` | `TRUE` | `TRUE` | OpenMP double-init guard (required) |
@@ -93,7 +108,7 @@ model set — fetch with rclone `box:` into `morgoth-viewer/morgoth_checkpoints/
 ## 7. Exact run (one recording, end to end)
 ```bash
 export RCLONE_BIN=/opt/homebrew/bin/rclone MORGOTH2_DIR=$HOME/GithubRepos/morgoth2 \
-       MORGOTH_DEVICE=mps PILOT_VENV=$(which python3) MORGOTH_SHIMS=$(pwd)/scripts/shims \
+       MORGOTH_DEVICE=mps PILOT_VENV=$MORGOTH2_DIR/.venv/bin/python MORGOTH_SHIMS=$(pwd)/scripts/shims \
        KMP_DUPLICATE_LIB_OK=TRUE RUN_GATE=1 PYTHONPATH=src
 python scripts/31_segment_master_worker.py 1
 ```
