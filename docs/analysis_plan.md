@@ -272,7 +272,13 @@ Region is a key; channel-grain is retained for the abnormal/focal recordings tha
 The gate currently exists only per recording (`gate_probs`, cohort only). **This SAP requires the fleet
 to persist per-segment (or per-gate-window, then mapped to segments) gate outputs:** `p_slowing`,
 `p_focal`, `p_generalized` for **all** recordings in both cohorts. The recording-level gate is the
-segment aggregate, not a separate computation.
+segment aggregate, not a separate computation. `p_slowing` = `1 − P(class_0=no-slowing)` from the SLOWING
+3-class window head (per segment); `p_focal`/`p_generalized` from the EEG-level heads.
+- **Calibration step (do on the full labeled data):** the raw softmax `p_slowing` is uncalibrated (neural
+  nets are typically overconfident). Once the fleet has run and produced `segment_master` with report/
+  consensus labels, **fit a calibration map** (Platt / isotonic) for `p_slowing` (and the focal/gen probs)
+  against the labels on held-out data, and store the calibrated probability alongside the raw one. This is
+  required before any operating-point (§7.1) or detection-AUROC claim uses the gate probability as a score.
 
 ---
 

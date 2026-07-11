@@ -96,9 +96,13 @@ artifact flag (retain) → features + van Putten → Morgoth **stage** (ss_hm_1)
 (SLOWING window head → per-segment `p_slowing`; EEG-level heads → `p_focal`/`p_generalized`) →
 write `segment_master/eeg_id=<id>/part.parquet` + `recording_meta`/`recording_labels`.
 
-## 8. Known integration notes (verified 2026-07-11)
-- The SLOWING window head's per-window CSV carries `pred_class`; capturing a calibrated **probability**
-  (softmax) rather than the class index is the remaining refinement for `p_slowing`.
-- The `EEG_level_head.py` focal/gen aggregation currently errors on this input; per-segment `p_slowing` is
-  captured regardless (the EEG-level call is best-effort and does not block the run). Tracked as a gate
-  follow-up.
+## 8. Gate integration — resolved (2026-07-11)
+- **`p_slowing` = `1 − class_0_prob`** from the SLOWING 3-class window head (`class_0` = no-slowing) — a real
+  0–1 probability per segment (not the `pred_class` index). Its statistical calibration vs report/consensus
+  labels is a SAP step (§4.7), done on the full labeled data.
+- **`EEG_level_head.py` nested-tensor crash — FIXED.** It calls `torch._nested_tensor_from_mask_left_aligned`
+  (TransformerEncoder fast path), which fails on MPS with a padding mask on real multi-window recordings. Run
+  it via `scripts/shims/eeg_level_wrap.py`, which sets `torch.backends.mha.set_fastpath_enabled(False)` scoped
+  to that call ONLY — disabling it globally (e.g. sitecustomize) breaks the window head + stager. With this,
+  `p_focal`/`p_generalized` (EEG-level heads) populate. `KMP_DUPLICATE_LIB_OK=TRUE` is set in every Morgoth
+  command (the OpenMP guard, without which the subprocess dies).
