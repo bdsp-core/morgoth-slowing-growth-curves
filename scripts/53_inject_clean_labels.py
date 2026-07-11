@@ -71,8 +71,7 @@ def patch(path, is_parquet=True):
           f"normal={int((m.drop_duplicates('bdsp_id').label=='normal').sum())}")
 
 
-for f in ["recording_features.parquet", "recording_features_py.parquet",
-          "recording_asymmetry.parquet", "recording_asymmetry_py.parquet",
+for f in ["recording_features.parquet", "recording_asymmetry.parquet",
           "gate_probs.parquet", "bsi_features.parquet", "stage_recording_features.parquet"]:
     patch(f)
 patch("metadata/cohort_metadata.csv", is_parquet=False)

@@ -4,7 +4,7 @@ BSI (van Putten) = mean over homologous channel pairs & bands of |R-L|/(R+L). We
 (overall) and per (recording, sleep stage), build normal percentile growth curves vs age, and save the
 feature so it can be deviation-scored like the others. Figures named to match the dashboard convention.
 
-Overall BSI: from recording_features_py per-channel band powers.
+Overall BSI: from recording_features per-channel band powers.
 Per-stage BSI: from segment_features (per-channel, per-segment) joined to segment_stages, averaged to
 (recording, stage, channel) then BSI — normals are staged, which is what the growth curve needs.
 
@@ -45,7 +45,7 @@ def pct_curve(ax, age, val, label, color):
 
 
 def main():
-    rf = pd.read_parquet("data/derived/recording_features_py.parquet")
+    rf = pd.read_parquet("data/derived/recording_features.parquet")
     LB = [f"log_{b}" for b in BANDS]
     meta = rf.groupby("bdsp_id").agg(age=("age", "first"), label=("label", "first"))
     # overall BSI per recording

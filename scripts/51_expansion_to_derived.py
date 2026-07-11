@@ -104,8 +104,7 @@ def main():
 
     rf = pd.DataFrame(rec_rows)
     DER.mkdir(parents=True, exist_ok=True)
-    rf.to_parquet(DER / "recording_features.parquet")
-    rf.to_parquet(DER / "recording_features_py.parquet")               # R7: both filenames
+    rf.to_parquet(DER / "recording_features.parquet")                  # canonical (the _py alias was retired; see docs/DATA_INVENTORY.md)
     print(f"recording_features: {rf.bdsp_id.nunique()} recordings, {len(rf)} rows")
     pd.DataFrame(stage_rows).to_parquet(DER / "stage_recording_features.parquet")
     print(f"stage_recording_features: {len(stage_rows)} rows")
@@ -123,8 +122,7 @@ def main():
                         r[f"asym_{name}_{band}"] = float(s.loc[L, col]) - float(s.loc[R, col])
         arows.append(r)
     asym = pd.DataFrame(arows)
-    asym.to_parquet(DER / "recording_asymmetry.parquet")
-    asym.to_parquet(DER / "recording_asymmetry_py.parquet")
+    asym.to_parquet(DER / "recording_asymmetry.parquet")               # canonical (the _py alias was retired; see docs/DATA_INVENTORY.md)
     print(f"recording_asymmetry: {len(asym)} recordings")
 
     # gate probs from the gate JSONs

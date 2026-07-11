@@ -1,7 +1,7 @@
 """Fix oversight #4 (part b): SUPERVISED region classifier vs the temporal-default + argmax baselines.
 
 Trains a CV logistic regression on age-band-adjusted per-bipolar-channel slowing deviations
-(recording_features_py.parquet: 18 channels x {rel_delta, DAR, TAR, log_delta}) to predict the report's
+(recording_features.parquet: 18 channels x {rel_delta, DAR, TAR, log_delta}) to predict the report's
 region, on abnormal recordings where the report states a region (~3525). Reports OOF row-normalized
 confusion + per-region precision/recall/F1 + macro-F1 + accuracy, next to two baselines:
   - temporal-default (always predict the majority class)
@@ -43,7 +43,7 @@ def heatmap(cm, labels, title, path):
 
 
 def main():
-    rf = pd.read_parquet("data/derived/recording_features_py.parquet")
+    rf = pd.read_parquet("data/derived/recording_features.parquet")
     ch = rf[rf.region.isin(CH)].copy()
     ch["ageband"] = pd.cut(pd.to_numeric(ch.age, errors="coerce"), bins=AGE_BINS)
     # age-band-adjusted per-channel deviation z for each metric (vs normals)

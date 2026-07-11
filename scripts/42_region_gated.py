@@ -3,7 +3,7 @@
   (B) GENERALIZED cases -> not a side question, but an ANTERIOR vs POSTERIOR predominance one
       (FIRDA-like frontal vs OIRDA-like posterior), scored from an anterior-minus-posterior slowing
       gradient.
-Uses per-bipolar-channel age-adjusted deviations (recording_features_py.parquet).
+Uses per-bipolar-channel age-adjusted deviations (recording_features.parquet).
 Writes results/region_gated.md + results/figs/{region_focal_gated.png, generalized_ap.png}.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ FOCAL_REGIONS = ["temporal", "frontal", "central", "parietal", "occipital"]
 
 
 def channel_z():
-    rf = pd.read_parquet("data/derived/recording_features_py.parquet")
+    rf = pd.read_parquet("data/derived/recording_features.parquet")
     ch = rf[rf.region.isin(CH)].copy()
     ch["ageband"] = pd.cut(pd.to_numeric(ch.age, errors="coerce"), bins=AGE_BINS)
     for m in METRICS:

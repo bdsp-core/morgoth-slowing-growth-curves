@@ -1,7 +1,7 @@
 """Fix oversight #4: DATA-DRIVEN region/side localization (replaces the temporal-defaulting text rule).
 
 Predicted region = the lobe with the largest slowing deviation from age-matched normals, where lobes are
-built from the per-bipolar-channel features (recording_features_py.parquet). Predicted side = from the
+built from the per-bipolar-channel features (recording_features.parquet). Predicted side = from the
 left-vs-right slowing deviation. Evaluated against the report's region/side (report_extracted_labels.csv)
 on abnormal recordings, with ROW-NORMALIZED confusion matrices + per-region precision/recall/F1.
 
@@ -46,7 +46,7 @@ def heatmap(cm, labels, title, path, cmap="Blues"):
 
 
 def main():
-    rf = pd.read_parquet("data/derived/recording_features_py.parquet")
+    rf = pd.read_parquet("data/derived/recording_features.parquet")
     ch = rf[rf.region.isin(set().union(*LOBES.values()))].copy()
     ch["ageband"] = pd.cut(pd.to_numeric(ch.age, errors="coerce"), bins=AGE_BINS)
     # per-channel deviation vs age-matched normals (z of the slowing metric)

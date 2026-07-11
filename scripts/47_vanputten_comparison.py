@@ -28,7 +28,7 @@ def auroc(y, s):
 
 
 def main():
-    rf = pd.read_parquet("data/derived/recording_features_py.parquet")
+    rf = pd.read_parquet("data/derived/recording_features.parquet")
     meta = pd.read_csv("metadata/cohort_metadata.csv")[["bdsp_id", "label"]].drop_duplicates("bdsp_id").set_index("bdsp_id")
     LB = ["log_delta", "log_theta", "log_alpha", "log_beta"]
     wh = rf[rf.region == "whole_head"].groupby("bdsp_id")[LB].mean()   # dedupe multi-session
