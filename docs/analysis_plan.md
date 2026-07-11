@@ -139,6 +139,11 @@ normative model is fit on `clean_normal` recordings only. Abnormal cases never e
 From report text (read from the PHI-safe scratchpad extract, never committed):
 - `is_abnormal`, `has_focal_slow`, `has_gen_slow`; focal `side`/`region`/`band`; generalized
   `band`/`topography` (anterior / posterior / unspecified) / `state`; `gen_class`.
+- **Focal-side extraction (code):** `scripts/20_extract_report_labels.py` (`side_of` / `extract_side`, v2)
+  parses laterality *per slowing-clause* — honoring `R>L`/`L>R` predominance, mapping 10–20 electrode names
+  to a side, letting a specific unilateral finding beat a diffuse background comment → `focal_side ∈
+  {left, right, bilateral, na}`, materialized in `recording_labels` by `scripts/60_build_unified_labels.py`.
+  (v1 dumped ~81% of sided reports into 'bilateral'; v2 recovered ~32k.)
 - **⚠ PITFALL 2 — flag-level contamination.** Labels are extracted at the *finding* level with negation
   handling; a report mentioning "no focal slowing" must not set `has_focal_slow`. Severity adjectives
   (mild/moderate/marked) are **not** treated as quantitative (they are null across combinations) and are
@@ -269,6 +274,10 @@ patient** — one patient may have several EEGs, so a patient-level key would co
 - `norms` [age-knot × stage × region × feature]: fitted GAMLSS parameters (§6).
 - `deviation_field` [eeg_id × segment × region × feature]: `z` (derived from `segment_master` + `norms`;
   materialized for speed).
+- `descriptors` [eeg_id]: the system's per-recording **description outputs** (what the sentence generator
+  reads): amount (SD, centile), band, **`pred_focal_side`** (+ `side_margin`), prevalence, persistence,
+  stage-accentuation, and the pooled gate probs. Report side lives in `recording_labels`; predicted side
+  lives here — the two are compared in §8.2, never merged.
 
 ### 5.3 Patient vs EEG vs segment — the identity rule
 Three nested units, kept explicit so nothing silently collapses: **patient** (`patient_id`) → **EEG /
@@ -340,6 +349,21 @@ frequency word, focal-vs-gen from our features, peak-SD) are structurally unemit
 The `z`/`S` (unsupervised) vs Morgoth/supervised distinction (§1) is enforced in analysis code and in
 the claims table. Any "we see what readers miss" result must trace to the unsupervised path.
 
+### 7.4 Lateralization — which side (focal)
+Side is tracked as **two distinct quantities, never conflated**:
+- **Report side** (the label): `recording_labels.focal_side ∈ {left, right, bilateral, na}`, extracted by
+  `scripts/20` + `scripts/60` (§3.5).
+- **Our predicted side** (the measurement): from the **signed** homologous-channel deviation — for each L/R
+  homologous pair, the difference in slowing-feature deviation (`z_R − z_L`), together with the signed
+  `pdBSI` and per-pair `Q_ASYM` (§4.5). The recording's side = sign of the pooled lateralized excess,
+  **abstaining to 'bilateral / none' when no pair clears the normal 97th-centile asymmetry** (same abstain
+  logic as the amount descriptor). Stored as `pred_focal_side` (+ `side_margin`, the SD of the L−R excess)
+  in the `descriptors` output (§5.2).
+
+Invoked only when the gate fires **focal** (§7.1); for generalized, side is undefined and we report A–P
+topography (Q_APG) instead. Validation: predicted vs report side confusion + accuracy (§8.2), against the
+human ceiling on the panel (§8.3), with the van Putten pdBSI / Q_ASYM arms as comparators (§8.7).
+
 ---
 
 ## 8. Statistical analysis
@@ -362,8 +386,9 @@ recordings). Primary metrics pre-specified; α = 0.05; multiplicity per §8.6.
 - **Band:** agreement of the low-confidence call vs report band word (rel-θ−rel-δ ≈ 0.64; expected weak,
   P5); reported as PROVISIONAL, not promoted unless it clears P5's bar.
 - **Generalized A–P predominance:** AUROC of the anterior-minus-posterior gradient (prior ≈ 0.60).
-- **Localization:** side/lobe confusion vs report (data-driven max-deviation lobe + supervised LR),
-  **macro-F1** (not accuracy — the majority/temporal default inflates accuracy).
+- **Localization:** `descriptors.pred_focal_side` vs `recording_labels.focal_side` (confusion + accuracy),
+  and predicted lobe vs report region (data-driven max-deviation lobe + supervised LR), **macro-F1** (not
+  accuracy — the majority/temporal default inflates it). Side method defined in §7.4.
 
 ### 8.3 Inter-rater reliability and the human ceiling (S5, S6) — the honest bar
 Computed on the expert-panel EEGs of §3.6, which are run through the **identical** pipeline so system and
