@@ -29,7 +29,10 @@ from morgoth_slowing.fleet import ingest as fi
 
 RC = os.environ.get("RCLONE_BIN", "/opt/homebrew/bin/rclone")
 MANIFEST = os.environ.get("MANIFEST", "data/manifest/report_manifest_v3.parquet")
-OUT = Path("data/derived/segment_master"); OUT.mkdir(parents=True, exist_ok=True)
+# OUTPUT_ROOT lets the fleet write to a durable/shared location; sync to the S3 output bucket (see
+# docs/fleet_launch.md "Outputs"). Everything the analysis plan consumes lands under here.
+OUTROOT = Path(os.environ.get("OUTPUT_ROOT", "data/derived"))
+OUT = OUTROOT / "segment_master"; OUT.mkdir(parents=True, exist_ok=True)
 DONE = OUT / "_done"; DONE.mkdir(exist_ok=True)
 MAX_GB = float(os.environ.get("EXPANSION_MAX_GB", "3.0"))
 RUN_GATE = os.environ.get("RUN_GATE", "0") == "1"       # Morgoth gate (NORMAL/SLOWING checkpoints in M2/checkpoints)
@@ -162,12 +165,25 @@ def process_one(m, work):
     eid = m.eeg_id
     if (DONE / f"{eid}.done").exists():
         return "skip"
-    ep = resolve_edf(m)
-    if not ep:
-        return "noedf"
-    local = work / "rec.edf"
-    subprocess.run([RC, "copyto", ep, str(local)], check=True, capture_output=True, timeout=600)
-    data, chs, fs = load_edf_referential(str(local))
+    # load branches on source_type: BIDS via S3, OccasionNoise EDF (edf_direct), MoE v7.3 mat (mat_v73)
+    stype = str(getattr(m, "source_type", "bids") or "bids")
+    if stype in ("edf_direct", "mat_v73"):
+        from morgoth_slowing.io import panels
+        sp = getattr(m, "source_path", None)
+        if not sp or not Path(sp).exists():
+            return "nopanelfile"
+        if stype == "edf_direct":
+            data, chs, fs, _, _ = panels.read_occasion_edf(sp)     # OccasionNoise (~50 min)
+        else:
+            data, chs, fs = panels.read_moe_mat(sp)                # MoE (one 15-s segment)
+        ep = str(sp)
+    else:
+        ep = resolve_edf(m)
+        if not ep:
+            return "noedf"
+        local = work / "rec.edf"
+        subprocess.run([RC, "copyto", ep, str(local)], check=True, capture_output=True, timeout=600)
+        data, chs, fs = load_edf_referential(str(local))
     data = ex.cap_to_hours(data.astype(np.float32, copy=False), fs)
     n_hours = data.shape[0] / fs / 3600
     bip = ex.to_bipolar(ex.preprocess(data, fs), chs)
@@ -196,8 +212,9 @@ def process_one(m, work):
         "eeg_id": eid, "source_edf": ep, "code_commit": COMMIT, "n_hours": round(n_hours, 2),
         "n_segments": int(n_seg), "n_artifact": n_art, "gate": RUN_GATE,
         "processed_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}))
-    local.unlink(missing_ok=True)
-    return dict(eeg_id=eid, n_seg=int(n_seg), n_art=n_art, hours=round(n_hours, 2), stages=set(stages))
+    if stype == "bids":
+        local.unlink(missing_ok=True)                       # remove the pulled temp EDF (not panel sources)
+    return dict(eeg_id=eid, src_type=stype, n_seg=int(n_seg), n_art=n_art, hours=round(n_hours, 2), stages=set(stages))
 
 
 def main(n=10):
@@ -208,7 +225,14 @@ def main(n=10):
     # SHARDING for the parallel AWS run: SHARD="i/N" -> worker i of N takes rows where idx % N == i.
     # ALL=1 processes the whole manifest (sharded); else the first `n` (pilot, PILOT_TASK-filtered).
     shard = os.environ.get("SHARD")
-    if os.environ.get("ALL") == "1" or shard:
+    if os.environ.get("PILOT_MIX") == "1":
+        # prove all 3 source types: k BDSP (bids) + k OccasionNoise (edf_direct) + k MoE (mat_v73)
+        k = n; man["_st"] = man.get("source_type", "bids").fillna("bids")
+        bids = man[(man._st == "bids") & (man.bids_task == "rEEG")].head(k)
+        occ = man[man.panel_set == "occasionnoise"].head(k)
+        moe = man[man.panel_set == "moe"].head(k)
+        picks = pd.concat([bids, occ, moe]); print(f"MIXED pilot: {len(bids)} bids + {len(occ)} OccasionNoise + {len(moe)} MoE")
+    elif os.environ.get("ALL") == "1" or shard:
         picks = man.reset_index(drop=True)
         if shard:
             i, N = (int(x) for x in shard.split("/"))

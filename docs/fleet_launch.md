@@ -26,6 +26,31 @@ done
 Output: `data/derived/segment_master/eeg_id=<id>/part.parquet` (one per recording) + `recording_meta` /
 `recording_labels`. Rough cost: ~30–60 s/recording/worker → ~25k EEGs / N workers.
 
+## 1b. Outputs — WHERE every result lands (so the analysis plan can run)
+
+Everything is written under **`OUTPUT_ROOT`** (env; default `data/derived`). Point it at durable/shared
+storage on the box and **sync to the S3 output bucket** so all shards' outputs assemble into one dataset.
+
+| Output | Path (under `OUTPUT_ROOT`) | Produced by | Consumed by |
+|---|---|---|---|
+| `segment_master/eeg_id=<id>/part.parquet` | one partition per recording | fleet (`scripts/31`) | norms, all analyses |
+| `recording_meta.parquet` | one row per eeg_id | fleet | Table 1, filters |
+| `recording_labels.parquet` | one row per eeg_id | fleet | label-dependent analyses |
+| `segment_master/_done/<id>.done` | provenance + resumability | fleet | monitoring |
+| `norms/` (GAMLSS params) | after featurize | `gamlss_fit.R` | deviation_field |
+| `deviation_field/` (z per seg×region×feature) | after norms | analysis | descriptors, detection |
+| `descriptors.parquet` | after deviation | describe step | sentences, Tables |
+
+Collect to S3 (periodically during the run + at the end), so a single machine can run the analysis:
+```bash
+export OUTPUT_ROOT=/data/run                       # durable local disk on the box
+aws s3 sync $OUTPUT_ROOT/segment_master/ s3://<run-output-bucket>/segment_master/
+aws s3 sync $OUTPUT_ROOT/ s3://<run-output-bucket>/ --exclude 'segment_master/*'
+```
+Multi-machine: each worker writes locally and syncs its `eeg_id=*` partitions to the same S3 prefix (no
+collision — partitions are keyed by eeg_id). The analysis machine `aws s3 sync`s the bucket back down, so it
+has the **complete** `segment_master` + sidecars before fitting norms.
+
 ## 2. Verify the run (before any analysis)
 ```bash
 python scripts/32_segmaster_summary.py          # stage-conditioned feature table + figure
