@@ -110,7 +110,7 @@ have. Until then, `clean_pair` should be read as "probably the right report," no
 - **[VERIFIED]** Channels identical across sources (C3/C4 central montage).
 - **[FIXED]** `TAR` was read from `.mat` index 17 (θ/β). It is index **16** (θ/α), confirmed against the
   file's own `feature_names`.
-- **[VERIFIED]** Band edges (`extract.py`): δ 1–4, θ 4–7, α 8–13, β 13–30, γ 30–45, total 0.5–45 Hz.
+- **[VERIFIED]** Band edges (`extract.py`): δ 1–4, θ 4–8, α 8–13, β 13–30, γ 30–45, total 0.5–45 Hz (theta widened 4–7→4–8 to close the 7–8 Hz gap).
   **Note the 7–8 Hz gap** — deliberate, but it means "θ" excludes 7–8 Hz.
 
 ---

@@ -194,7 +194,9 @@ by eye before committing compute.
   §3.3 / PITFALL 1).
 - `scripts/60_build_unified_labels.py` — assembles the unified label table (identity + all report features
   + provenance).
-- a thin assembler (to write) joins these with EDF duration + OMOP age → the frozen manifest.
+- `scripts/120_build_report_manifest.py` — joins these into the frozen manifest (eeg_id = patient+datetime,
+  features, clean_pair, age/sex). Duration is populated authoritatively in `recording_meta` from the EDF
+  header at run time; the report-CSV `Duration` is deferred pending the eeg_datetime↔CSV-identity reconcile.
 
 **Filename:** committed PHI-free `data/manifest/report_manifest_v<N>.parquet` (+ `.meta.json` freeze record:
 version, UTC, code tag, counts, sha256); the with-text version lives only in the scratchpad. Versioned and
@@ -497,12 +499,11 @@ rebuilt against `segment_master`).
 - **Q_ASYM(c)** = normalized spectral difference per homologous pair c ∈ {Fp1,Fp2},{F7,F8},{F3,F4},{T3,T4},
   {C3,C4},{T5,T6},{P3,P4},{O1,O2}; asymmetric if any pair > 0.5 [Lodder & van Putten 2013].
 
-*Noted but not adopted by default (flagged for MBW):*
+*Not adopted (decided):*
 - **r-tBSI** (revised temporal BSI, diffuse change vs a within-recording reference t0) [van Putten 2007] —
   a monitoring metric; our normative deviation is its cross-sectional analogue, so it is not computed as-is.
-- **Q_REAC** = `1 − P_EO/P_EC` (alpha reactivity) — needs reliable eyes-open/closed states; adopt only if
-  those annotations exist. **Q_ALPHA** = alpha (PDR) peak frequency vs age norm — **PDR grading was scoped
-  out by MBW** (separate from slowing); include only on MBW's decision.
+- **Q_REAC** (alpha reactivity) — **out**: we have no reliable eyes-open/closed annotations.
+- **Q_ALPHA** (alpha/PDR peak frequency) — **out**: PDR grading is out of scope, separate from slowing.
 
 **Three arms, same labels/recordings/stages.**
 1. **As-published (raw).** The metric computed and thresholded as in the source — whole-head or pairwise,
