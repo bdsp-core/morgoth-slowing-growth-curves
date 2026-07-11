@@ -1,0 +1,1 @@
+band re-extraction: 98 computed / 160 attempted / 160 target (3 skipped) | 76.1 min elapsed | ETA 0 min | 16:25:46  [DONE]
