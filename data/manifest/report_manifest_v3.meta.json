@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "supersedes": "report_manifest_v2.parquet",
+  "frozen_utc": "2026-07-11T07:23:26Z",
+  "n_eeg": 14957,
+  "n_patients": 13642,
+  "by_src": {
+    "cohort": 12303,
+    "backfill": 2654
+  },
+  "n_with_routing": 14957,
+  "by_task": {
+    "rEEG": 10655,
+    "cEEG": 4038,
+    "EEG": 156,
+    "EMU": 97,
+    "OR": 11
+  },
+  "integrity_fields": "n_bytes + sha256 are null here; the pull step lists source_subject_dir, matches the session/date, copies the EDF to bucket_key, and stamps both.",
+  "sha256_of_manifest": "b18d2c84b5acda069aa17fb58e31ae47e86167502e88b5e2be3e58cfb76293ae",
+  "columns": [
+    "eeg_id",
+    "patient_id",
+    "eeg_datetime",
+    "src",
+    "age",
+    "sex",
+    "is_normal",
+    "is_abnormal",
+    "has_focal_slow",
+    "has_gen_slow",
+    "clean_normal",
+    "focal_region",
+    "focal_side",
+    "focal_band",
+    "gen_topography",
+    "gen_band",
+    "clean_pair",
+    "same_date_ambiguous",
+    "eeg_path",
+    "report_note_name",
+    "report_text",
+    "bids_task",
+    "report_session_id",
+    "source_subject_dir",
+    "bucket_key",
+    "n_bytes",
+    "sha256"
+  ],
+  "deid": "BDSP de-identified; report text included (NOT reportable under IRB/DUA)"
+}
