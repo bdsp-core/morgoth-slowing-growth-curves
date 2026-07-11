@@ -63,9 +63,12 @@ print('OK' if h==json.load(open(p+'.meta.json'))['sha256'] else 'MISMATCH', h)"
 ```
 
 ### 5. Panels (only for the panel subset; main cohort run does not need them)
+Uploaded to the **credentialed** bucket `s3://bdsp-opendata-credentialed/morgoth-slowing/panels/`
+(occasionnoise/*.edf + moe/*.mat). Point the worker straight at it:
 ```bash
-aws s3 sync s3://<run-bucket>/panels/ panels/  &&  export PANEL_ROOT=$(pwd)/panels
-# or point straight at S3: export PANEL_ROOT=s3://<run-bucket>/panels   (worker fetch_panel pulls per-file)
+export PANEL_ROOT=s3://bdsp-opendata-credentialed/morgoth-slowing/panels   # worker fetch_panel pulls per-file
+# credentialed bucket -> the box needs write-less READ creds for it (AWS_ACCESS_KEY_ID/SECRET or an
+# instance role with access). Same keys used to upload (AWSKeys/bdsp_opendata_write_accessKeys.csv).
 # If PANEL_ROOT is unset, panel rows are skipped and only the 25.6k BDSP recordings featurize.
 ```
 
