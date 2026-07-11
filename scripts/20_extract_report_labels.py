@@ -40,8 +40,20 @@ R_ELEC = r"\b(fp2|f8|f4|t2|t4|t6|c4|p4|o2|a2)\b"
 _REGION_PATS = [("temporal", r"temporal|\b(t1|t2|t3|t4|t5|t6|f7|f8)\b"),
                 ("occipital", r"occipital|\b(o1|o2)\b"),
                 ("parietal", r"parietal|\b(p3|p4)\b"),
+                ("posterior", r"posterior"),        # reports often say "posterior" not occipital/parietal
+                ("anterior", r"anterior"),
                 ("frontal", r"frontal|\b(fp1|fp2|f3|f4)\b"),
                 ("central", r"central|\b(c3|c4|cz)\b")]
+
+# Coverage/label taxonomy = 4 regions (MBW 2026-07-11): occipital-theta focal slowing is genuinely rare
+# (~113 in the whole 217k pool), so occipital+parietal+"posterior" fold into POSTERIOR; "anterior" -> frontal.
+REGION4 = {"temporal": "temporal", "central": "central", "frontal": "frontal", "anterior": "frontal",
+           "occipital": "posterior", "parietal": "posterior", "posterior": "posterior"}
+
+
+def extract_region4(text):
+    r = extract_region(text)
+    return REGION4.get(r, r)
 
 
 def _clauses(text):
