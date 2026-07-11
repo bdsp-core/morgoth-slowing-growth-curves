@@ -10,16 +10,15 @@ Inputs (all already built):
   [optional] the scratchpad report CSV   Duration, EEG path, and raw report text (scripts/20 source)
 
 Outputs:
-  data/manifest/report_manifest_v<N>.parquet        PHI-FREE (committed): eeg_id, features, metadata,
-                                                     clean_pair, recording_seconds, eeg_path
-  data/manifest/report_manifest_v<N>.meta.json       freeze record (version, counts, sha256)
-  <scratchpad>/report_manifest_v<N>_withtext.parquet LOCAL only (PHI): + report_text/impression
+  data/manifest/report_manifest_v<N>.parquet   eeg_id, features, metadata, clean_pair, recording_seconds,
+                                               and (with --csv) the paired report_text/report_impression
+  data/manifest/report_manifest_v<N>.meta.json freeze record (version, counts, sha256)
 
-Report TEXT is never written to the repo (PHI, §11). The committed manifest carries only derived features.
+The reports are BDSP DE-IDENTIFIED; report text is included (MBW confirmed 2026-07-05 the de-identified-text
+exposure is NOT reportable under the BDSP IRB/DUA). The repo remote is a bdsp-core credentialed repo.
 
 Run:
-  PYTHONPATH=src python scripts/120_build_report_manifest.py --version 1 \
-      [--csv <EEGs_And_Reports.csv>] [--with-text]
+  PYTHONPATH=src python scripts/120_build_report_manifest.py --version 1 --csv <EEGs_And_Reports.csv>
 """
 from __future__ import annotations
 import argparse, json, hashlib
@@ -105,19 +104,30 @@ def enrich_from_csv(m: pd.DataFrame, csv_path: Path, with_text: bool):
     c["eeg_path_csv"] = (c["BidsFolder"].fillna("") + "/" + c["EEGFolder"].fillna("")
                          + "/" + c["HashFolderName"].fillna("") + "/" + c["HashFileName"].fillna("")).str.strip("/")
 
-    j = m.merge(c[["eeg_id", "recording_seconds_csv", "eeg_path_csv", "reports", "impression"]],
-                on="eeg_id", how="left")
+    j = m.merge(c[["eeg_id", "recording_seconds_csv", "eeg_path_csv"]], on="eeg_id", how="left")
     matched = int(j["recording_seconds_csv"].notna().sum())
     print(f"  CSV enrichment: matched {matched}/{len(m)} EEGs on eeg_id "
-          f"({100*matched/max(len(m),1):.0f}%) for duration/path")
+          f"({100*matched/max(len(m),1):.0f}%) for duration/path (0 expected: eeg_datetime≠StartTime)")
     j["recording_seconds"] = j["recording_seconds_csv"].fillna(j["recording_seconds"])
     j["eeg_path"] = j["eeg_path_csv"].where(j["eeg_path_csv"].astype(bool), j["eeg_path"])
-    text = j[["eeg_id", "reports", "impression"]].copy() if with_text else None
-    return j.drop(columns=["recording_seconds_csv", "eeg_path_csv", "reports", "impression"]), text
+    j = j.drop(columns=["recording_seconds_csv", "eeg_path_csv"])
+
+    # Report TEXT: join on report_note_name == ReportName (matches, unlike the timestamps). The text is
+    # shared across EEGs of the same report (broadcast), which is exactly the paired-report text per EEG.
+    # De-identified (BDSP), NOT reportable under the IRB/DUA (MBW 2026-07-05) → included in the manifest.
+    txt = c[["ReportName", "reports", "impression"]].dropna(subset=["ReportName"]).drop_duplicates("ReportName")
+    j = j.merge(txt.rename(columns={"ReportName": "report_note_name",
+                                     "reports": "report_text", "impression": "report_impression"}),
+                on="report_note_name", how="left")
+    nt = int(j["report_text"].notna().sum())
+    print(f"  report text attached to {nt}/{len(j)} EEGs ({100*nt/max(len(j),1):.0f}%) via report_note_name")
+    return j, None
 
 
-# note-name filenames embed order/encounter identifiers (health-system) — never in the committed file
-PHI_COLS = ["report_note_name", "nearest_report_id"]
+# report_note_name is a BDSP DE-IDENTIFIED note surrogate (+ shifted date), no more identifying than the
+# bdsp_id/patient_id already committed throughout the repo — so it is KEPT. Only the raw report TEXT (free
+# narrative, which can carry incidental identifiers) stays local, and it is never in the core anyway.
+PHI_COLS = []
 
 
 def freeze(m: pd.DataFrame, version: int, text: pd.DataFrame | None, scratch: Path | None):
@@ -133,10 +143,11 @@ def freeze(m: pd.DataFrame, version: int, text: pd.DataFrame | None, scratch: Pa
         "n_clean_pair": int((m["clean_pair"] == True).sum()),
         "n_same_date_ambiguous": int(m["same_date_ambiguous"].sum()),
         "n_with_duration": int(m["recording_seconds"].notna().sum()),
+        "n_with_text": int(m["report_text"].notna().sum()) if "report_text" in m else 0,
         "n_abnormal": int((m.get("is_abnormal") == 1).sum()) if "is_abnormal" in m else None,
         "sha256": sha,
         "columns": list(committed.columns),
-        "phi": "free (note-name filenames + report text excluded; both in scratchpad version only)",
+        "deid": "BDSP de-identified; report text included (NOT reportable under IRB/DUA, MBW 2026-07-05)",
     }
     (OUT / f"report_manifest_v{version}.meta.json").write_text(json.dumps(meta, indent=2))
     print(f"  wrote {path} ({len(m)} EEGs) + meta (sha256 {sha[:12]}…)")
