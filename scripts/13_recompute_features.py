@@ -4,8 +4,9 @@ Replaces the precomputed Growth_curves features with features computed by featur
 raw segments_raw recordings. Produces the same schema as scripts/03 so all downstream (curves,
 discrimination, stage analysis) runs unchanged on Python-derived features.
 
-Outputs (…_py to sit alongside the JJ-derived ones until validated, then swap):
-  data/derived/recording_features_py.parquet, recording_asymmetry_py.parquet, segment_features_py.parquet
+Outputs (the _py alias was retired 2026-07 now that MATLAB features are gone; these ARE canonical —
+see docs/DATA_INVENTORY.md):
+  data/derived/recording_features.parquet, recording_asymmetry.parquet, segment_features.parquet
 Run: python scripts/13_recompute_features.py [limit]
 """
 from __future__ import annotations
@@ -52,9 +53,9 @@ def main(limit=None):
             if s["region"] in rec.AGG_REGIONS:
                 seg_rows.append({"bdsp_id": p["bdsp_id"], "label": m.get("label"), **s})
 
-    pd.DataFrame(reg_rows).to_parquet(OUT / "recording_features_py.parquet")
-    pd.DataFrame(asym_rows).to_parquet(OUT / "recording_asymmetry_py.parquet")
-    pd.DataFrame(seg_rows).to_parquet(OUT / "segment_features_py.parquet")
+    pd.DataFrame(reg_rows).to_parquet(OUT / "recording_features.parquet")
+    pd.DataFrame(asym_rows).to_parquet(OUT / "recording_asymmetry.parquet")
+    pd.DataFrame(seg_rows).to_parquet(OUT / "segment_features.parquet")
     print(f"wrote {len(reg_rows)} region-rows from {done} recordings (Python-recomputed features)")
 
 
