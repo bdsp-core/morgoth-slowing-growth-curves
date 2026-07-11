@@ -1,3 +1,4 @@
+"""RETIRED / LEGACY — do not use. This generator emits FORBIDDEN severity adjectives (mild/moderate/marked) and ACNS frequency words (rare/frequent/continuous), superseded by the claims-gated generator scripts/110_generate_sentence.py (docs/claims_table.md). Kept only for provenance; no live code imports it."""
 """Turn the per-state quantitative scoring table into a clinician-style phrase.
 
 Implements docs/feature_spec.md §8. Deterministic; generated *from* the quantitative

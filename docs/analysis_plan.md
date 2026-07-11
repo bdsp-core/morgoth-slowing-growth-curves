@@ -110,14 +110,16 @@ Two sources, one harmonized table, provenance tracked in a `src` column (never i
 Target scale: ≈27,000 recordings, ages 0–119 (median ~51), ≈20,900 clean-normal / ≈5,600 abnormal.
 De-identification and PHI handling per §11.
 
-### 3.2 Inclusion / exclusion (recording level)
-- **Include:** scalp EEG, ≥ a minimum analyzable duration (define, e.g. ≥ 5 min of usable segments),
-  standard 10–20 montage reconstructible to the double-banana bipolar set.
+### 3.2 Inclusion / exclusion (recording level) — thresholds finalized 2026-07-11
+- **Include:** scalp EEG, **≥ 5 min recording AND ≥ 20 usable (non-artifact) segments** (the denominator
+  guard so per-stage/region stats are estimable), standard 10–20 montage reconstructible to the
+  double-banana bipolar set. `MIN_MINUTES = 5`, `MIN_USABLE_SEGMENTS = 20`.
 - **Exclude:** recordings that are *predominantly* burst-suppression or electrocerebral
   inactivity/disconnection → routed to a dedicated detector, **not** this slowing pipeline (their
   low-frequency power is not "slowing" in the intended sense).
-- **Exclude** recordings with < a minimum fraction of usable (non-artifact) segments (define, e.g.
-  < 20%).
+- **Exclude** recordings with **< 20% usable segments** (`MIN_USABLE_FRACTION = 0.20`) — a quality
+  floor (the pilot showed routine EEGs can be 50–80% artifact from calibration/impedance stretches, so
+  this threshold is revisited against the pilot's artifact-rate distribution before the full run).
 
 ### 3.3 Unit of analysis and the report-broadcast dedup rule
 Three nested units (§5.3): **patient** = `patient_id` (the legacy `bdsp_id`, site+person), **EEG /
@@ -319,9 +321,12 @@ collapsed — the canonical run does not repeat that.
 ### 5.4 Physical layout & scale (a decision for review)
 Full per-segment × **per-channel** (18) × whole-recording × 27k ≈ **1.4 B rows** — not a single parquet.
 Per-segment × **region** (6) ≈ **0.5 B rows** — large but partitionable.
-**Proposed:** `segment_master` at **region grain** is the canonical default, **partitioned one parquet
-per recording** (`segment_master/eeg_id=.../part.parquet`); channel-grain is computed on demand for the
-abnormal/focal subset that needs lateralization. *Reviewers: confirm region-default vs channel-everywhere,
+**Decided (2026-07-11):** `segment_master` is stored at **region grain** — the **6 anatomical aggregates**
+(`whole_head`, L/R temporal, L/R parasagittal, midline; validated by the pilot), **partitioned one parquet
+per recording** (`segment_master/eeg_id=.../part.parquet`). Channel-grain (18 bipolar) is computed on demand
+for the abnormal/focal subset that needs lateralization. NOTE these 6 *feature* regions are orthogonal to
+the 4 *report-label* regions (frontal/temporal/central/posterior, §8.2 coverage) — features are anatomical,
+labels are localization classes. *(Prior open question about region-default vs channel-everywhere,
 and the partitioning scheme.*
 
 ### 5.5 Data dictionary & the one rule
