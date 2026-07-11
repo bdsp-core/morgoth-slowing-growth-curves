@@ -181,7 +181,7 @@ by eye before committing compute.
 
 **Contents** (one row per `eeg_id`):
 - identity + path: `eeg_id`, `patient_id`, `eeg_datetime`, EEG file path (→ run manifest, `run_manifest_schema.md`);
-- pairing: `nearest_report_id`, `clean_pair` (§3.3);
+- pairing: `clean_pair`, `same_date_ambiguous` (§3.3); note-name filenames stay LOCAL (embed order IDs);
 - **report text: LOCAL only** (scratchpad, PHI) — for the pairing review; never committed;
 - report features: every extracted label (`is_abnormal`, `has_focal_slow`/`has_gen_slow`,
   `focal_side`/`region`/`band`, `gen_band`/`topography`/`state`, `gen_class`, `report_stratum`, `n_report_chars`);
@@ -190,8 +190,10 @@ by eye before committing compute.
 **Code (already built; in `scripts/`):**
 - `scripts/20_extract_report_labels.py` — report text → labels incl. the v2 laterality extractor (§3.5);
   publishes PHI-free labels only, raw text kept local.
-- `scripts/88_report_pairing_audit.py` — nearest-in-time pairing → `clean_pair` (the report-broadcast fix,
-  §3.3 / PITFALL 1).
+- `scripts/88_report_pairing_audit.py` — nearest-in-time pairing → `clean_pair`, keyed on **`eeg_id`**
+  (the report-broadcast fix, §3.3 / PITFALL 1). Resolves per-EEG pairing; where a patient has **>1 EEG on
+  the same day** the report cannot be assigned to a specific one → `same_date_ambiguous` (554 EEGs / 276
+  patients in the cohort), excluded from clean-label analyses. (Different-day multi-EEG patients resolve.)
 - `scripts/60_build_unified_labels.py` — assembles the unified label table (identity + all report features
   + provenance).
 - `scripts/120_build_report_manifest.py` — joins these into the frozen manifest (eeg_id = patient+datetime,
