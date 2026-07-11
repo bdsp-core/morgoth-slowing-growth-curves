@@ -16,7 +16,7 @@ Selection = recordings with a report band word (gen_band / focal_band in {delta,
 Run: PYTHONPATH=src python scripts/109_band_edges_test.py [N]
 """
 from __future__ import annotations
-import os, sys, subprocess, tempfile
+import os, sys, subprocess, tempfile, time, json
 from pathlib import Path
 import numpy as np, pandas as pd
 
@@ -68,8 +68,18 @@ def main():
         print(f"resume: {len(done)} already computed", flush=True)
 
     work = Path(tempfile.mkdtemp())
+    t0 = time.time(); total = len(lab); attempted = 0
+    def progress(ndone, skipped):
+        el = time.time() - t0
+        rate = attempted / el if el > 0 else 0
+        eta = (total - attempted) / rate / 60 if rate > 0 else float("nan")
+        Path("results/band_progress.txt").write_text(
+            f"band re-extraction: {ndone} computed / {attempted} attempted / {total} target "
+            f"({skipped} skipped) | {el/60:.1f} min elapsed | ETA {eta:.0f} min | {time.strftime('%H:%M:%S')}\n")
+    skipped = 0
     for i, r in enumerate(lab.itertuples()):
         if r.bdsp_id in done: continue
+        attempted += 1; progress(len(rows), skipped)
         try:
             ep = edf_path(r.bdsp_id, str(r.eeg_datetime))
             if not ep: continue
@@ -100,8 +110,12 @@ def main():
                 print(f"  {len(rows)} computed", flush=True)
         except Exception as exn:
             print(f"  skip {r.bdsp_id}: {type(exn).__name__}", flush=True)
+            skipped += 1
             continue
     pd.DataFrame(rows).to_parquet(CKPT)
+    progress(len(rows), skipped)
+    Path("results/band_progress.txt").write_text(
+        Path("results/band_progress.txt").read_text().rstrip() + "  [DONE]\n")
     print(f"done: {len(rows)} recordings -> {CKPT}")
 
 
