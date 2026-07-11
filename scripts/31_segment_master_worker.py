@@ -32,7 +32,8 @@ MANIFEST = os.environ.get("MANIFEST", "data/manifest/report_manifest_v3.parquet"
 OUT = Path("data/derived/segment_master"); OUT.mkdir(parents=True, exist_ok=True)
 DONE = OUT / "_done"; DONE.mkdir(exist_ok=True)
 MAX_GB = float(os.environ.get("EXPANSION_MAX_GB", "3.0"))
-RUN_GATE = os.environ.get("RUN_GATE", "0") == "1"       # off locally (needs NORMAL/SLOWING checkpoints)
+RUN_GATE = os.environ.get("RUN_GATE", "0") == "1"       # Morgoth gate (NORMAL/SLOWING checkpoints in M2/checkpoints)
+GATE_STEP = os.environ.get("GATE_STEP", "5")            # window step (s) for the per-window slowing head
 COMMIT = os.environ.get("CODE_COMMIT", subprocess.run(["git", "rev-parse", "--short", "HEAD"],
                                                        capture_output=True, text=True).stdout.strip() or "unknown")
 FEATS = ["log_delta", "log_theta", "log_alpha", "log_beta", "log_gamma", "log_total",
@@ -70,7 +71,54 @@ def stage_segments(sin, sout, rid, n_seg, seg_centers_s):
     return stages
 
 
-def segment_master_rows(eid, pid, edt, bip, fs, stages):
+def run_gate(sin, sout, rid, n_seg, centers_s):
+    """Morgoth gate: per-window SLOWING head -> per-SEGMENT p_slowing; EEG-level FOC/GEN heads -> recording
+    p_focal/p_generalized (broadcast to every segment). Needs NORMAL/SLOWING checkpoints in M2/checkpoints."""
+    shim = os.path.abspath(fi.SHIMS)
+    def _win(ckpt, ds, outdir):
+        subprocess.run(["bash", "-lc",
+            f"cd {fi.M2} && PYTHONPATH={shim}:${{PYTHONPATH}} PYTORCH_ENABLE_MPS_FALLBACK=1 KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 "
+            f"{fi.VENV} finetune_classification.py --abs_pos_emb --model base_patch200_200 --predict "
+            f"--task_model checkpoints/{ckpt} --dataset {ds} --data_format mat --sampling_rate 0 "
+            f"--already_format_channel_order no --already_average_montage no --allow_missing_channels yes "
+            f"--max_length_hour no --eval_sub_dir {sin} --eval_results_dir {outdir} "
+            f"--prediction_slipping_step_second {GATE_STEP} --polarity 1 --rewrite_results no "
+            f"--num_workers 0 --device {fi.DEVICE}"], check=True, capture_output=True)
+    def _eeg(ckpt, ds, csvdir, resdir):
+        subprocess.run(["bash", "-lc",
+            f"cd {fi.M2} && PYTHONPATH={shim}:${{PYTHONPATH}} KMP_DUPLICATE_LIB_OK=TRUE {fi.VENV} EEG_level_head.py --mode predict "
+            f"--task_model checkpoints/{ckpt} --dataset {ds} --test_csv_dir {csvdir} --result_dir {resdir}"],
+            check=True, capture_output=True)
+    ps = f"{sout}/pred_SLOWING"
+    _win("SLOWING.pth", "SLOWING", ps)                      # per-window slowing (the per-segment source)
+    # per-window slowing prob -> per-segment p_slowing (map segment center to window index)
+    p_slow = [np.nan] * n_seg
+    wf = next(Path(ps).glob("*.csv"), None)
+    if wf is not None:
+        w = pd.read_csv(wf)
+        col = next((c for c in ("probability", "prob", "score", "pred_class") if c in w.columns), None)
+        pw = w[col].to_numpy() if col else np.array([])
+        step = float(GATE_STEP)
+        for i, c in enumerate(centers_s):
+            wi = int(c / step)
+            if 0 <= wi < len(pw):
+                p_slow[i] = float(pw[wi])
+    # EEG-level focal/gen (best-effort; does not block per-segment p_slowing)
+    p_focal = p_gen = np.nan
+    def _eeg_prob(tag):
+        f = Path(sout) / f"pred_EEG_level_{tag}.csv"
+        if f.exists() and len(d := pd.read_csv(f)):
+            return float(d.probability.iloc[0])
+        return np.nan
+    try:
+        _eeg("FOC_SLOWING_EEGlevel.pth", "FOC_SLOWING", ps, str(sout)); p_focal = _eeg_prob("FOC_SLOWING")
+        _eeg("GEN_SLOWING_EEGlevel.pth", "GEN_SLOWING", ps, str(sout)); p_gen = _eeg_prob("GEN_SLOWING")
+    except Exception as e:
+        print(f"    gate EEG-level (focal/gen) failed, p_slowing still captured: {type(e).__name__}")
+    return p_slow, p_focal, p_gen
+
+
+def segment_master_rows(eid, pid, edt, bip, fs, stages, gate=None):
     """One row per (segment, region) — retain ALL segments with artifact_flag (flag, not strip)."""
     segidx = ex.segment_indices(bip.shape[0])            # capped to 24 h
     rows = []
@@ -81,7 +129,10 @@ def segment_master_rows(eid, pid, edt, bip, fs, stages):
         stage = stages[i] if i < len(stages) else "Other"
         base = {"eeg_id": eid, "patient_id": pid, "eeg_datetime": edt, "segment": i,
                 "t_start_s": float(s / fs), "stage": stage,
-                "artifact_flag": (not ok), "artifact_reason": ("none" if ok else reason)}
+                "artifact_flag": (not ok), "artifact_reason": ("none" if ok else reason),
+                "p_slowing": (float(gate[0][i]) if gate and i < len(gate[0]) else np.nan),
+                "p_focal": (float(gate[1]) if gate else np.nan),
+                "p_generalized": (float(gate[2]) if gate else np.nan)}
         for reg, chans in _AGG.items():
             bp = ex.band_powers(freqs, psd[chans])       # per-band mean over region channels
             bpmean = {k: float(np.mean(v)) for k, v in bp.items()}
@@ -121,7 +172,13 @@ def process_one(m, work):
             "data": np.ascontiguousarray(data.T)}, do_compression=True)
     del data; gc.collect()
     stages = stage_segments(sin, sout, eid, len(segidx), centers)
-    rows = segment_master_rows(eid, m.patient_id, m.eeg_datetime, bip, fs, stages)
+    gate = None
+    if RUN_GATE:
+        try:
+            gate = run_gate(sin, sout, eid, len(segidx), centers)
+        except Exception as e:
+            print(f"    gate FAIL {eid}: {type(e).__name__}: {e}")
+    rows = segment_master_rows(eid, m.patient_id, m.eeg_datetime, bip, fs, stages, gate)
     sm = pd.DataFrame(rows)
     n_seg, n_art = sm.segment.nunique(), int(sm[sm.region == "whole_head"].artifact_flag.sum())
     (OUT / f"eeg_id={eid}").mkdir(parents=True, exist_ok=True)

@@ -78,7 +78,7 @@ def edf_path(row):
 def stage_dir(indir, outdir):
     _shims = os.path.abspath(SHIMS)
     subprocess.run(["bash", "-lc",
-        f"cd {M2} && PYTHONPATH={_shims}:${{PYTHONPATH}} PYTORCH_ENABLE_MPS_FALLBACK=1 OMP_NUM_THREADS=1 {VENV} finetune_classification.py "
+        f"cd {M2} && PYTHONPATH={_shims}:${{PYTHONPATH}} PYTORCH_ENABLE_MPS_FALLBACK=1 KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 {VENV} finetune_classification.py "
         f"--abs_pos_emb --model base_patch200_200 --predict --task_model checkpoints/ss_hm_1.pth "
         f"--dataset SLEEPPSG --data_format mat --sampling_rate 0 --already_format_channel_order no "
         f"--already_average_montage no --allow_missing_channels yes --max_length_hour no "
