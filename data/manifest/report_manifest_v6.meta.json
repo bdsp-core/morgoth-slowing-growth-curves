@@ -1,0 +1,26 @@
+{
+  "version": 6,
+  "supersedes": "report_manifest_v5",
+  "built_from": "v5 + preflight_resolution",
+  "frozen_utc": "2026-07-11T18:07:25Z",
+  "n_v5": 27524,
+  "n_v6": 27524,
+  "n_resolved_keepers": 23745,
+  "n_dropped": 1918,
+  "n_replacements": 1918,
+  "n_panels": 1861,
+  "held_N": true,
+  "replacements_analysis_ready": true,
+  "replacement_incomplete_fields": {
+    "age": 0,
+    "sex": 0,
+    "clean_normal": 0,
+    "is_abnormal": 0,
+    "clean_pair": 0,
+    "resolved_path": 0,
+    "bids_task": 0
+  },
+  "replacement_age_null": 0,
+  "every_bids_row_resolved": true,
+  "sha256": "8ac7a552d5144e1cc424f74d512d4c3a0c23cb13ce875f8710dc2b65ae912b4d"
+}

@@ -6,8 +6,16 @@ pyarrow            # parquet
 pyyaml
 
 # Signal / EEG
-mne                # EEG IO + montage helpers
+mne                # EEG IO + montage helpers (OccasionNoise EDF read)
+pyedflib           # BIDS EDF read (io/edf.py load_edf_referential)
+h5py               # MoE panel .mat (MATLAB v7.3 / HDF5)
 # multitaper: scipy.signal.windows.dpss (no extra dep) or nitime/spectrum if preferred
+
+# Morgoth foundation model (stager + gate) — PINNED: the model class expects this timm API
+# (docs/fleet_dependencies.md §6). Needs KMP_DUPLICATE_LIB_OK=TRUE + PYTORCH_ENABLE_MPS_FALLBACK=1.
+torch==2.13.0
+timm==0.9.16
+# rclone is a BINARY (not pip): install separately + configure the s3/bdsp remotes (see docs/BOOTSTRAP.md)
 
 # Modeling (normative growth curves)
 scikit-learn
