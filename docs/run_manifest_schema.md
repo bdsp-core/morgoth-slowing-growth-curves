@@ -13,6 +13,27 @@ alongside the code version used for the run.
 counts_by_src, counts_by_panel_set, sha256_of_csv}`. Bump `<N>` for any change; never edit a frozen
 manifest in place (that is the whole point).
 
+## Realized manifest (2026-07-11): `report_manifest_v3.parquet`
+
+Built by `scripts/120` → `88` (pairing) → `121` (pool backfill) → `124` (merge) → `125` (routing).
+**14,957 EEGs / 13,642 patients** (cohort 12,303 + backfill 2,654; 4-region taxonomy). Carries the report
+labels + de-identified text (§11) **and** the S3 routing the pull step needs:
+
+| field | value | note |
+|---|---|---|
+| `source_subject_dir` | `s3:bdsp-opendata-repository/EEG/bids/{site}/sub-{bdsp_id}/` | verified to resolve |
+| `bids_task` | `cEEG`/`rEEG`/`EMU`/`EEG`/`OR` | BIDS task |
+| `report_session_id` | report-system `SessionID_new` | **≠ the BIDS `ses-N`** (sparse: e.g. ses-1,10,11,…) |
+| `bucket_key` | `run-bucket/edf/{eeg_id}.edf` | deterministic destination |
+| `n_bytes`, `sha256` | **null → stamped at pull** | see below |
+
+**Exact-EDF resolution + integrity are pull-time by necessity.** The exact file is
+`…/sub-{id}/ses-{N}/eeg/sub-{id}_ses-{N}_task-{task}_eeg.edf`, but the BIDS `ses-N` index is not the report
+`SessionID_new`, so the pull step **lists `source_subject_dir`, matches the session by date, copies the EDF
+to `bucket_key`, and stamps `n_bytes` (S3 metadata) + `sha256` (hashed while streaming)** — a hash cannot
+exist before the file is fetched, so it is computed once, for free, during the copy. 76 EEGs with no
+locatable subject/date were excluded.
+
 ## Columns
 
 | column | type | allowed | definition |
