@@ -39,3 +39,23 @@ Growth_curves pipeline analyses only the first 600 s of each recording.
 2.4 h). Our first-600 s flat guard did not catch them because the first 600 s was active; a whole-recording
 pipeline must carry the flat/suppression guard across the entire record (and route burst-suppression /
 disconnection to the dedicated detector, per MBW).
+
+---
+
+## CORRECTION (2026-07-10, same day): coverage is NOT the cause of the case-2 floor
+
+An initial reading blamed the case-2 floor on the first-600 s description window. A decisive check refutes
+that: computing our alert-stage amount from the **whole-recording aggregate** (`channel_stage_features`, which
+DOES span the whole recording) for the 40 case-2 recordings gives **median amount −0.18 SD** (clean-normal
++0.30). Even seeing the whole recording, our band-power features do not flag these as slow. So:
+
+- **Coverage is a real limitation of the DESCRIPTION table only** (segment_features = first 600 s; detection's
+  channel_stage_features is already whole-recording). It matters for the intended any-length use, because an
+  intermittently-slow long cEEG could be missed by a first-600 s descriptor.
+- **But it does not explain the case-2 floor.** Those recordings are 82% sleep-dominant; our amount is
+  wake-based and correctly ~normal in their wake; the reported "generalized slowing" is normal sleep slowing
+  (the contaminated sleep-report label) ± rhythmic morphology. That is what MBW's review adjudicates.
+
+The fleet already extracted whole-recording features and saved the region×stage AGGREGATE; it did not save the
+per-SEGMENT table. The fix is to rebuild the per-segment description table over the whole recording (amount /
+band / location can be rebuilt from the existing aggregate now; prevalence / persistence need per-segment).

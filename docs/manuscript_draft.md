@@ -2,6 +2,41 @@
 
 *First-draft manuscript. Numbers are drawn from the project's results and methods documents; placeholders marked `[TBD: …]` indicate values not yet available in the source material and required before submission.*
 
+> # 🔴 CRITICAL TODO BEFORE FINAL RESULTS — give the DESCRIPTION pipeline whole-recording coverage
+>
+> **The precise problem (discovered 2026-07-10, `results/case2_coverage_finding.md`).** There are two feature
+> tables and they have different coverage:
+> - **`channel_stage_features` (DETECTION):** the fleet already extracted features across the **whole
+>   recording** — cohort up to 43.5 h, expansion (overnight) median ~11 h. Detection already uses whole
+>   recordings. ✅
+> - **`segment_features` (DESCRIPTION → deviation field, prevalence, persistence, case-2):** still the legacy
+>   Growth_curves `.mat` = the **first 600 s only** (exactly 42 segments for every recording). The fleet
+>   computed whole-recording features but saved only the per-(region,stage) **aggregate**, not the
+>   **per-segment** table the descriptors need. ❌
+>
+> So the fix is **not** "re-run the fleet from scratch" — it is to **save/rebuild the per-segment description
+> table over the whole recording** (the fleet already did the heavy lifting; it discarded the per-segment
+> output). Prevalence and persistence genuinely need per-segment; amount/band/location can be rebuilt from the
+> existing whole-recording aggregate today.
+>
+> **Important correction — this is NOT what causes the case-2 floor.** A decisive check (the whole-recording
+> aggregate amount for the 40 case-2 recordings) shows they are **still not spectrally slow even over the whole
+> recording** (median amount −0.18 SD, vs clean-normal +0.30). So coverage does not explain why our features
+> miss them. The case-2 floor is instead **physiologic sleep** (82% sleep-dominant; our wake-based amount is
+> correctly normal, and normal sleep is slow — the contaminated sleep-report label, `results/stage_specific.md`)
+> **± rhythmic morphology (GRDA/FIRDA)** that does not raise mean band power. MBW's by-eye review adjudicates
+> the split.
+>
+> **Why the coverage fix still matters (intended use = EEG of any length).** For a genuinely abnormal long
+> cEEG whose slowing is intermittent and occurs after minute 10, the first-600 s description would miss it even
+> though detection (whole-recording) catches it. That is the real reason to give description whole-recording
+> coverage, independent of the case-2 set.
+>
+> **Strategy (agreed with MBW).** Harden the *story and methods* on the current first-600 s description data
+> until the logic is clean and findings are stable; then rebuild the per-segment description table over the
+> whole recording once and re-run the descriptor pipeline. **Every descriptor-based number below carries this
+> asterisk** (detection does not — it already uses whole recordings).
+
 > **⚠️ MAJOR REVISION IN PROGRESS (2026-07-07).** This draft predates the overnight-expansion + recompute work and is out of date in several structural ways. Before the next rewrite, fold in: (a) the cohort now includes **~16,000 overnight recordings** and the **N3/deep-sleep gap is filled** (no longer "planned"); (b) norms are **sex-pooled** — conditioning on sex changes detection by ΔAUROC ≤0.002 (`scripts/74`); (c) growth curves use **GAMLSS/LMS (BCT, age-varying skewness)**, not ad-hoc kernel quantiles; (d) "normal" is the **union of both report-normal cohorts** (routine + overnight), justified because it costs no detection power (`results/union_normal_detection.md`), with a full routine-vs-overnight vigilance/population + pipeline-control analysis (`results/pipeline_control.md`); (e) **all recordings are now featurized by one identical pipeline** (the cohort recompute), so the "MATLAB unavailable / r=0.89–0.95" framing is replaced by a single reproducible extractor; (f) new **Figure 1 keystone** (growth curves × top features). All numbers below (AUROCs, Ns) will be refreshed on the fully-recomputed data. See `docs/status_2026-07-06.md` for the full change list and path to publication.
 
 **Target venue:** clinical neurophysiology / digital-medicine (e.g., *Clinical Neurophysiology*, *Brain Communications*, *npj Digital Medicine*), accompanied by an open-source Python package and a published per-recording label set.
