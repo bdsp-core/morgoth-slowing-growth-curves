@@ -1,0 +1,19 @@
+{
+  "version": 5,
+  "supersedes": "report_manifest_v4",
+  "frozen_utc": "2026-07-11T08:49:36Z",
+  "n_eeg": 27524,
+  "by_src": {
+    "cohort": 12303,
+    "expansion": 10706,
+    "backfill": 2654,
+    "panel": 1861
+  },
+  "by_panel_set": {
+    "none": 25663,
+    "moe": 1761,
+    "occasionnoise": 100
+  },
+  "sha256": "e2b832bed5b89c2ac5f263ed9d66858f8d185ed229222ebb05f72b3dc77e8ad5",
+  "panel_format_todo": "OccasionNoise EDF header fix; v7.3 .mat h5py loader; fetch full MoE .mat set"
+}
