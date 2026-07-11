@@ -1,7 +1,8 @@
-"""Smoke tests for the deterministic, data-free pieces already implemented."""
+"""Smoke tests for the deterministic, data-free pieces already implemented.
+(The legacy report.phrase generator — which emitted FORBIDDEN severity/frequency words — is retired;
+the claims-gated generator is scripts/110. Its tests were removed.)"""
 import numpy as np
 from morgoth_slowing.scoring import burden, patient_z
-from morgoth_slowing.report import phrase
 
 
 def test_burden_and_prevalence():
@@ -16,19 +17,6 @@ def test_patient_z_empirical_monotonic():
     lo = patient_z.patient_z_empirical(0.0, null)
     hi = patient_z.patient_z_empirical(3.0, null)
     assert hi > lo
-
-
-def test_phrase_render():
-    f = phrase.StateFinding(state="Awake", prevalence=0.34, patient_z=4.1,
-                            location="right temporal", band="delta slowing", burden=0.8,
-                            median_abn_z=3.4, max_run_min=5.0, asymmetry_z=3.3)
-    out = phrase.render(f)
-    assert "frequent" in out and "moderate" in out and "4.1 SD" in out
-
-
-def test_phrase_normal():
-    f = phrase.StateFinding("Awake", 0.0, 0.5, "generalized", "delta slowing", 0, 0, 0)
-    assert "no significant slowing" in phrase.render(f)
 
 
 def test_recording_features_shapes():
