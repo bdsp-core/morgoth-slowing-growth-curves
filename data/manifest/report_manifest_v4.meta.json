@@ -1,0 +1,16 @@
+{
+  "version": 4,
+  "supersedes": "report_manifest_v3",
+  "frozen_utc": "2026-07-11T08:41:23Z",
+  "n_eeg": 25663,
+  "n_patients": 21757,
+  "by_src": {
+    "cohort": 12303,
+    "expansion": 10706,
+    "backfill": 2654
+  },
+  "n_abnormal": 14294,
+  "n_clean_normal": 9919,
+  "panels": "columns present (panel/panel_set/role); OccasionNoise+MoE EEGs appended by scripts/127",
+  "sha256": "ca2f28f4fd664fb8c4718a83ba861fdd79a97656554ac538238e98ef0d9c55a5"
+}
