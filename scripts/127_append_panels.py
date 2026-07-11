@@ -9,9 +9,10 @@ resolves BIDS via `source_subject_dir`; for panels it pulls the given file direc
   MoE           — ~1,761 events keyed {pid}_{datetime}; BDSP recordings. `source_type = mat_v73` (the event
                   .mat are MATLAB v7.3/HDF5). `icare_*` cardiac-arrest events excluded (SAP §3.6).
 
-REMAINING FORMAT WORK (documented, not silently skipped): (1) OccasionNoise EDF header fix; (2) an h5py
-loader for v7.3 event .mat; (3) fetch the full MoE .mat set (only a sample is local). Until done, the worker
-skips panels with an unreadable source and logs it — the panels do not block the main cohort run.
+Panel loaders are IMPLEMENTED + validated (src/morgoth_slowing/io/panels.py): OccasionNoise EDF header
+repair + MNE read; MoE v7.3 .mat via h5py (one 15-s segment). The worker (scripts/31) branches on
+`source_type` (bids / edf_direct / mat_v73) and featurizes panels through the SAME pipeline. Validated on a
+mixed pilot (3 bids + 3 OccasionNoise + 3 MoE) → valid segment_master + gate for all three.
 
 Run: PYTHONPATH=src python scripts/127_append_panels.py  [--scratch <dir>]
 """
@@ -55,7 +56,7 @@ def moe_rows():
         pid = e.split("_")[0]; dt = e.split("_")[-1]
         rows.append({"eeg_id": f"MOE_{e}", "patient_id": pid, "eeg_datetime": dt, "src": "panel",
                      "panel": True, "panel_set": "moe", "role": "panel",
-                     "source_type": "mat_v73", "source_path": str(Path(SCRATCH) / "moe" / "ev" / f"{e}.mat")})
+                     "source_type": "mat_v73", "source_path": str(Path(SCRATCH) / "events_raw" / f"{e}.mat")})
     return pd.DataFrame(rows)
 
 
@@ -81,7 +82,7 @@ def main():
         "panel_format_todo": "OccasionNoise EDF header fix; v7.3 .mat h5py loader; fetch full MoE .mat set"},
         indent=2))
     print(f"wrote {path}: {len(out)} EEGs | by src {dict(out.src.value_counts())}")
-    print("  REMAINING: panel EDF/mat format handling (see docstring) before the worker can featurize them.")
+    print("  panels featurize via src/io/panels.py (edf_direct / mat_v73) — validated on the mixed pilot.")
 
 
 if __name__ == "__main__":
