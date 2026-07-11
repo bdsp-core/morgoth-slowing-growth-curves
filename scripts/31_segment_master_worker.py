@@ -85,36 +85,45 @@ def run_gate(sin, sout, rid, n_seg, centers_s):
             f"--prediction_slipping_step_second {GATE_STEP} --polarity 1 --rewrite_results no "
             f"--num_workers 0 --device {fi.DEVICE}"], check=True, capture_output=True)
     def _eeg(ckpt, ds, csvdir, resdir):
-        subprocess.run(["bash", "-lc",
-            f"cd {fi.M2} && PYTHONPATH={shim}:${{PYTHONPATH}} KMP_DUPLICATE_LIB_OK=TRUE {fi.VENV} EEG_level_head.py --mode predict "
+        # run via the wrapper that disables the nested-tensor fast path (MPS incompat), scoped to this head
+        r = subprocess.run(["bash", "-lc",
+            f"cd {fi.M2} && PYTHONPATH={shim}:{fi.M2}:${{PYTHONPATH}} KMP_DUPLICATE_LIB_OK=TRUE MORGOTH2_DIR={fi.M2} "
+            f"{fi.VENV} {shim}/eeg_level_wrap.py --mode predict "
             f"--task_model checkpoints/{ckpt} --dataset {ds} --test_csv_dir {csvdir} --result_dir {resdir}"],
-            check=True, capture_output=True)
+            capture_output=True, text=True)
+        if r.returncode != 0:
+            tail = "\n".join([l for l in r.stderr.splitlines() if "libomp" not in l and "warn" not in l.lower()][-6:])
+            raise RuntimeError(f"EEG_level_head {ds} failed:\n{tail}")
     ps = f"{sout}/pred_SLOWING"
-    _win("SLOWING.pth", "SLOWING", ps)                      # per-window slowing (the per-segment source)
-    # per-window slowing prob -> per-segment p_slowing (map segment center to window index)
+    _win("SLOWING.pth", "SLOWING", ps)                      # 3-class window head: class_0=no-slowing, 1/2=slowing
+    # per-window P(slowing) = 1 - P(class_0=no-slowing) -> per-segment p_slowing (map center to window index)
     p_slow = [np.nan] * n_seg
     wf = next(Path(ps).glob("*.csv"), None)
     if wf is not None:
         w = pd.read_csv(wf)
-        col = next((c for c in ("probability", "prob", "score", "pred_class") if c in w.columns), None)
-        pw = w[col].to_numpy() if col else np.array([])
+        if "class_0_prob" in w.columns:
+            pw = (1.0 - w["class_0_prob"]).to_numpy()      # calibrated slowing probability
+        elif "pred_class" in w.columns:
+            pw = (w["pred_class"].to_numpy() > 0).astype(float)   # fallback: any-slowing class
+        else:
+            pw = np.array([])
         step = float(GATE_STEP)
         for i, c in enumerate(centers_s):
             wi = int(c / step)
             if 0 <= wi < len(pw):
                 p_slow[i] = float(pw[wi])
-    # EEG-level focal/gen (best-effort; does not block per-segment p_slowing)
-    p_focal = p_gen = np.nan
+    # EEG-level focal/gen aggregators (authoritative recording-level focal/gen; broadcast to segments)
     def _eeg_prob(tag):
         f = Path(sout) / f"pred_EEG_level_{tag}.csv"
         if f.exists() and len(d := pd.read_csv(f)):
             return float(d.probability.iloc[0])
         return np.nan
+    p_focal = p_gen = np.nan
     try:
         _eeg("FOC_SLOWING_EEGlevel.pth", "FOC_SLOWING", ps, str(sout)); p_focal = _eeg_prob("FOC_SLOWING")
         _eeg("GEN_SLOWING_EEGlevel.pth", "GEN_SLOWING", ps, str(sout)); p_gen = _eeg_prob("GEN_SLOWING")
     except Exception as e:
-        print(f"    gate EEG-level (focal/gen) failed, p_slowing still captured: {type(e).__name__}")
+        print(f"    gate EEG-level focal/gen failed (per-segment p_slowing kept): {e}")
     return p_slow, p_focal, p_gen
 
 
