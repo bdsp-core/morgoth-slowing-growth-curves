@@ -23,10 +23,9 @@ BOX_SRC = ("Brandon - PHI/Datasets/BDSP_deID/I0001-MGB/data_Unstructured/"
            "EEG_Reports_OtherSourceFiles/EEGs_And_Reports.csv")
 BOX_NOTES = "Brandon - PHI/Datasets/BDSP_deID/I0001-MGB/data_Unstructured/I0001_Neurology_Reports_1/<year>.zip"
 
-# reuse the report parser from scripts/18
-_spec = importlib.util.spec_from_file_location("r18", "scripts/18_report_agreement.py")
-_m = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_m)
-parse_report = _m.parse_report
+# report parser now lives in src (lifted from the legacy scripts/18)
+import sys as _sys; _sys.path.insert(0, "src")
+from morgoth_slowing.report.parse import parse_report
 
 
 # --- improved laterality/region extraction (v2) --------------------------------------------------
