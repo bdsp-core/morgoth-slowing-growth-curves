@@ -1,3 +1,5 @@
+> ⚠ **SUPERSEDED — historical only.** This doc asserts facts now overridden by `docs/analysis_plan.md` (the SAP) and `docs/claims_table.md` (e.g. theta = 4–8 Hz; severity adjectives / ACNS frequency words / band-from-our-features are FORBIDDEN output; artifact segments are flagged not stripped; zero reuse of prior derived tables). Do not implement from this file. Retained for provenance.
+
 # Data availability & reproducing the analysis from this repo
 
 Everything needed to **run the analyses and finish the paper is in this git repo.** Large raw inputs live
