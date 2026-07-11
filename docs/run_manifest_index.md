@@ -35,7 +35,8 @@ Pre-flight/finalize: `scripts/129`, `scripts/130`. Fleet: `scripts/31` (worker),
 `scripts/32` (verify). Panels: `scripts/127`, `scripts/128`. Canonical access: `src/morgoth_slowing/io/canonical.py`.
 Suggested tag: `git tag run-v6` after committing these.
 
-## S3 location (fill at upload time)
+## S3 location
 - BDSP recordings: streamed from `s3:bdsp-opendata-repository/EEG/bids/` (open-data, not copied).
-- Panel sources: `s3://<run-bucket>/panels/` (uploaded by `scripts/128` + `aws s3 sync`; see fleet_launch §0b).
-- Run outputs: `s3://<run-output-bucket>/` (segment_master/summary + ledger; fleet_launch §1b).
+- **Panel sources: `s3://bdsp-opendata-credentialed/morgoth-slowing/panels/`** (occasionnoise/*.edf +
+  moe/*.mat; uploaded 2026-07-11; set `PANEL_ROOT` to this). Credentialed bucket — needs BDSP write/read keys.
+- Run outputs: `s3://<run-output-bucket>/` (segment_master/summary + ledger; fleet_launch §1b) — TBD at run time.

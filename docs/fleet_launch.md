@@ -10,7 +10,7 @@ export MORGOTH2_DIR=/path/to/morgoth2 MORGOTH_DEVICE=cuda PILOT_VENV=$(which pyt
 export MORGOTH_SHIMS=$(pwd)/scripts/shims RCLONE_BIN=$(which rclone)
 export KMP_DUPLICATE_LIB_OK=TRUE RUN_GATE=1 PYTHONPATH=src
 export MANIFEST=data/manifest/report_manifest_v6.parquet     # KNOWN-GOOD: every BIDS row provably resolves (§0a)
-export PANEL_ROOT=s3://<run-bucket>/panels                   # where §0b uploaded the panel EDF/MAT files
+export PANEL_ROOT=s3://bdsp-opendata-credentialed/morgoth-slowing/panels   # panels (uploaded, §0b)
 # link the 6 checkpoints into $MORGOTH2_DIR/checkpoints/ (see fleet_dependencies.md §3)
 ```
 BDSP recordings stream from the open-data S3 bucket via rclone (worker `resolve_edf`). The **panel** EEGs
@@ -37,9 +37,9 @@ The 1,861 panel rows in `report_manifest_v5` carry a **relative** `source_path`
 ```bash
 # on the local machine that downloaded/repaired the panels (has the scratchpad):
 PYTHONPATH=src python scripts/128_stage_panels.py        # -> panels/occasionnoise/*.edf + panels/moe/*.mat (~2.5 GB)
-aws s3 sync panels/ s3://<run-bucket>/panels/            # one-time upload; same tree the worker pulls from
+aws s3 sync panels/ s3://bdsp-opendata-credentialed/morgoth-slowing/panels/   # DONE 2026-07-11 (credentialed)
 ```
-Then on the box set `PANEL_ROOT=s3://<run-bucket>/panels` (§0). `fetch_panel` supports `s3://…` (via
+Then on the box set `PANEL_ROOT=s3://bdsp-opendata-credentialed/morgoth-slowing/panels` (§0). `fetch_panel` supports `s3://…` (via
 `aws s3 cp`), an rclone remote (`remote:prefix`, via rclone), or a local dir — so for a **local** pilot use
 `PANEL_ROOT=$(pwd)/panels` and skip the upload. If `PANEL_ROOT` is unset, panel rows are skipped
 (`nopanelfile`) and only BDSP recordings featurize.
