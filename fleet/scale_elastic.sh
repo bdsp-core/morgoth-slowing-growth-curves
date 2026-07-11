@@ -10,7 +10,8 @@ TARGET=${1:-128}
 AMI=$(cat fleet/.ami_id)
 SUBNET=subnet-073fad6d014fa4f63; SG=sg-05daa9abca4b4bacc; KEY=morgoth-pilot-key
 HASH=$(git rev-parse --short HEAD)
-S3OUT="bdsp:bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/expansion"
+# FRESH prefix — the frozen v6 / segment_master run; NEVER the discarded expansion tree.
+S3OUT="bdsp:bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/segmaster_v6"
 CODE="bdsp:bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/code"
 UD=/tmp/ud/dyn.sh; mkdir -p /tmp/ud
 cat > "$UD" <<EOF
@@ -19,8 +20,14 @@ exec >> /var/log/morgoth-fleet.log 2>&1
 sudo -u ubuntu bash -lc '
 cd ~/morgoth-slowing-growth-curves && source .venv/bin/activate
 rclone copyto $CODE/batch_worker.py fleet/batch_worker.py
-export PILOT_VENV=\$(command -v python) PYTHONPATH=src PYTHONUNBUFFERED=1 MORGOTH_DEVICE=cuda MORGOTH2_DIR=/home/ubuntu/morgoth2 RCLONE_BIN=rclone CODE_COMMIT=$HASH
-export DYNAMIC=1 SEED=\$RANDOM\$RANDOM S3_OUT=$S3OUT MANIFEST_LOCAL=/home/ubuntu/morgoth-slowing-growth-curves/fleet/manifest.jsonl
+export MORGOTH2_DIR=/home/ubuntu/morgoth2
+export PILOT_VENV=\$MORGOTH2_DIR/.venv/bin/python   # Morgoth OWN venv (two-venv; NOT the worker venv)
+export PYTHONPATH=src PYTHONUNBUFFERED=1 MORGOTH_DEVICE=cuda RCLONE_BIN=rclone CODE_COMMIT=$HASH
+export KMP_DUPLICATE_LIB_OK=TRUE RUN_GATE=1 GATE_STEP=5
+export MANIFEST=/home/ubuntu/morgoth-slowing-growth-curves/data/manifest/report_manifest_v6.parquet
+export PANEL_ROOT=bdsp:bdsp-opendata-credentialed/morgoth-slowing/panels   # rclone remote (reuses bdsp: creds)
+export OUTPUT_ROOT=/home/ubuntu/out; mkdir -p \$OUTPUT_ROOT
+export DYNAMIC=1 SEED=\$RANDOM\$RANDOM S3_OUT=$S3OUT
 timeout 216000 python fleet/batch_worker.py
 '
 shutdown -h now
