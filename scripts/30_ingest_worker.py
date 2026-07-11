@@ -23,11 +23,10 @@ from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.io import savemat
 
-# reuse the validated helpers from scripts/26 (select, edf_path, rclone, stage_dir, feature modules)
-_spec = importlib.util.spec_from_file_location("p26", str(Path(__file__).with_name("26_slowing_ingest_pilot.py")))
-p26 = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(p26)
-ex, rec, af, st = p26.ex, p26.rec, p26.af, p26.st
-load_edf_referential = p26.load_edf_referential
+# shared fleet-ingest helpers, lifted from the legacy scripts/26 into src (analysis_plan.md §12.1)
+from morgoth_slowing.fleet import ingest as fi
+ex, rec, af, st = fi.ex, fi.rec, fi.af, fi.st
+load_edf_referential = fi.load_edf_referential
 
 OUTDIR = Path("data/derived/expansion")
 FEAT, STG, PROV, DONE = OUTDIR / "features", OUTDIR / "stages", OUTDIR / "provenance", OUTDIR / "done"
@@ -38,7 +37,7 @@ COMMIT = os.environ.get("CODE_COMMIT", "unknown")
 MAX_GB = float(os.environ.get("EXPANSION_MAX_GB", "3.0"))
 RUN_GATE = os.environ.get("RUN_GATE", "1") == "1"        # focal/gen/normal Morgoth gate probs
 GATE_STEP = os.environ.get("GATE_STEP", "10")            # window step (s) for gate heads (recording-level agg)
-PROG = p26.OUT / "progress.jsonl"
+PROG = fi.OUT / "progress.jsonl"
 
 
 def run_gate(sin, sout, rid):
@@ -46,17 +45,17 @@ def run_gate(sin, sout, rid):
     -> NORMAL/FOC_SLOWING/GEN_SLOWING EEG-level aggregators. Returns per-recording probabilities."""
     def _win(ckpt, ds, outdir):
         subprocess.run(["bash", "-lc",
-            f"cd {p26.M2} && OMP_NUM_THREADS=1 {p26.VENV} finetune_classification.py --abs_pos_emb "
+            f"cd {fi.M2} && OMP_NUM_THREADS=1 {fi.VENV} finetune_classification.py --abs_pos_emb "
             f"--model base_patch200_200 --predict --task_model checkpoints/{ckpt} --dataset {ds} "
             f"--data_format mat --sampling_rate 0 --already_format_channel_order no "
             f"--already_average_montage no --allow_missing_channels yes --max_length_hour no "
             f"--eval_sub_dir {sin} --eval_results_dir {outdir} --prediction_slipping_step_second {GATE_STEP} "
-            f"--polarity 1 --rewrite_results no --num_workers 0 --device {p26.DEVICE}"],
+            f"--polarity 1 --rewrite_results no --num_workers 0 --device {fi.DEVICE}"],
             check=True, capture_output=True)
 
     def _eeg(ckpt, ds, csvdir, resdir):
         subprocess.run(["bash", "-lc",
-            f"cd {p26.M2} && OMP_NUM_THREADS=1 {p26.VENV} EEG_level_head.py --mode predict "
+            f"cd {fi.M2} && OMP_NUM_THREADS=1 {fi.VENV} EEG_level_head.py --mode predict "
             f"--task_model checkpoints/{ckpt} --dataset {ds} --test_csv_dir {csvdir} --result_dir {resdir}"],
             check=True, capture_output=True)
 
@@ -91,7 +90,7 @@ def process_one(r, work):
     rid = f"{r.SiteID}{r.pid}_{r.date}"
     if (DONE / f"{rid}.done").exists():
         return "skip"
-    ep = p26.edf_path(r)
+    ep = fi.edf_path(r)
     if not ep:
         return "noedf"
     sin, sout = work / "in", work / "out"
@@ -99,7 +98,7 @@ def process_one(r, work):
         shutil.rmtree(d, ignore_errors=True); d.mkdir(parents=True)
     local = work / f"{rid}.edf"
     t_start = time.time()
-    p26.rclone(["copy", f"bdsp:{ep}", str(work)])
+    fi.rclone(["copy", f"bdsp:{ep}", str(work)])
     src = next(work.glob("*.edf")); src.rename(local)
     # size guard (bogus-duration multi-day recordings)
     import pyedflib
@@ -124,7 +123,7 @@ def process_one(r, work):
     savemat(str(sin / f"{rid}.mat"), {"Fs": float(fs), "channels": np.array(chs),
             "data": np.ascontiguousarray(data.T)}, do_compression=True)
     del data; gc.collect()
-    p26.stage_dir(str(sin), str(sout))
+    fi.stage_dir(str(sin), str(sout))
     scsv = sout / f"{rid}.csv"
     pred = pd.read_csv(scsv).pred_class.to_numpy() if scsv.exists() else None
     # Morgoth gate (focal/gen/normal) on the same .mat, before it is dropped
@@ -181,7 +180,7 @@ def select_balanced(n):
     """INTERLEAVE the three labels (focal, gen, normal), each drawn round-robin across age bands, so the
     processing order is label-balanced AND age-spread throughout (not clustered by label). Excludes
     already-.done recordings for resumability."""
-    j = p26.eligible().copy()
+    j = fi.eligible().copy()
     j["plabel"] = np.where(j.rnorm == 1, "normal", np.where(j.rfoc == 1, "focal_slow", "general_slow"))
     j["ageband"] = pd.cut(pd.to_numeric(j.AgeAtVisit, errors="coerce"), bins=AGE_BINS)
     j["rid"] = j.SiteID.astype(str) + j.pid.astype(str) + "_" + j.date.astype(str)
