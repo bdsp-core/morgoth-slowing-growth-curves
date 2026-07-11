@@ -28,7 +28,10 @@ prog = Path("results/case2_clip_progress.txt")
 
 
 def pick_clean_clip(seg, fs):
-    """Longest low-artifact window of CLIP_SEC; fall back to the recording middle."""
+    """A clip WITHIN the analysis window (first 600 s = the Growth_curves extract our field uses), so the
+    reviewer sees exactly what we measured. Prefer a low-artifact, non-flat sub-window; never a flat one."""
+    ANALYSIS = int(600 * fs)
+    seg = seg[:, :ANALYSIS]                      # only the window our features come from
     N = seg.shape[1]; W = int(20 * fs)
     nwin = max(1, N // W)
     clean = np.ones(nwin, bool)
