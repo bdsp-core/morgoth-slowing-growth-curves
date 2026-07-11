@@ -47,14 +47,16 @@ for the focal subset (SAP §5.4).
 | `SEF95` | float32 | Hz | spectral edge frequency (95% of power below) |
 | `median_freq` | float32 | Hz | median (SEF50) frequency |
 | `peak_freq` | float32 | Hz | dominant/peak frequency |
-| `BSI_global` | float32 | 0–1 | van Putten & Tavy 2004 global symmetry index; **whole_head row only** (NaN elsewhere) |
-| `pBSI` | float32 | 0–1 | revised pairwise BSI (van Putten 2007); **whole_head row only** |
-| `pdBSI` | float32 | −1..1 | directed/signed pairwise BSI (+ = right>left); **whole_head row only** |
+| `Q_SLOWING` | float32 | ratio | P[2–8]/P[2–25] diffuse slowing (Lodder & van Putten 2013; abn>0.6); **whole_head row only** |
+| `Q_APG` | float32 | 0–1 | P_ant/(P_ant+P_pos) alpha A–P gradient (Lodder & van Putten 2013); **whole_head row only** |
+| `r_sBSI` | float32 | 0–1 | revised **power-based** BSI, hemisphere-mean per PSD bin 0.5–25 Hz (van Putten 2007); **whole_head row only** |
+| `pdBSI` | float32 | −1..1 | our signed extension of r_sBSI (+ = right>left → side); **whole_head row only** |
+| `Q_ASYM` | float32 | 0–1 | normalized homologous-pair spectral difference (Lodder & van Putten 2013); populated on the **8 pair rows** (Fp1-Fp2 … O1-O2) |
 | `p_slowing` | float32 | 0–1 | per-segment Morgoth gate: P(pathologic slowing) |
 | `p_focal` | float32 | 0–1 | per-segment Morgoth gate: P(focal) |
 | `p_generalized` | float32 | 0–1 | per-segment Morgoth gate: P(generalized) |
 
-Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usable = ~artifact_flag`. van Putten-lineage metrics (§8.7): `DTABR`,`ADR`,`SEF95`,`median_freq`,`peak_freq` are per-region; `BSI_global`,`pBSI`,`pdBSI` are bilateral and populated only on the `whole_head` row.
+Band edges use the corrected contiguous set (no 7–8 Hz gap; SAP §4.5). `usable = ~artifact_flag`. van Putten-lineage metrics (§8.7): `DTABR`,`ADR`,`SEF95`,`median_freq`,`peak_freq` are per-region; `Q_SLOWING`,`Q_APG`,`r_sBSI`,`pdBSI` are bilateral (whole_head row only); `Q_ASYM` is per homologous pair.
 
 ---
 
