@@ -2,24 +2,24 @@
 
 | Group | n recordings | Age, median [IQR] | Sex |
 |---|---|---|---|
-| All recordings | 27,012 | 50.7 [23.8–67.9] | 50% F |
-|   Routine EEG | 10,966 | 52.5 [25.2–68.8] | 49% F |
-|   Overnight EEG | 16,046 | 49.5 [22.9–67.2] | 50% F |
-| Clean-normal (union reference) | 20,892 | 47.0 [21.5–65.7] | 50% F |
-|   Routine clean-normal | 4,846 | 37.5 [19.1–60.6] | 49% F |
-|   Overnight clean-normal | 16,046 | 49.5 [22.9–67.2] | 50% F |
-| Abnormal (any) | 5,557 | 60.0 [35.9–72.5] | 50% F |
-|   Pathologic generalized slowing | 3,942 | 64.4 [49.3–74.5] | 48% F |
-|   Focal slowing | 3,727 | 61.4 [41.9–73.0] | 51% F |
+| All recordings | 16,688 | 48.0 [22.0–66.0] | 49% F |
+|   Routine EEG | 12,838 | 45.0 [20.0–65.0] | 48% F |
+|   Overnight EEG | 3,850 | 56.0 [32.0–69.0] | 50% F |
+| Clean-normal (union reference) | 6,788 | 37.0 [18.0–59.0] | 48% F |
+|   Routine clean-normal | 6,156 | 37.0 [19.0–59.0] | 48% F |
+|   Overnight clean-normal | 632 | 37.0 [16.0–57.0] | 52% F |
+| Abnormal (any) | 8,811 | 54.0 [25.0–70.0] | 49% F |
+|   Pathologic generalized slowing | 3,680 | 58.0 [32.0–72.0] | 47% F |
+|   Focal slowing | 5,581 | 56.0 [28.0–70.0] | 51% F |
 
 **Sleep-stage coverage (recordings with ≥1 scored segment):**
 
-| Stage | N1 | N2 | N3 | REM | W |
-|---|---|---|---|---|---|
-| n | 25,205 | 24,861 | 19,838 | 23,300 | 26,793 |
+| Stage | N1 | N2 | N3 | Other | REM | W |
+|---|---|---|---|---|---|---|
+| n | 15,285 | 14,085 | 7,707 | 129 | 13,459 | 16,799 |
 
 **Clean-normal reference by age band:**
 
 | Band | [0, 1) | [1, 3) | [3, 13) | [13, 18) | [18, 45) | [45, 65) | [65, 120) |
 |---|---|---|---|---|---|---|---|
-| n | 969 | 736 | 1,817 | 969 | 5,517 | 5,461 | 5,423 |
+| n | 184 | 368 | 659 | 408 | 2,285 | 1,618 | 1,266 |

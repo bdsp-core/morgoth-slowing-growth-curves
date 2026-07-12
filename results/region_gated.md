@@ -1,24 +1,24 @@
 # Gated region localization (split by slowing type)
 
 
-## (A) FOCAL-only lobe localization (n=2779) — acc 0.364, macro-F1 0.216
+## (A) FOCAL-only lobe localization (n=2423) — acc 0.527, macro-F1 0.252
 
 | region    |   precision |   recall |    f1 |    n |
 |:----------|------------:|---------:|------:|-----:|
-| temporal  |       0.877 |    0.389 | 0.539 | 2157 |
-| frontal   |       0.151 |    0.275 | 0.195 |  280 |
-| central   |       0.09  |    0.264 | 0.134 |  148 |
-| parietal  |       0.074 |    0.276 | 0.117 |  105 |
-| occipital |       0.056 |    0.303 | 0.094 |   89 |
+| temporal  |       0.859 |    0.574 | 0.688 | 1778 |
+| frontal   |       0.252 |    0.398 | 0.309 |  399 |
+| central   |       0.192 |    0.415 | 0.262 |  236 |
+| parietal  |       0     |    0     | 0     |    4 |
+| occipital |       0     |    0     | 0     |    6 |
 
 
 ## (B) GENERALIZED: anterior (FIRDA-like) vs posterior (OIRDA-like) predominance
 
-- n=192 (anterior/frontal 172, posterior 20)
+- n=358 (anterior/frontal 184, posterior 174)
 
-- anterior-minus-posterior delta gradient: AUROC **0.612**
+- anterior-minus-posterior delta gradient: AUROC **0.548**
 
-- supervised LR on channel deviations: AUROC **0.852**
+- supervised LR on channel deviations: AUROC **0.607**
 
 
 _For generalized slowing, side is undefined but A-P predominance is a real, reportable axis (frontal-predominant vs posterior-predominant intermittent rhythmic delta)._

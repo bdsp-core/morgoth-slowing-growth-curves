@@ -2,13 +2,13 @@
 
 For each region: AUROC separating recordings with slowing in that region from normal controls, using that region's age-adjusted slowing deviation (independent of other regions).
 
-| region    |   n_pos |   auroc |    lo |    hi |
-|:----------|--------:|--------:|------:|------:|
-| temporal  |    2415 |   0.705 | 0.693 | 0.718 |
-| frontal   |     509 |   0.668 | 0.643 | 0.692 |
-| central   |     244 |   0.696 | 0.663 | 0.733 |
-| parietal  |     120 |   0.742 | 0.7   | 0.785 |
-| occipital |     122 |   0.747 | 0.694 | 0.792 |
+| region    |   n_pos |   auroc |      lo |      hi |
+|:----------|--------:|--------:|--------:|--------:|
+| temporal  |    1844 |   0.662 |   0.647 |   0.676 |
+| frontal   |     409 |   0.669 |   0.641 |   0.696 |
+| central   |     239 |   0.692 |   0.658 |   0.729 |
+| parietal  |       4 | nan     | nan     | nan     |
+| occipital |       6 | nan     | nan     | nan     |
 
 
 _This is the clinically natural 'can we see region-X slowing at all?' question; unlike the Each region is scored independently of the others; there is no forced-choice classification. 
