@@ -1,12 +1,12 @@
 # Severity & prevalence — RECALIBRATED
 
-Matched 13615 recordings with a scoped report adjective.
+Matched 16597 recordings with a scoped report adjective.
 
 | measure | all matched | cleanly paired only |
 |---|---|---|
-| severity: OLD peak_z (max) | ρ=-0.010 (p=2.4e-01, n=13615) | **ρ=-0.025 (p=4.8e-03, n=12814)** |
-| severity: robust p90 z | ρ=-0.027 (p=1.8e-03, n=13615) | **ρ=-0.039 (p=1.1e-05, n=12814)** |
-| severity: robust + focal-regional | ρ=0.015 (p=9.1e-02, n=13615) | **ρ=0.001 (p=9.4e-01, n=12814)** |
-| prevalence: % segments z>2 | ρ=0.146 (p=5.1e-66, n=13615) | **ρ=0.144 (p=3.0e-60, n=12814)** |
+| severity: OLD peak_z (max) | ρ=0.010 (p=2.0e-01, n=16597) | **ρ=-0.003 (p=7.3e-01, n=15602)** |
+| severity: robust p90 z | ρ=-0.001 (p=8.6e-01, n=16597) | **ρ=-0.010 (p=2.0e-01, n=15602)** |
+| severity: robust + focal-regional | ρ=0.038 (p=8.6e-07, n=16597) | **ρ=0.028 (p=4.3e-04, n=15602)** |
+| prevalence: % segments z>2 | ρ=0.159 (p=6.5e-95, n=16597) | **ρ=0.161 (p=4.1e-91, n=15602)** |
 
-**Quantile-mapped ordinal severity** (cuts at [1.54, 1.91, 2.84]): exact accuracy 0.10, within-1 0.73, ρ = 0.024 (n=12814)
+**Quantile-mapped ordinal severity** (cuts at [1.5, 1.81, 2.48]): exact accuracy 0.10, within-1 0.72, ρ = 0.039 (n=15602)

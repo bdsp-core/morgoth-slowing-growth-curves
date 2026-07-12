@@ -28,19 +28,12 @@ def ordinal(text, table):
 
 
 def main():
-    use = ["SiteID", "BDSPPatientID", "reports", "impression", "slowing"]
-    rows = []
-    for ch in pd.read_csv(REPORTS, usecols=use, chunksize=100000, dtype=str, low_memory=False):
-        t = (ch.reports.fillna("") + " " + ch.impression.fillna(""))
-        m = t.str.contains("slow", case=False)
-        if m.any():
-            s = ch[m].copy(); s["txt"] = t[m]
-            rows.append(s)
-    r = pd.concat(rows)
-    r["bdsp_id"] = r.SiteID.astype(str) + r.BDSPPatientID.astype(str).str.replace(r"\.0$", "", regex=True)
-    r["rep_sev"] = r.txt.map(lambda x: ordinal(x, SEV))
-    r["rep_frq"] = r.txt.map(lambda x: ordinal(x, FRQ))
-    r = r.dropna(subset=["rep_sev", "rep_frq"], how="all").drop_duplicates("bdsp_id")
+    # SAP §11 / new data: severity+frequency ordinals are derived from the MANIFEST report text by
+    # scratchpad/adapter_segment_tables.build_text_tables -> data/derived/report_ordinals.parquet.
+    # (The old external EEGs_And_Reports.csv scratchpad is gone and is not a permitted source.)
+    r = pd.read_parquet("data/derived/report_ordinals.parquet")
+    r = r[(r.rep_sev > 0) | (r.rep_frq > 0)].drop_duplicates("bdsp_id")
+    r["rep_sev"] = r.rep_sev.replace(0, np.nan); r["rep_frq"] = r.rep_frq.replace(0, np.nan)
 
     sc = pd.read_parquet("data/derived/scores_v2.parquet")
     df = sc.merge(r[["bdsp_id", "rep_sev", "rep_frq"]], on="bdsp_id", how="inner")
