@@ -37,7 +37,36 @@
 > whole recording once and re-run the descriptor pipeline. **Every descriptor-based number below carries this
 > asterisk** (detection does not — it already uses whole recordings).
 
-> **⚠️ MAJOR REVISION IN PROGRESS (2026-07-07).** This draft predates the overnight-expansion + recompute work and is out of date in several structural ways. Before the next rewrite, fold in: (a) the cohort now includes **~16,000 overnight recordings** and the **N3/deep-sleep gap is filled** (no longer "planned"); (b) norms are **sex-pooled** — conditioning on sex changes detection by ΔAUROC ≤0.002 (`scripts/74`); (c) growth curves use **GAMLSS/LMS (BCT, age-varying skewness)**, not ad-hoc kernel quantiles; (d) "normal" is the **union of both report-normal cohorts** (routine + overnight), justified because it costs no detection power (`results/union_normal_detection.md`), with a full routine-vs-overnight vigilance/population + pipeline-control analysis (`results/pipeline_control.md`); (e) **all recordings are now featurized by one identical pipeline** (the cohort recompute), so the "MATLAB unavailable / r=0.89–0.95" framing is replaced by a single reproducible extractor; (f) new **Figure 1 keystone** (growth curves × top features). All numbers below (AUROCs, Ns) will be refreshed on the fully-recomputed data. See `docs/status_2026-07-06.md` for the full change list and path to publication.
+> ## ⚠️ REVISION STATUS (2026-07-13) — read before citing any number below
+>
+> The clean-room fleet run (v6, 27,478/27,524 recordings) is **complete**, and the analysis was rebuilt on
+> it alone (zero reuse of legacy tables). **Three findings below materially changed, and two of them
+> invalidate headline claims in earlier drafts.** The Abstract, §3.1 (detection) and the new §3.1b (van
+> Putten benchmark) have been rewritten against the new run. Sections not yet refreshed are marked
+> **[LEGACY — pending recompute]**; do not cite those numbers.
+>
+> **1. A report-label bug inflated every detection number.** The old extractor regexed the impression
+> *concatenated with the whole report body*, so `has_gen_slow` fired on purely descriptive text such as
+> *"generalized slowing, likely related to intermittent drowsiness"* — i.e. **physiologic** slowing in a
+> **normal** study. **5,528 recordings** were mislabelled pathologic. Corrected rules (`label_rederive_sap.py`):
+> focal slowing is always pathologic; generalized slowing is pathologic **only if the report names it among
+> the abnormalities**; abnormal-without-slowing is its own stratum. Positives fall 3,883 → 2,294 (W cell).
+>
+> **2. The headline detection AUROCs fall.** Generalized-vs-clean-normal, routine reference:
+> **W 0.848 → 0.784**, **N1 0.875 → 0.806** (N2 0.791→0.739, N3 0.758→0.643, REM 0.825→0.771).
+> Nested-CV sparse score 0.933 → **0.844**. These are the honest numbers on correct labels.
+>
+> **3. The "vigilance-matched norms" claim does not survive.** It rested on a large routine-vs-overnight
+> reference gap (W 0.848 vs 0.821; N1 0.875 vs 0.791). On corrected labels that gap **collapses to
+> Δ ≈ 0.003 (W) and 0.016 (N1)**; only the deep-sleep stages retain a modest effect (N2 Δ0.022, N3 Δ0.047).
+> The original "systematic degradation" was itself an artifact of the label bug — physiologic *drowsy*
+> slowing scored as pathologic is exactly what penalises a drowsy reference. **This claim must be
+> withdrawn or restated as a small, stage-dependent effect.**
+>
+> **4. What replaces the headline: the Morgoth gate decisively outperforms the published qEEG benchmark.**
+> On 27,003 recordings (§3.1b), Morgoth `p_slowing` reaches **0.881 abnormal / 0.918 generalized / 0.875
+> focal**, versus the best van Putten metric at **0.698 / 0.751 / 0.726** — a margin of +0.15 to +0.18 AUROC.
+> This, not the normative-deviation AUROC, is now the strongest result in the paper.
 
 **Target venue:** clinical neurophysiology / digital-medicine (e.g., *Clinical Neurophysiology*, *Brain Communications*, *npj Digital Medicine*), accompanied by an open-source Python package and a published per-recording label set.
 
@@ -49,7 +78,7 @@
 
 **Methods.** We assembled **~27,000 clinical EEG recordings** — ~11,000 routine studies plus ~16,000 overnight/long-term recordings, from a single academic health system — spanning infancy to >90 years, and processed *every* recording through **one identical reproducible pipeline** (referential-to-bipolar re-montaging, automated artifact rejection, multitaper spectral estimation, band powers, delta/alpha and theta/alpha ratios [DAR, TAR], homologous-channel asymmetry; delta band 1–4 Hz). A deep-learning stager assigned a sleep stage to every 15-second segment; the overnight recordings fill the deep-sleep (N3) coverage that routine clips cannot. We estimated **lifespan × sleep-stage percentile "growth curves"** for each feature using GAMLSS/LMS (Box–Cox-t with age-varying skewness), on precise OMOP-derived fractional ages. **Sexes are pooled** — conditioning on sex changes abnormality discrimination by ΔAUROC ≤0.002 in every setting. "Normal" is the **union of both report-normal cohorts** (routine + overnight), a broad, conservative clinical reference that we show costs no detection power; a routine-vs-overnight comparison, plus a same-recording pipeline control, establishes that residual cohort differences are physiological (vigilance state + population), not computational. Each recording is scored as deviation-from-normal via segment z-scores, prevalence, conditional severity, burden, persistence, and stage-accentuation; a Morgoth foundation-model gate decides *whether/what* to report and our normative features supply the description, validated against free-text reports.
 
-**Results.** The curves reproduced known development and aging (absolute delta falls steeply through childhood to a plateau by ~30 years) and quantified the stage physiology (relative delta rises with sleep depth W ≈ N1 < N2 < N3, REM intermediate). **Detection is vigilance-dependent, which the normative reference must respect.** Because a routine EEG is recorded under active alerting whereas overnight "wake" is unconstrained (and often drowsy, with physiologically high delta), the choice of normal reference matters: age-adjusted whole-head deviation separated pathologic generalized slowing from clean-normal at **AUROC 0.85 (W) and 0.88 (N1)** using a **routine (alert) reference**, but only 0.79–0.82 using an overnight (drowsy) reference — a systematic degradation across every stage (abnormal 0.77–0.80, focal 0.77–0.80 with the routine reference, likewise degraded overnight). N1 was the single most discriminating stage; N2/N3 were weaker. This makes vigilance-matched norms, not merely age/sex-matched norms, part of the method. Age- and sex-adjusted discrimination was led by TAR, delta and theta power, and homologous asymmetry (TAR whole-head AUC **0.814** for normal vs generalized and 0.72 for normal vs focal). This generalized-slowing figure rose from 0.73 to 0.81 after we re-derived the report labels from the raw notes and restricted the generalized-slowing class to *pathologic* slowing — a text classifier distilled from LLM labels separated pathologic diffuse slowing from physiologic drowsy/hyperventilation slowing (5-fold CV AUROC 0.96), which had inflated the class and diluted the signal — scored against a clean-normal reference that roughly doubled (2,517→4,869 recordings). Our deviation features tracked the expert-calibrated detector (Pearson r ≈ 0.64–0.69; distillation R² ≈ 0.46). **We measured the human ceiling.** In an independent panel of 18 electroencephalographers reading 100 EEGs, slowing was the *least* reliable judgement made: between-rater Fleiss κ = 0.373 (focal) and 0.450 (generalized), versus 0.585 and 0.739 for epileptiform discharges; a reader re-reading the same EEG reproduced their own slowing call at only κ = 0.563 / 0.642. Applied unchanged to those 100 EEGs as an **external test set** — no refitting, no threshold tuning — our stage-matched deviation score reached **AUROC 0.903 [0.832, 0.958]** for generalized slowing against the expert majority, and after leave-one-out recalibration exceeded the average expert on balanced accuracy (0.835 vs 0.809), though *not* at the expert's own operating point (sensitivity 0.684 vs 0.735 at matched specificity). Our continuous score tracked the **proportion of experts who saw the slowing** at Spearman ρ = 0.652, versus ρ = 0.050 against the reader's severity adjective — the score is a measure of conspicuity, and it is the adjective, not the measurement, that is unreliable. **Band determination is near-chance** (κ 0.01–0.07 against per-expert band calls) and we do not claim it. Localization, evaluated as gated per-axis tasks rather than lumped labels, was strong for focal lateralization (left-vs-right AUROC 0.87, band-matched) and temporal-lobe localization (F1 0.64), modest for generalized anterior-vs-posterior predominance (AUROC 0.66), and data-limited for rarer posterior foci. Gate detection was age-dependent (abnormal-vs-normal AUROC 0.79 in children to 0.95 in older adults; report-flag AUCs abnormal 0.90, focal 0.79, generalized 0.75).
+**Results.** The curves reproduced known development and aging (absolute delta falls steeply through childhood to a plateau by ~30 years) and quantified the stage physiology (relative delta rises with sleep depth W < N1 < N2 < N3, REM intermediate). **Correct labels matter more than any modelling choice.** The report-derived generalized-slowing class, as conventionally extracted, is contaminated by *physiologic* slowing: text such as *"generalized slowing, likely related to drowsiness"* in an otherwise normal study fires a naive extractor. Restricting the pathologic class to slowing the report **names among its abnormalities** reclassified **5,528 recordings** and lowered every detection estimate. On the corrected labels, age-adjusted whole-head deviation separated pathologic generalized slowing from clean-normal at **AUROC 0.784 in W (TAR) and 0.806 in N1 (log delta)** (N2 0.739, REM 0.771, N3 0.643; positives n = 2,294, held-out routine-normal negatives n = 1,839); a cross-validated sparse linear score reached **0.844** [0.827, 0.858]. We had previously reported 0.848/0.875 on the contaminated class, and we report the correction explicitly: **the inflated figures were an artifact of physiologic slowing scored as pathologic.** For the same reason we **withdraw the claim that normative references must be vigilance-matched**: on corrected labels the routine-versus-overnight reference gap collapses to ΔAUROC ≈ **0.003** (W) and **0.016** (N1), surviving only as a modest deep-sleep effect (N2 Δ0.022, N3 Δ0.047). The apparent "systematic degradation" was the label bug — drowsy physiologic slowing scored as pathologic is precisely what penalises a drowsy reference. **The foundation-model gate, not the normative deviation score, is the strongest detector, and it decisively outperforms the published qEEG benchmark.** Benchmarked head-to-head on 27,003 recordings against the van Putten family of slowing/asymmetry indices computed faithfully from the same signals, Morgoth `p_slowing` reached **AUROC 0.881 [0.876–0.885] (any slowing), 0.918 [0.913–0.923] (generalized) and 0.875 [0.870–0.881] (focal)**, versus the best published metric at **0.698 / 0.751 / 0.726** (r-sBSI, age-normed Q_SLOWING, r-sBSI respectively) — a margin of **+0.15 to +0.18 AUROC**. Age-conditioning his metrics on our normative curves improved them (e.g. Q_SLOWING 0.702 → 0.751 for generalized), confirming that lifespan normalization is a real gain — but it does not close the gap to the learned representation. The normative deviation field retains its role as the *description* layer: it is calibrated (clean-normals: prevalence 0.040 against a nominal 0.05; median amount −0.16 SD) and graded by the expert call (clean-normal −0.13 → focal +0.61 → generalized +0.99 SD). **We measured the human ceiling. [LEGACY — panel numbers below pending recompute on the new run.]** In an independent panel of 18 electroencephalographers reading 100 EEGs, slowing was the *least* reliable judgement made: between-rater Fleiss κ = 0.373 (focal) and 0.450 (generalized), versus 0.585 and 0.739 for epileptiform discharges; a reader re-reading the same EEG reproduced their own slowing call at only κ = 0.563 / 0.642. Applied unchanged to those 100 EEGs as an **external test set** — no refitting, no threshold tuning — our stage-matched deviation score reached **AUROC 0.903 [0.832, 0.958]** for generalized slowing against the expert majority, and after leave-one-out recalibration exceeded the average expert on balanced accuracy (0.835 vs 0.809), though *not* at the expert's own operating point (sensitivity 0.684 vs 0.735 at matched specificity). Our continuous score tracked the **proportion of experts who saw the slowing** at Spearman ρ = 0.652, versus ρ = 0.050 against the reader's severity adjective — the score is a measure of conspicuity, and it is the adjective, not the measurement, that is unreliable. **Band determination is near-chance** (κ 0.01–0.07 against per-expert band calls) and we do not claim it. Localization, evaluated as gated per-axis tasks rather than lumped labels, was strong for focal lateralization (left-vs-right AUROC 0.87, band-matched) and temporal-lobe localization (F1 0.64), modest for generalized anterior-vs-posterior predominance (AUROC 0.66), and data-limited for rarer posterior foci. Gate detection was age-dependent (abnormal-vs-normal AUROC 0.79 in children to 0.95 in older adults; report-flag AUCs abnormal 0.90, focal 0.79, generalized 0.75).
 
 **Conclusions.** To our knowledge this is the first large-scale, lifespan- and sleep-stage-resolved, deviation-from-normal instrument for EEG slowing, whose outputs are expressed in — and validated against — the language of clinical EEG reports. We release an open, reproducible package and a per-recording label set.
 
@@ -115,7 +144,7 @@ Reports reach us in a table that was joined to EEGs **at the patient level** ups
 
 We assign each report to the EEG nearest it in time, and define a recording as **cleanly paired** when its report is claimed by no other EEG, or when it is that report's nearest-in-time owner. **82.8%** of recordings (10,255/12,379) are cleanly paired; 17.2% carry a borrowed report or none. All report-text-derived quantities (severity and frequency adjectives) are computed on cleanly-paired recordings only. Because the timing field is an order-to-study offset (median |Δ| = 14.2 h for uniquely-owned reports), this rule is a well-founded heuristic rather than a guarantee, and we flag it as a limitation (§5).
 
-Diagnosis flags (normal / abnormal / focal slowing / generalized slowing) come from a separate per-recording findings table and are substantially recording-specific (only 34.5% of multi-study patients share an identical flag vector across studies). Our labels combine that flag with a text-derived term, so contamination can leak in; we therefore re-ran the primary detection analysis on cleanly-paired recordings alone, and every AUROC moved within its bootstrap confidence interval (W 0.848→0.847; N1 0.875→0.872; N2 0.791→0.787; N3 0.758→0.749; REM 0.825→0.830; `results/detection_pairing_sensitivity.md`). This asymmetry is expected: a borrowed report belongs to the same patient, and abnormal-versus-normal status is stable across a patient's studies, whereas severity is not — which is precisely why detection is robust and severity grading (§3.4b) is not.
+Diagnosis flags (normal / abnormal / focal slowing / generalized slowing) come from a separate per-recording findings table and are substantially recording-specific (only 34.5% of multi-study patients share an identical flag vector across studies). Our labels combine that flag with a text-derived term, so contamination can leak in; we therefore re-ran the primary detection analysis on cleanly-paired recordings alone, and every AUROC moved within its bootstrap confidence interval (**[LEGACY figures, pre-label-correction:** W 0.848→0.847; N1 0.875→0.872; N2 0.791→0.787; N3 0.758→0.749; REM 0.825→0.830; `results/detection_pairing_sensitivity.md`**; this sensitivity analysis is pending re-run on the corrected labels]**). This asymmetry is expected: a borrowed report belongs to the same patient, and abnormal-versus-normal status is stable across a patient's studies, whereas severity is not — which is precisely why detection is robust and severity grading (§3.4b) is not. Note that report *pairing* was never the dominant label problem: the far larger error was the physiologic-versus-pathologic confusion in the text extractor itself (§3.1), which no pairing filter would have caught.
 
 ### 2.7 Deviation scoring
 
@@ -169,7 +198,65 @@ An initial obstacle was that the original cohort's sleep staging had been run on
 
 ### 3.4 Detection is vigilance-dependent, and the norm must match
 
-On the fully recomputed data (single extractor, single stager, all ~27,000 recordings), age-adjusted whole-head deviation separated **pathologic generalized slowing** from clean-normal at **AUROC 0.848 in W (TAR) and 0.875 in N1 (log delta)** when scored against a **routine (alert) reference** — N1 being the single most discriminating stage — and 0.825 in REM, 0.791 in N2, 0.758 in N3 (**Figure 2**; `results/vigilance_matched_detection.csv`; positives n = 3,883, held-out routine-normal negatives n = 1,451). Against an **overnight (drowsy) reference** the same contrasts fell systematically (N1 0.875 → 0.791; W 0.848 → 0.821; REM 0.825 → 0.754; N3 0.758 → 0.665), and the union reference behaved like the overnight one (which numerically dominates it). The same ordering held for **any abnormal** (N1 0.800 routine vs 0.736 overnight) and **focal slowing** (N1 0.803 vs 0.723). Because a routine EEG is recorded under active alerting while overnight wake is unconstrained, this is not a nuisance but a **method requirement: normative references must be vigilance-matched, not merely age- and sex-matched.** It also explains why a naive union-referenced score appears weak, and it recovers — on one uniform pipeline — the discrimination previously seen in the routine cohort alone (TAR whole-head 0.814).
+On the completed clean-room run (v6: 27,478 recordings, one extractor, one stager, zero reuse of prior
+tables) and the **corrected** slowing labels, age-adjusted whole-head deviation separated **pathologic
+generalized slowing** from clean-normal at **AUROC 0.784 in W (TAR)** and **0.806 in N1 (log delta)** —
+N1 remaining the single most discriminating stage — with 0.771 in REM, 0.739 in N2 and 0.643 in N3
+(**Figure 2**; `results/vigilance_matched_detection.csv`; positives n = 2,294, held-out routine-normal
+negatives n = 1,839). A cross-validated sparse linear score reached **0.844** [0.827, 0.858]
+(`results/sparse_slowing_score.md`).
+
+**We correct two claims from earlier drafts of this work.** First, the previously reported 0.848 (W) /
+0.875 (N1) were obtained on a **contaminated positive class**. The conventional report extractor matched
+slowing terms in the impression *concatenated with the whole report body*, so descriptive statements such
+as *"generalized slowing, likely related to intermittent drowsiness"* — physiologic slowing in a study the
+reader called normal — entered the pathologic class. Restricting the class to slowing that the report
+**names among its abnormalities** (§2.x; `label_rederive_sap.py`) reclassified **5,528 recordings** and
+moved the positive count from 3,883 to 2,294. The corrected figures above are lower and are the ones we
+stand behind. An ablation isolates the term: on the identical cell (W, whole-head, TAR), contaminated
+labels give 0.655 and corrected labels 0.766 with artifact segments dropped, against 0.649/0.620 when
+artifact segments are retained (`results/ablation_auroc.md`).
+
+Second — and following directly from the first — **we withdraw the claim that normative references must be
+vigilance-matched.** That claim rested on a large routine-versus-overnight reference gap (W 0.848 vs 0.821;
+N1 0.875 vs 0.791). On corrected labels the gap essentially disappears in the alert stages: **W 0.784
+(routine) vs 0.781 (overnight) vs 0.783 (union), ΔAUROC ≈ 0.003; N1 0.806 vs 0.790 vs 0.805, Δ ≈ 0.016.**
+A modest effect persists only in deeper sleep (N2 Δ 0.022; N3 Δ 0.047), where a drowsy reference plausibly
+does absorb genuine pathology. In hindsight the original result is easy to read: physiologic *drowsy*
+slowing miscounted as pathologic is exactly the error that penalises a *drowsy* reference, manufacturing an
+apparent vigilance effect. The honest statement is that the choice of normal reference is **second-order**
+next to the correctness of the labels, and that age-conditioning — not vigilance-conditioning — carries the
+normative benefit (§3.1b).
+
+### 3.1b The Morgoth gate decisively outperforms the published qEEG benchmark
+
+The strongest detector in this study is not the normative deviation score but the foundation-model gate, and
+the margin over the established quantitative-EEG literature is large. We benchmarked against the van Putten
+family of indices — the Brain Symmetry Index and its revised pairwise form, the diffuse-slowing index
+Q_SLOWING (reported at κ = 0.76 against expert readers), the anterior–posterior gradient Q_APG, the
+homologous-pair asymmetry Q_ASYM, and the slowing ratios DAR and (δ+θ)/(α+β) — computing each **faithfully
+from the same signals and the same artifact-flagged segments**, rather than re-deriving approximations
+(`scripts/producer_vanputten_sap.py`, `scripts/recompute_vanputten_fullcov.py`). Each was evaluated in three
+arms per the analysis plan: raw as published, age-conditioned against our normative curves, and against our
+gate. On **27,003 recordings** (`results/vanputten_fullcoverage.md`; **Table 6**):
+
+| Method | any slowing | generalized | focal |
+|---|---|---|---|
+| Q_SLOWING (raw; van Putten 2013) | 0.654 | 0.702 | 0.630 |
+| r-sBSI (raw; van Putten 2007) | 0.698 | 0.692 | 0.726 |
+| Q_ASYM (raw) | 0.684 | 0.690 | 0.697 |
+| Q_SLOWING (age-normed, ours) | 0.692 | **0.751** | 0.671 |
+| **Morgoth p_slowing (gate)** | **0.881** [0.876–0.885] | **0.918** [0.913–0.923] | **0.875** [0.870–0.881] |
+
+Two results follow. First, **lifespan normalization is a genuine gain even for existing instruments**:
+age-conditioning Q_SLOWING against our curves raises generalized detection from 0.702 to 0.751, and the
+same is true across the family — evidence that the normative framing, not merely a new classifier, adds
+information to metrics that have been used unnormalized for two decades. Second, **it does not close the
+gap**: the learned representation exceeds the best published metric by **+0.18 (any slowing), +0.17
+(generalized) and +0.15 (focal) AUROC**, far outside the bootstrap intervals. This is the central
+quantitative claim of the paper, and it is what motivates the two-stage architecture: the gate decides
+*whether* slowing is present, and the normative field — which is calibrated and graded by the expert call,
+but is a weaker detector — supplies the *description*.
 
 ### 3.4b Dose-response across report strata — and the failure to reproduce the severity *grade*
 
@@ -207,6 +294,13 @@ Read down the last two rows. Against clean-normals, and against the mixed compar
 **We therefore claim focal detection, not focal-versus-generalized discrimination.** This is consistent with the age/sex-adjusted single-feature analysis (§3.4c: focal-versus-generalized AUC 0.55–0.58) and with the regional deviation pattern (§3.6: focal slowing raises the contralateral hemisphere by +0.5 to +0.8 SD, and the parasagittal chain lateralizes almost as well as the temporal chain — the signal is hemispheric, not lobar). Distinguishing focal from generalized is a topographic judgement, and it is what the Morgoth gate supplies.
 
 ### 3.4d The human ceiling for slowing, and where we sit relative to it
+
+> **[LEGACY — pending recompute on the v6 run.]** The inter-rater reliability figures in this section
+> (Fleiss κ, re-read κ) are properties of the *expert panel* and are unaffected by our pipeline, so they
+> stand. **However, every number describing *our* score's performance against the panel (AUROC 0.903,
+> balanced accuracy 0.835, Spearman ρ = 0.652) was computed on the legacy pipeline and the contaminated
+> labels, and must be regenerated on the v6 run before publication.** The panel EEGs (100 OccasionNoise +
+> 1,761 MoE) were featurized by the fleet and are available; the re-scoring is a mechanical re-run.
 
 Agreement with a single clinical report is bounded by the reliability of that report, which the paper had never measured. We therefore scored an independent, multiply-read dataset: **100 EEGs, 18 electroencephalographers**, each recording judged for focal and generalized epileptiform and non-epileptiform abnormality, with a subset re-read on a second occasion (`results/occasion_human_ceiling.md`).
 

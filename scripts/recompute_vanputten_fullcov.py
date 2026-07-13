@@ -17,13 +17,19 @@ from pathlib import Path
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score
 
-SS = "data/derived/segment_summary"
+SM = "data/derived/segment_master"          # per-channel arms (DAR/DTABR/ADR/SEF95/median_freq)
+SS = "data/derived/segment_summary"         # whole-head arms (Q_*) + the Morgoth gate
 LAB = "data/derived/recording_labels_sap.parquet"
 QCOLS = ["Q_SLOWING", "Q_APG", "r_sBSI", "pdBSI", "Q_ASYM"]
+CACHE = Path("data/derived/_vp_per_recording.parquet")   # reading 27k parquets is slow — cache it
 
 
 def per_recording():
-    """Median Q_* over usable segments + p90 of the Morgoth per-segment gate (as the producer used)."""
+    """Per-recording van Putten metrics, median over USABLE segments, at full fleet coverage.
+    segment_summary -> Q_* + Morgoth p_slowing(p90);  segment_master -> DAR/DTABR/ADR/SEF95/median_freq."""
+    if CACHE.exists():
+        print(f"(using cached {CACHE})")
+        return pd.read_parquet(CACHE).set_index("eeg_id")
     rows = []
     for f in glob.glob(f"{SS}/eeg_id=*/part.parquet"):
         eid = f.split("eeg_id=")[1].split("/")[0]
@@ -36,7 +42,26 @@ def per_recording():
         for c in QCOLS:
             r[c] = float(s[c].median())
         rows.append(r)
-    return pd.DataFrame(rows).set_index("eeg_id")
+    q = pd.DataFrame(rows).set_index("eeg_id")
+    print(f"  segment_summary: {len(q):,} recordings")
+
+    mrows = []
+    for f in glob.glob(f"{SM}/eeg_id=*/part.parquet"):
+        eid = f.split("eeg_id=")[1].split("/")[0]
+        d = pd.read_parquet(f, columns=["artifact_flag", "log_DAR", "log_TAR", "DTABR",
+                                        "ADR", "SEF95", "median_freq"])
+        d = d[~d.artifact_flag]
+        if d.empty:
+            continue
+        mrows.append({"eeg_id": eid,
+                      "DAR": float(np.exp(d.log_DAR.median())), "TAR": float(np.exp(d.log_TAR.median())),
+                      "DTABR": float(d.DTABR.median()), "ADR": float(d.ADR.median()),
+                      "SEF95": float(d.SEF95.median()), "median_freq": float(d.median_freq.median())})
+    m = pd.DataFrame(mrows).set_index("eeg_id")
+    print(f"  segment_master : {len(m):,} recordings")
+    out = m.join(q, how="outer")
+    out.reset_index().to_parquet(CACHE, index=False)
+    return out
 
 
 def grid_z(age_ref, v_ref, age_q, v_q, bw=8.0, grid=np.arange(-1, 101, 0.5)):
@@ -83,8 +108,11 @@ def main():
     print(f"Morgoth p_slowing coverage       : {int(d.p_slowing_p90.notna().sum()):,}\n")
 
     # age-conditioned deviation FIRST (reference = clean-normal), so the slices below carry the _z cols
+    METRICS = ["DAR", "TAR", "DTABR", "ADR", "SEF95", "median_freq"] + QCOLS + ["p_slowing_p90"]
     ref = d[d.clean_normal == True]                                      # noqa: E712
-    for c in QCOLS + ["p_slowing_p90"]:
+    for c in METRICS:
+        if c not in d.columns:
+            continue
         d[c + "_z"] = grid_z(ref.age.values.astype(float), ref[c].values.astype(float),
                              d.age.values.astype(float), d[c].values.astype(float))
 
@@ -105,10 +133,18 @@ def main():
     def arm(col):
         return auc_ci(y_ab, ab[col], rng), auc_ci(y_g, gen[col], rng), auc_ci(y_f, foc[col], rng)
 
-    specs = [("Q_SLOWING (raw) [vP2013]", "Q_SLOWING"), ("Q_APG (raw)", "Q_APG"),
-             ("r_sBSI (raw)", "r_sBSI"), ("Q_ASYM (raw)", "Q_ASYM"),
-             ("Q_SLOWING (age-normed)", "Q_SLOWING_z"), ("r_sBSI (age-normed)", "r_sBSI_z"),
-             ("** Morgoth p_slowing (gate) **", "p_slowing_p90")]
+    specs = [
+        # --- raw, as published ---
+        ("Q_SLOWING (raw) [vP2013 k=.76]", "Q_SLOWING"), ("DAR (raw)", "DAR"),
+        ("DTABR (raw)", "DTABR"), ("SEF95 (raw)", "SEF95"), ("median_freq (raw)", "median_freq"),
+        ("r_sBSI (raw)", "r_sBSI"), ("Q_APG (raw)", "Q_APG"), ("Q_ASYM (raw)", "Q_ASYM"),
+        # --- age-conditioned deviation (our normative framing applied to HIS metrics) ---
+        ("Q_SLOWING (age-normed)", "Q_SLOWING_z"), ("DAR (age-normed)", "DAR_z"),
+        ("DTABR (age-normed)", "DTABR_z"), ("SEF95 (age-normed)", "SEF95_z"),
+        ("r_sBSI (age-normed)", "r_sBSI_z"), ("Q_ASYM (age-normed)", "Q_ASYM_z"),
+        # --- ours ---
+        ("** Morgoth p_slowing (gate) **", "p_slowing_p90"),
+    ]
     out = []
     for name, col in specs:
         if col not in d.columns:
@@ -121,11 +157,17 @@ def main():
     print(tab.to_string(index=False))
     Path("results").mkdir(exist_ok=True)
     Path("results/vanputten_fullcoverage.md").write_text(
-        "# van Putten benchmark — segment_summary arms at FULL fleet coverage\n\n"
-        f"Recomputed on **{int(d.Q_SLOWING.notna().sum()):,}** recordings (the committed table used only "
-        "**3,130** — an incomplete `segment_summary` download, not a fleet gap; S3 has all 27,478).\n\n"
-        "Labels are the CORRECTED SAP labels (`label_rederive_sap.py`; physiologic generalized slowing is "
-        "NOT a positive). AUROC [95% bootstrap CI].\n\n" + tab.to_markdown(index=False) + "\n")
+        "# van Putten benchmark (SAP §8.7, Table 6) — FULL fleet coverage\n\n"
+        f"All arms recomputed on the complete run: **{int(d.DAR.notna().sum()):,}** recordings for the "
+        f"segment_master metrics (DAR/DTABR/SEF95/median_freq) and **{int(d.Q_SLOWING.notna().sum()):,}** "
+        "for the whole-head metrics + the Morgoth gate (Q_*/p_slowing).\n\n"
+        "> The previously committed `vanputten_comparison.md` used only **3,130** recordings for the "
+        "whole-head/gate arms and **14,450** for the rest — an incomplete `segment_summary` DOWNLOAD on the "
+        "analysis box, not a fleet gap (S3 holds all 27,478; segment_master and segment_summary partition "
+        "counts match exactly). This table supersedes it.\n\n"
+        "Labels are the CORRECTED SAP labels (`label_rederive_sap.py`: physiologic generalized slowing is "
+        "NOT a positive — 5,528 recordings were previously mislabelled pathologic). "
+        "AUROC [95% patient-bootstrap CI]; auto-oriented so >0.5.\n\n" + tab.to_markdown(index=False) + "\n")
     print("\nwrote results/vanputten_fullcoverage.md")
 
 
