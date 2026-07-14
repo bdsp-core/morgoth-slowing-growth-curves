@@ -27,10 +27,9 @@ LAB = "data/derived/recording_labels_sap.parquet"
 TAU = 1.645          # 95th centile of the normal segment distribution -> the prevalence threshold
 
 
-def grid_z(age_ref, v_ref, age_q, v_q, bw=8.0, grid=np.arange(-1, 101, 0.5)):
+def fit_norm(age_ref, v_ref, bw=8.0, grid=np.arange(-1, 101, 0.5)):
+    """Fit the age-conditioned normative mean/SD grid ONCE (was recomputed per recording: O(n x grid x n_ref))."""
     ok = np.isfinite(age_ref) & np.isfinite(v_ref); ar, vr = age_ref[ok], v_ref[ok]
-    if len(ar) < 20:
-        return np.full(len(v_q), np.nan)
     mu = np.full(len(grid), np.nan); sd = np.full(len(grid), np.nan)
     for j, g in enumerate(grid):
         w = np.exp(-0.5 * ((ar - g) / bw) ** 2); sw = w.sum()
@@ -39,8 +38,13 @@ def grid_z(age_ref, v_ref, age_q, v_q, bw=8.0, grid=np.arange(-1, 101, 0.5)):
         m = (w * vr).sum() / sw; mu[j] = m
         sd[j] = np.sqrt(max((w * (vr - m) ** 2).sum() / sw, 1e-9))
     good = np.isfinite(mu)
-    return (v_q - np.interp(age_q, grid[good], mu[good], np.nan, np.nan)) / \
-           np.interp(age_q, grid[good], sd[good], np.nan, np.nan)
+    return grid[good], mu[good], sd[good]
+
+
+def z_of(gr, mu, sd, age, vals):
+    """Cheap: interpolate the pre-fitted grid at this recording's age."""
+    m = np.interp(age, gr, mu); s = np.interp(age, gr, sd)
+    return (np.asarray(vals, float) - m) / s
 
 
 def icc21(a, b):
@@ -101,13 +105,15 @@ def main():
     ref_age = np.concatenate([[r.age] * len(r.all_vals) for r in ref.itertuples()])
     ref_val = np.concatenate([r.all_vals for r in ref.itertuples()])
     print(f"normative reference: {len(ref_val):,} clean-normal segments")
+    gr, mu, sd = fit_norm(ref_age, ref_val)      # fitted ONCE
+    print(f"normative grid fitted over {len(gr)} age knots")
 
     # descriptors on each half
     out = []
     for r in R.itertuples():
         rec = {}
         for tag, vals in [("odd", r.vals_odd), ("even", r.vals_even)]:
-            z = grid_z(ref_age, ref_val, np.full(len(vals), r.age, float), vals)
+            z = z_of(gr, mu, sd, float(r.age), vals)
             rec[f"amount_{tag}"] = np.nanmedian(z)                      # AMOUNT   (P3)
             rec[f"prev_{tag}"] = np.nanmean(z > TAU)                    # PREVALENCE (P4)
         rec["eeg_id"] = r.eeg_id; rec["clean_normal"] = r.clean_normal
