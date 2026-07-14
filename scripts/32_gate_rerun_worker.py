@@ -198,7 +198,14 @@ def process_one(eid, meta, heads, work):
 
         ep = meta["source_edf"]                       # PINNED. No re-resolution: the file that was used.
         local = work / "rec.edf"
-        subprocess.run([fi.RC, "copyto", ep, str(local)], check=True, capture_output=True, timeout=900)
+        # SURFACE RCLONE'S STDERR. The original worker used check=True + capture_output=True, so a failed
+        # fetch raised a bare CalledProcessError with the error text DISCARDED — which is why the first
+        # fleet failure here was undiagnosable. If rclone knows why it failed, we want to be told.
+        r = subprocess.run([fi.RC, "copyto", ep, str(local)], capture_output=True, text=True, timeout=900)
+        if r.returncode != 0:
+            err = (r.stderr or r.stdout or "").strip().splitlines()
+            raise RuntimeError("rclone fetch failed for " + ep + " :: " +
+                               " | ".join(err[-3:] if err else ["(no stderr)"]))
         got = _sha256(local)
         if meta.get("sha256") and got != meta["sha256"]:
             return f"sha_mismatch:{got[:12]}!={meta['sha256'][:12]}"
