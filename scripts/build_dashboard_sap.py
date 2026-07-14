@@ -41,6 +41,28 @@ ITEMS = [
      "added as a covariate: physiologic sleep produces the spectral changes that define pathologic slowing "
      "awake.", [S/"rel_delta__whole_head.png", S/"DAR__whole_head.png"], []),
 
+    ("Figure 3b / THE SYSTEM", "The two-stage pipeline end to end — gate, describe, and AUDIT the "
+                               "disagreements",
+     "THE SYSTEM AS INTENDED, run on all 25,390 recordings. (1) MORGOTH GATES per recording into four cells "
+     "— neither 50.0% / focal only 5.8% / generalized only 10.9% / BOTH 33.2%. The two EEG-level heads are "
+     "independent sigmoids, so BOTH is real, not a tie-break. (2) OUR FEATURES DESCRIBE, and only along the "
+     "axis the gate opened. Generalized branch (n=11,210): amount (median z +0.70), prevalence -> ACNS "
+     "frequency word, persistence (longest run, episodes), anterior-posterior gradient. Focal branch "
+     "(n=9,910): side and lobe. Every descriptor is computed per SEGMENT against that segment's OWN (age, "
+     "stage) normal curve. (3) THE DISCORDANCE AUDIT — the number nobody publishes: of the recordings the "
+     "gate flagged, how many show NO feature evidence of what it flagged? Bars are the clean-normals' own "
+     "95th centiles, so 5% of normals exceed each by definition. GENERALIZED 60.8% and FOCAL 61.7% show no "
+     "evidence. READ THAT WITH THE CONTINUOUS VIEW: the gated groups sit at the ~88th centile of normals on "
+     "every axis — clearly shifted, just not in the top 5%. A ~60% no-evidence rate at a 95th-centile bar is "
+     "exactly what a descriptor with AUROC ~0.72 should produce; the two statements are the same fact seen "
+     "twice. The CONVERSE (gate says neither, features fire) runs at 3.1% against a 3.6% normal base rate — "
+     "AT CHANCE. So the gate almost never misses what our features see, but our features often fail to "
+     "corroborate the gate. That is the signature of a detector strictly stronger than its descriptor, and "
+     "the likeliest reason is that the gate reads MORPHOLOGY (shape, rhythmicity, reactivity) that band-power "
+     "deviation cannot represent — most plausibly for focal slowing, which is a shape judgement, and which "
+     "is exactly where the focal branch is weakest (64% of gated-focal have no clear side).",
+     [G/"two_stage_pipeline.png"], ["results/two_stage_pipeline.md"]),
+
     ("Figure 4 / Table 2", "How much slowing, in the recordings MORGOTH says have slowing "
                            "(SAP §9 Fig 4, §10 T2)",
      "THIS IS THE SYSTEM AS DEPLOYED. Morgoth is the DETECTOR; the normative deviation is the QUANTIFIER. "
