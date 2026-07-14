@@ -183,11 +183,13 @@ def parsimony_curve(Xtr, ytr, Xte, yte):
 def load():
     d = pd.read_parquet("data/derived/channel_stage_features.parquet")
     lu = pd.read_parquet("data/derived/labels_unified.parquet")[
-        ["bdsp_id", "clean_normal", "has_focal_slow", "gen_class"]].drop_duplicates("bdsp_id")
-    cp = pd.read_parquet("data/derived/report_pairing.parquet")[["bdsp_id", "clean_pair"]]
+        ["bdsp_id", "clean_normal", "has_focal_slow", "gen_class", "clean_pair"]].drop_duplicates("bdsp_id")
+    # clean_pair comes from the V6 MANIFEST (carried on labels_unified), NOT the legacy
+    # report_pairing.parquet: that table covers only 12,379 of the 27k recordings, so joining it would
+    # silently shrink the analysis to the old cohort and refill the rest with clean_pair=False.
     ex = set(pd.read_parquet("data/derived/excluded_bdsp_ids.parquet").bdsp_id)
     d = d[(d.src == "cohort") & d.stage.isin(STAGES) & ~d.bdsp_id.isin(ex)]
-    lu = lu.merge(cp, on="bdsp_id", how="left"); lu["clean_pair"] = lu.clean_pair.fillna(False)
+    lu["clean_pair"] = lu.clean_pair.fillna(False)
     return d, lu
 
 

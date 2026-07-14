@@ -13,6 +13,7 @@ Run: PYTHONPATH=src python scripts/table4_predictions_scorecard.py
 """
 import glob, json, os
 from pathlib import Path
+import json
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score, balanced_accuracy_score
 
@@ -109,6 +110,15 @@ def main():
     print(p8b.to_string(index=False))
 
     # ---------------- the scorecard ----------------
+    # deviation-score-vs-ceiling (scripts/108); falls back to the gate-only verdict if not yet run
+    _dj = Path("results/deviation_vs_ceiling_v6.json")
+    if _dj.exists():
+        _d = json.loads(_dj.read_text())
+        _D = {k: v["bal_acc_deviation_score"] for k, v in _d.items()}
+        _C = {k: v["bal_acc_expert_ceiling"] for k, v in _d.items()}
+    else:
+        _D = _C = {"focal": float("nan"), "generalized": float("nan")}
+
     rows = [
         dict(P="P1", prediction="Detection AUROC >= 0.80 whole-recording, vigilance-matched",
              falsified_if="< 0.75",
@@ -140,10 +150,16 @@ def main():
              verdict="FALSIFIED (as written) / phenomenon SUPPORTED"),
         dict(P="P7", prediction="Our detection meets/exceeds the human ceiling",
              falsified_if="our balanced acc < between-rater ceiling",
-             result=f"focal: ours {p7['focal']['ours_bacc']:.3f} vs ceiling {p7['focal']['ceiling']:.3f}; "
-                    f"generalized: ours {p7['generalized']['ours_bacc']:.3f} vs ceiling "
-                    f"{p7['generalized']['ceiling']:.3f}",
-             verdict=f"focal {p7['focal']['verdict']} / generalized {p7['generalized']['verdict']}"),
+             # "our detection" is ambiguous between the GATE and the normative DEVIATION score, and the two
+             # give different answers -- so report both rather than let the choice decide the verdict.
+             # Deviation-score numbers: scripts/108_deviation_vs_expert_ceiling_v6.py.
+             result=(f"GATE - focal {p7['focal']['ours_bacc']:.3f} vs ceiling {p7['focal']['ceiling']:.3f}; "
+                     f"generalized {p7['generalized']['ours_bacc']:.3f} vs {p7['generalized']['ceiling']:.3f} "
+                     f"-> below on BOTH axes. DEVIATION SCORE (frozen S) - focal {_D['focal']:.3f} vs "
+                     f"{_C['focal']:.3f} (below); generalized {_D['generalized']:.3f} vs "
+                     f"{_C['generalized']:.3f} (ABOVE). Both scores OUT-RANK the experts (gate AUROC "
+                     f"0.860/0.904; S 0.879/0.910) - it is thresholding, not ranking, that falls short."),
+             verdict="FALSIFIED for the gate (both axes) / deviation score CONFIRMED for generalized only"),
         dict(P="P8a", prediction="Age-norming a van Putten metric beats it as-published",
              falsified_if="dAUROC(normed - raw) <= 0",
              result="CONFIRMED for every SLOWING index (Q_SLOWING +0.038/+0.049/+0.041; DAR +0.030/+0.041/"

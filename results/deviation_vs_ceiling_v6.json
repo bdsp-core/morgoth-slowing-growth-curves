@@ -1,0 +1,22 @@
+{
+  "focal": {
+    "n": 100,
+    "prevalence": 14,
+    "bal_acc_deviation_score": 0.787,
+    "bal_acc_expert_ceiling": 0.801,
+    "sens_at_expert_specificity": 0.714,
+    "expert_sens": NaN,
+    "expert_spec": 0.899,
+    "verdict": "BELOW"
+  },
+  "generalized": {
+    "n": 100,
+    "prevalence": 19,
+    "bal_acc_deviation_score": 0.861,
+    "bal_acc_expert_ceiling": 0.809,
+    "sens_at_expert_specificity": 0.684,
+    "expert_sens": 0.735,
+    "expert_spec": 0.884,
+    "verdict": "MEETS/EXCEEDS"
+  }
+}

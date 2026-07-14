@@ -132,6 +132,20 @@ def main():
         "clean_pair": m.get("clean_pair"), "age": m.get("age"), "sex": m.get("sex"),
         "label_source": src, "slowing_named_in_conclusion": named, "physio_attribution": physio,
     })
+    # AUTHORITATIVE AGE. The manifest's `age` is a WHOLE NUMBER of years and is partly wrong (negatives;
+    # errors up to 10 y). The corrected ages — OMOP birth_datetime derived, 99.6% exact, with >89 binned to
+    # 90 for HIPAA Safe Harbor — live in metadata/ages_v6.parquet, which is TRACKED IN GIT. Always prefer it,
+    # so rebuilding this table can never silently revert to the bad integer ages.
+    AGES = Path("metadata/ages_v6.parquet")
+    if AGES.exists():
+        a = pd.read_parquet(AGES)[["eeg_id", "age", "age_source"]]
+        out = out.drop(columns=[c for c in ("age", "age_source") if c in out.columns]).merge(
+            a, on="eeg_id", how="left")
+        print(f"  age: loaded {len(a):,} authoritative ages from {AGES} "
+              f"({int((a.age_source=='fractional(OMOP)').sum()):,} exact/fractional)")
+    else:
+        print(f"  WARNING: {AGES} missing -> falling back to the manifest's INTEGER ages (known bad)")
+
     # NORMALISE SEX. The manifest carries TWO encodings: cohort/replacement rows use "F"/"M" while
     # backfill/expansion rows use "Female"/"Male". Any analysis filtering on sex=="F" silently drops
     # ~12.8k recordings. Collapse to F / M / unknown here so nothing downstream can hit that trap.

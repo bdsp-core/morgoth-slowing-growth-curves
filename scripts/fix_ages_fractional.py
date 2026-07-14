@@ -90,7 +90,9 @@ def best_age_table():
     # HIPAA SAFE HARBOR: ages over 89 must be reported as "90+". The de-identified OMOP does NOT do this
     # for us (it returned ages up to 121). `age` stays exact for the normative FIT (never published per
     # record); `age_pub` is the ONLY age that may appear in a figure or table.
-    age_pub = best.where(best <= 89, 90.0)
+    # NB: best.where(best<=89, 90) would turn MISSING ages into 90-year-olds (NaN<=89 is False).
+    # Preserve NaN explicitly.
+    age_pub = pd.Series(np.where(best.notna() & (best > 89), 90.0, best), index=best.index)
     n89 = int((best > 89).sum())
     print(f"  ages > 89 binned to 90+ for publication (HIPAA Safe Harbor): {n89:,}")
 

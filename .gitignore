@@ -68,3 +68,9 @@ band_test_features.parquet
 
 # Copyrighted reference PDFs — not committed (see references/README.md)
 references/*.pdf
+
+# The authoritative age table MUST be versioned. `*.parquet` above would otherwise drop it,
+# and every analysis would silently fall back to the manifest's INTEGER ages (partly wrong: 7
+# negatives, errors up to 10 y). It is small (~1 MB), HIPAA-safe (>89 binned to 90) and is the
+# single source of truth that scripts/34 + fleet_analysis_adapter.py + label_rederive_sap.py read.
+!metadata/ages_v6.parquet

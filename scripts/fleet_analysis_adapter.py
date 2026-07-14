@@ -60,6 +60,18 @@ feat=pd.concat(rows,ignore_index=True)
 
 # per-recording metadata + labels from the manifest (keyed eeg_id == bdsp_id here)
 man=pd.read_parquet(f"{REPO}/data/manifest/report_manifest_v6.parquet").set_index("eeg_id")
+# AUTHORITATIVE AGE (do NOT use the manifest's). The manifest's `age` is a WHOLE NUMBER of years and is
+# partly wrong (7 negatives; errors up to 10 y vs the true age). The corrected ages — OMOP birth_datetime
+# derived, 99.6% exact, >89 binned to 90 for HIPAA Safe Harbor — are committed to metadata/ages_v6.parquet.
+# Overriding here means rebuilding this table can NEVER silently revert to the bad integer ages.
+import os as _os
+_AGES = f"{REPO}/metadata/ages_v6.parquet"
+if _os.path.exists(_AGES):
+    _a = pd.read_parquet(_AGES).set_index("eeg_id")
+    man["age"] = _a["age"].reindex(man.index)
+    print(f"adapter: age <- {_AGES} ({int(man.age.notna().sum()):,} recordings, authoritative)", flush=True)
+else:
+    print("adapter: WARNING metadata/ages_v6.parquet MISSING -> manifest INTEGER ages (known bad)", flush=True)
 ids=feat.bdsp_id.unique()
 meta=man.reindex(ids)
 meta["src"]=np.where(meta["bids_task"].eq("rEEG"),"cohort","expansion")   # routine vs overnight

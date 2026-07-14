@@ -9,24 +9,29 @@ import subprocess, sys, os
 from pathlib import Path
 
 FIGS = [
+    # Every producer below reads ONLY v6 canonical tables + genuine inputs. The previous list pointed at
+    # scripts whose inputs (segment_features, report_ordinals, occasion_features, report_pairing) were
+    # quarantined with the legacy tables, so "Figure 4/6/S1" could not in fact be regenerated — the harness
+    # reported them as fine because it never got as far as running them.
     ("Figure 1", "figures/growth_v2/keystone_growth_grid.png", "scripts/76_keystone_growth_grid.py",
      ["data/derived/channel_stage_features.parquet", "data/derived/labels_unified.parquet"]),
     ("Figure 2", "figures/growth_v2/vigilance_matched_detection.png", "scripts/84_vigilance_matched_detection.py",
      ["data/derived/channel_stage_features.parquet", "data/derived/labels_unified.parquet"]),
     ("Figure 3", "figures/growth_v2/dose_response.png", "scripts/85_table1_and_dose_response.py",
      ["data/derived/channel_stage_features.parquet", "data/derived/labels_unified.parquet"]),
-    ("Figure 4", "figures/growth_v2/occasion_roc_experts.png", "scripts/94_phaseA_model_vs_experts.py",
+    ("Figure 4", "figures/growth_v2/two_stage_gate_and_quantify.png", "scripts/105_two_stage_figure.py",
      ["data/derived/occasion_features.parquet", "data/derived/occasion_expert_votes.parquet",
-      "data/derived/channel_stage_features.parquet"]),
+      "data/derived/occasion_morgoth_preds.parquet", "data/derived/sparse_score_coefs.json"]),
     ("Figure 5", None, None, []),   # artist schematic
-    ("Figure 6", "figures/growth_v2/v4a_wake_sleep.png", "scripts/95_v4a_wake_sleep.py",
-     ["data/derived/segment_features.parquet", "data/derived/segment_stages.parquet",
-      "data/derived/segment_stages_abnormal.parquet", "data/derived/v4a_report_flags.parquet",
-      "data/derived/v4a_spindle_results.parquet", "data/derived/abn_stage_probs.parquet",
-      "data/derived/report_pairing.parquet"]),
-    ("Figure S1", "figures/growth_v2/severity_recalibrated.png", "scripts/86_recalibrate_severity.py",
-     ["data/derived/segment_features.parquet", "data/derived/report_ordinals.parquet",
-      "data/derived/report_pairing.parquet"]),
+    ("Figure 6", "figures/growth_v2/sparse_score_external.png", "scripts/104_sparse_score_external.py",
+     ["data/derived/occasion_features.parquet", "data/derived/occasion_expert_votes.parquet",
+      "data/derived/sparse_score_coefs.json"]),
+    ("Figure S1", "figures/growth_v2/severity_recalibrated.png", "scripts/109_severity_null_v6.py",
+     ["data/derived/channel_stage_features.parquet", "data/derived/recording_labels_sap.parquet"]),
+    # supplementary appendix (F1-F4b), all from one v6 producer
+    ("Figure F1-F4b", "results/figs/age_auroc.png", "scripts/106_appendix_figures_v6.py",
+     ["data/derived/channel_stage_features.parquet", "data/derived/recording_labels_sap.parquet",
+      "data/derived/_vp_per_recording.parquet", "metadata/ages_v6.parquet"]),
 ]
 
 

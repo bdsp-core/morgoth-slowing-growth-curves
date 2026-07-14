@@ -1,0 +1,313 @@
+{
+  "f2b_auroc_by_stage": [
+    {
+      "stage": "W",
+      "age_band": "0\u201312",
+      "n": 3171,
+      "AUROC": 0.552
+    },
+    {
+      "stage": "W",
+      "age_band": "12\u201318",
+      "n": 1193,
+      "AUROC": 0.563
+    },
+    {
+      "stage": "W",
+      "age_band": "18\u201340",
+      "n": 4792,
+      "AUROC": 0.616
+    },
+    {
+      "stage": "W",
+      "age_band": "40\u201360",
+      "n": 4670,
+      "AUROC": 0.689
+    },
+    {
+      "stage": "W",
+      "age_band": "60\u201375",
+      "n": 4483,
+      "AUROC": 0.715
+    },
+    {
+      "stage": "W",
+      "age_band": "75+",
+      "n": 2577,
+      "AUROC": 0.718
+    },
+    {
+      "stage": "N1",
+      "age_band": "0\u201312",
+      "n": 2732,
+      "AUROC": 0.524
+    },
+    {
+      "stage": "N1",
+      "age_band": "12\u201318",
+      "n": 1097,
+      "AUROC": 0.559
+    },
+    {
+      "stage": "N1",
+      "age_band": "18\u201340",
+      "n": 4269,
+      "AUROC": 0.619
+    },
+    {
+      "stage": "N1",
+      "age_band": "40\u201360",
+      "n": 4265,
+      "AUROC": 0.693
+    },
+    {
+      "stage": "N1",
+      "age_band": "60\u201375",
+      "n": 4147,
+      "AUROC": 0.727
+    },
+    {
+      "stage": "N1",
+      "age_band": "75+",
+      "n": 2470,
+      "AUROC": 0.759
+    },
+    {
+      "stage": "N2",
+      "age_band": "0\u201312",
+      "n": 3067,
+      "AUROC": 0.514
+    },
+    {
+      "stage": "N2",
+      "age_band": "12\u201318",
+      "n": 1149,
+      "AUROC": 0.551
+    },
+    {
+      "stage": "N2",
+      "age_band": "18\u201340",
+      "n": 3740,
+      "AUROC": 0.62
+    },
+    {
+      "stage": "N2",
+      "age_band": "40\u201360",
+      "n": 3556,
+      "AUROC": 0.654
+    },
+    {
+      "stage": "N2",
+      "age_band": "60\u201375",
+      "n": 3561,
+      "AUROC": 0.668
+    },
+    {
+      "stage": "N2",
+      "age_band": "75+",
+      "n": 2129,
+      "AUROC": 0.669
+    },
+    {
+      "stage": "N3",
+      "age_band": "0\u201312",
+      "n": 2319,
+      "AUROC": 0.502
+    },
+    {
+      "stage": "N3",
+      "age_band": "12\u201318",
+      "n": 562,
+      "AUROC": 0.551
+    },
+    {
+      "stage": "N3",
+      "age_band": "18\u201340",
+      "n": 1550,
+      "AUROC": 0.638
+    },
+    {
+      "stage": "N3",
+      "age_band": "40\u201360",
+      "n": 1583,
+      "AUROC": 0.613
+    },
+    {
+      "stage": "N3",
+      "age_band": "60\u201375",
+      "n": 1939,
+      "AUROC": 0.614
+    },
+    {
+      "stage": "N3",
+      "age_band": "75+",
+      "n": 1232,
+      "AUROC": 0.592
+    },
+    {
+      "stage": "REM",
+      "age_band": "0\u201312",
+      "n": 2579,
+      "AUROC": 0.53
+    },
+    {
+      "stage": "REM",
+      "age_band": "12\u201318",
+      "n": 1132,
+      "AUROC": 0.559
+    },
+    {
+      "stage": "REM",
+      "age_band": "18\u201340",
+      "n": 4192,
+      "AUROC": 0.628
+    },
+    {
+      "stage": "REM",
+      "age_band": "40\u201360",
+      "n": 3680,
+      "AUROC": 0.661
+    },
+    {
+      "stage": "REM",
+      "age_band": "60\u201375",
+      "n": 3324,
+      "AUROC": 0.71
+    },
+    {
+      "stage": "REM",
+      "age_band": "75+",
+      "n": 1920,
+      "AUROC": 0.711
+    }
+  ],
+  "f4b_gate_auroc_by_age": [
+    {
+      "task": "abnormal",
+      "age_band": "0\u201312",
+      "n": 3235,
+      "AUROC": 0.769
+    },
+    {
+      "task": "abnormal",
+      "age_band": "12\u201318",
+      "n": 1205,
+      "AUROC": 0.814
+    },
+    {
+      "task": "abnormal",
+      "age_band": "18\u201340",
+      "n": 4839,
+      "AUROC": 0.85
+    },
+    {
+      "task": "abnormal",
+      "age_band": "40\u201360",
+      "n": 4713,
+      "AUROC": 0.885
+    },
+    {
+      "task": "abnormal",
+      "age_band": "60\u201375",
+      "n": 4542,
+      "AUROC": 0.904
+    },
+    {
+      "task": "abnormal",
+      "age_band": "75+",
+      "n": 2611,
+      "AUROC": 0.911
+    },
+    {
+      "task": "generalized",
+      "age_band": "0\u201312",
+      "n": 2348,
+      "AUROC": 0.757
+    },
+    {
+      "task": "generalized",
+      "age_band": "12\u201318",
+      "n": 905,
+      "AUROC": 0.856
+    },
+    {
+      "task": "generalized",
+      "age_band": "18\u201340",
+      "n": 3717,
+      "AUROC": 0.907
+    },
+    {
+      "task": "generalized",
+      "age_band": "40\u201360",
+      "n": 3378,
+      "AUROC": 0.926
+    },
+    {
+      "task": "generalized",
+      "age_band": "60\u201375",
+      "n": 3049,
+      "AUROC": 0.934
+    },
+    {
+      "task": "generalized",
+      "age_band": "75+",
+      "n": 1758,
+      "AUROC": 0.924
+    },
+    {
+      "task": "focal",
+      "age_band": "0\u201312",
+      "n": 2760,
+      "AUROC": 0.789
+    },
+    {
+      "task": "focal",
+      "age_band": "12\u201318",
+      "n": 1067,
+      "AUROC": 0.809
+    },
+    {
+      "task": "focal",
+      "age_band": "18\u201340",
+      "n": 4390,
+      "AUROC": 0.839
+    },
+    {
+      "task": "focal",
+      "age_band": "40\u201360",
+      "n": 4108,
+      "AUROC": 0.876
+    },
+    {
+      "task": "focal",
+      "age_band": "60\u201375",
+      "n": 3782,
+      "AUROC": 0.897
+    },
+    {
+      "task": "focal",
+      "age_band": "75+",
+      "n": 2098,
+      "AUROC": 0.91
+    }
+  ],
+  "f3_discrimination": {
+    "Morgoth gate": {
+      "abnormal": 0.8748,
+      "generalized": 0.9108,
+      "focal": 0.8696
+    },
+    "spectral deviation": {
+      "abnormal": 0.6742,
+      "generalized": 0.7189,
+      "focal": 0.6433
+    }
+  },
+  "f4_lr_vs_morgoth": {
+    "pearson": 0.4092,
+    "spearman": 0.4381,
+    "auroc_lr_oof": 0.6671,
+    "auroc_morgoth": 0.8355,
+    "n": 23869
+  }
+}

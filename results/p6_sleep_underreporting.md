@@ -8,10 +8,10 @@ Stage-matched age-conditioned z on `TAR` (whole-head), τ = 1.645 (95th centile)
 
 | group | n | report names slowing |
 |---|---|---|
-| slowing visible in **wake** | 4,280 | **75.0%** |
-| slowing visible **only in sleep** | 703 | **54.1%** |
-| visible in neither (base rate) | 14,400 | 39.9% |
+| slowing visible in **wake** | 4,282 | **74.8%** |
+| slowing visible **only in sleep** | 709 | **53.6%** |
+| visible in neither (base rate) | 14,400 | 40.0% |
 
 Our sleep-slowing detection rate **15.6%** vs the report's slowing rate **48.2%**.
 
-**P6 → FALSIFIED.** Readers name slowing in 75.0% of recordings where it is visible awake, but only 54.1% when it is visible only in sleep.
+**P6 → FALSIFIED.** Readers name slowing in 74.8% of recordings where it is visible awake, but only 53.6% when it is visible only in sleep.
