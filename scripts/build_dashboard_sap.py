@@ -46,7 +46,7 @@ ITEMS = [
      "abnormalities; recordings abnormal for other reasons (e.g. epileptiform) are a separate stratum, not "
      "positives. CIs by stratified bootstrap, patient-clustered on patient_id (SAP §3.3).",
      [G/"vigilance_matched_detection.png", F/"age_auroc.png"],
-     ["results/vigilance_matched_detection.csv", "results/nested_cv_detection.md"]),
+     ["results/vigilance_matched_detection.csv", "results/sparse_slowing_score.md"]),
 
     ("Ablation", "Attribution of the detection estimate (audit §1)",
      "Toggling, one at a time, the factors that changed from the legacy pipeline: label definition "
@@ -62,14 +62,14 @@ ITEMS = [
 
     ("Figure 6", "Descriptor reliability (SAP §9 Fig 6, §8.2)",
      "Split-half amount ICC, prevalence ICC, and band agreement — reported as PROVISIONAL unless they clear "
-     "the pre-registered bar.", [G/"v4a_wake_sleep.png"], ["results/descriptor_validation.md"]),
+     "the pre-registered bar.", [G/"v4a_wake_sleep.png"], ["results/table3_descriptor_reliability.md", "results/p6_sleep_underreporting.md"]),
 
     ("Figure 8 / Table 5", "Human ceiling & inter-rater reliability (SAP §9 Fig 8, §3.6, §8.3)",
      "Our ROC on the multi-rater panel EEGs (OccasionNoise + MoE) with each expert overlaid as an operating "
      "point; Fleiss κ, pairwise Cohen κ, Gwet AC1, within-rater κ, and our balanced accuracy against the "
      "expert consensus. These panels carry INDEPENDENT expert reads, so they are also the non-circular test "
      "of the 'readers under-report slowing' claim (the report labels S is fit on are not used here).",
-     [G/"occasion_roc_experts.png"], ["results/ea_irr_and_recalibration.md"]),
+     [G/"occasion_roc_experts.png"], ["results/table5_human_ceiling.md"]),
 
     ("Figure 9 / Table 6", "Benchmark vs van Putten lineage (SAP §9 Fig 9, §8.7) — FULL COVERAGE",
      "AUROC for the prior qEEG slowing metrics (Q_SLOWING, DTABR, r-sBSI, Q_APG, Q_ASYM …) computed on "
