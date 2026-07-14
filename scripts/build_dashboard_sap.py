@@ -41,8 +41,30 @@ ITEMS = [
      "added as a covariate: physiologic sleep produces the spectral changes that define pathologic slowing "
      "awake.", [S/"rel_delta__whole_head.png", S/"DAR__whole_head.png"], []),
 
-    ("Figure 3b / THE SYSTEM", "The two-stage pipeline end to end — gate, describe, and AUDIT the "
-                               "disagreements",
+    ("Figure 3a / THE SYSTEM", "Morgoth is truth; our features describe — HARMONISED, then audited",
+     "The descriptor's own free parameters are TUNED TO AGREE WITH MORGOTH, so the disagreement that "
+     "survives is the best achievable rather than an artefact of an arbitrary threshold. FIRING RULE (two "
+     "level, per feature): a SEGMENT fires for feature f when its abnormality z exceeds X; the RECORDING "
+     "fires when >= Y% of its segments do; the recording has EVIDENCE when ANY feature fires. Severity is "
+     "NOT in the rule — it is the CONDITIONAL severity, the median z among the FIRING segments only, and "
+     "intermittency is a thing to DESCRIBE, never a reason to say nothing is there. (X, Y) chosen by grid "
+     "search maximising Cohen kappa vs Morgoth, FIT ON A PATIENT-SPLIT TRAIN HALF, reported on held-out "
+     "patients: generalized z>1.5 in >=20% of segments (test kappa 0.419); focal asymmetry z>2.5 in >=15% "
+     "(test kappa 0.436). WHICH WAY is it abnormal — features are independent statements, not one average: "
+     "theta/alpha 39.2%, delta/alpha 38.9%, delta excess 37.5%, relative delta 35.6%, theta excess 29.1%, "
+     "paucity of alpha 8.7%; and nearly a third of corroborated recordings fire on only ONE OR TWO features, "
+     "which averaging them destroys. HOW MUCH: prevalence 0.26 (frequent), conditional severity z +1.90, "
+     "longest run 1.6 min, 14 episodes. WHICH SIDE: left 47.5% / right 40.8% / no clear side 11.7% (was 64% "
+     "unclear before — the side is now read from the FIRING segments only). DISCORDANCE at the best "
+     "achievable point: generalized 35.0%, focal 38.9% (was 60.8%/61.7%). THE FINDING: corroboration rises "
+     "MONOTONICALLY with Morgoth's own confidence — 48.7% in his weakest quartile to 82.5% in his "
+     "strongest. The disagreement is not noise; it concentrates exactly where he is least sure, which is "
+     "strong evidence the two are measuring the same thing. The irreducible ~35-39% is most likely "
+     "MORPHOLOGY the gate reads and band power cannot represent.",
+     [G/"harmonized_two_stage.png"], ["results/harmonized_two_stage.md"]),
+
+    ("Figure 3b (superseded)", "First cut of the two-stage audit — kept only to show what the "
+                               "broken firing rule did",
      "THE SYSTEM AS INTENDED, run on all 25,390 recordings. (1) MORGOTH GATES per recording into four cells "
      "— neither 50.0% / focal only 5.8% / generalized only 10.9% / BOTH 33.2%. The two EEG-level heads are "
      "independent sigmoids, so BOTH is real, not a tie-break. (2) OUR FEATURES DESCRIBE, and only along the "
