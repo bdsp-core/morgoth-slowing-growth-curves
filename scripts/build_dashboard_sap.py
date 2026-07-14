@@ -41,18 +41,31 @@ ITEMS = [
      "added as a covariate: physiologic sleep produces the spectral changes that define pathologic slowing "
      "awake.", [S/"rel_delta__whole_head.png", S/"DAR__whole_head.png"], []),
 
-    ("Figure 4 / Table 2", "Detection by the NORMATIVE DEVIATION SCORE — vigilance-matched "
-                           "(SAP §9 Fig 4, §8.1, §10 T2)",
-     "WHOSE SCORE THIS IS: our own spectral deviation, NOT Morgoth and NOT the two-stage system. One "
-     "whole-head feature (TAR / DAR / log delta / log theta / rel delta) is z-scored against the "
-     "age-matched AND stage-matched clean-normal curve, then used on its own as a detector. Target: "
-     "pathologic generalized slowing vs held-out routine clean-normals, per sleep stage. Positives are "
-     "recordings whose report NAMES slowing among the abnormalities; recordings abnormal for other reasons "
-     "(e.g. epileptiform) are a separate stratum, not positives. 'Vigilance-matched' refers to WHICH normals "
-     "build the reference curve (routine / overnight / union) — the claim that this matters is WITHDRAWN "
-     "(the three references now differ by ~0.002 AUROC in wake). CIs by stratified bootstrap, "
-     "patient-clustered (SAP §3.3), on the clean_pair set. This is the DESCRIPTION layer measured as if it "
-     "were the detector; the detector is the gate, in the panel below.",
+    ("Figure 4 / Table 2", "How much slowing, in the recordings MORGOTH says have slowing "
+                           "(SAP §9 Fig 4, §10 T2)",
+     "THIS IS THE SYSTEM AS DEPLOYED. Morgoth is the DETECTOR; the normative deviation is the QUANTIFIER. "
+     "We never report slowing except where the gate has already decided there is slowing, so the deviation "
+     "is shown WHERE IT IS USED: grouped by Morgoth's call (no slowing / focal / generalized), within each "
+     "sleep stage. Because every recording is scored against ITS OWN STAGE's age-matched normal curve, the "
+     "deviation stays interpretable in N2/N3 — where raw delta says nothing, because deep sleep is SUPPOSED "
+     "to be slow. Median z rises monotonically with the gate's call in every stage: no-slowing ~-0.15, "
+     "focal +0.23 to +0.69, generalized +0.34 to +1.06. Gate operating points by Youden J on clean_pair; "
+     "the report labels pick the threshold only, they do not define the groups plotted. "
+     "LIMIT: gating is PER-RECORDING (Morgoth's EEG-level FOC/GEN heads). Morgoth's window head is 3-class "
+     "{0 others, 1 focal, 2 generalized}, so per-SEGMENT focal/generalized probabilities DO exist — but the "
+     "fleet worker (scripts/31:162) kept only 1-P(class_0) and discarded them. Recovering them needs a gate "
+     "re-run.",
+     [G/"gated_deviation_by_stage.png"], ["results/gated_deviation_by_stage.md"]),
+
+    ("Figure 4a (support)", "The deviation score measured as a STANDALONE detector — a sensitivity analysis, "
+                            "not the intended use",
+     "Kept for completeness and because the SAP pre-registered it: AUROC for the deviation score alone vs "
+     "the report label, per stage, with the normal reference varied (routine / overnight / union). This "
+     "measures the QUANTIFIER as if it were the DETECTOR, which is not how the system is used — it is the "
+     "panel above that shows the intended use. On corrected labels, exact ages and the clean_pair set it "
+     "reaches 0.738 (N1) and 0.723 (W). 'Vigilance-matched' refers only to WHICH normals build the "
+     "reference; the claim that this matters is WITHDRAWN (the three references differ by ~0.002 AUROC in "
+     "wake).",
      [G/"vigilance_matched_detection.png", F/"age_auroc_by_stage.png"],
      ["results/vigilance_matched_detection.csv", "results/sparse_slowing_score.md"]),
 
