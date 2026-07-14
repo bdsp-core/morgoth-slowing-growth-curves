@@ -11,7 +11,9 @@ import pandas as pd, numpy as np, glob, os, sys
 sys.path.insert(0, "src")
 from morgoth_slowing.features.recording import CH_NAMES, _AGG
 
-REPO="/Users/mbwest/Desktop/GithubRepos/morgoth-slowing-growth-curves"
+# path-portable: repo root = this file's parent dir (override with REPO env). The previous hardcoded
+# "/Users/mbwest/Desktop/..." meant the analysis could only run on one machine.
+REPO=os.environ.get("REPO", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SM=f"{REPO}/data/derived/segment_master"
 OUTF=f"{REPO}/data/derived/channel_stage_features.parquet"
 OUTL=f"{REPO}/data/derived/labels_unified.parquet"

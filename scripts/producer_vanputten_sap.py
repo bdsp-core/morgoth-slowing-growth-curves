@@ -20,7 +20,8 @@ import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 
-REPO = "/Users/mbwest/Desktop/GithubRepos/morgoth-slowing-growth-curves"
+import os
+REPO = os.environ.get("REPO", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SM = f"{REPO}/data/derived/segment_master"; SS = f"{REPO}/data/derived/segment_summary"
 CH18 = None
 
