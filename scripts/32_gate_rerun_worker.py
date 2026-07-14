@@ -55,6 +55,13 @@ GDONE = SGATE / "_done";   GDONE.mkdir(exist_ok=True)
 GSTAT = SGATE / "_status"; GSTAT.mkdir(exist_ok=True)
 
 GATE_STEP = 1                       # SECONDS. Matches Morgoth's reference pipeline (pred_SLOWING_1sStep).
+# The .done sidecars record EDF paths as "s3:bdsp-opendata-repository/..." -- the rclone remote the ORIGINAL
+# run used. But that remote does not exist in the AMI's rclone config ("didn't find section in config file
+# (s3)"), so the original fleet must have had rclone configured on the box BY HAND -- the same class of
+# undocumented manual step as the missing manifest and the missing git pull. EDF_REMOTE lets us route the
+# fetch through a remote that DOES exist (bdsp:), which points at the same S3 with the same credentials.
+# The path is otherwise untouched: we still fetch the byte-identical file, and the sha256 is verified.
+EDF_REMOTE = os.environ.get("EDF_REMOTE", "s3:")
 CONTEXTS = [30, 60, 120]            # EEG-level window lengths, in seconds (= rows at 1 s step)
 MIN_ROWS = 30                       # the CNN's hard floor: <30 rows -> 0 transformer tokens
 SEG_LEN_S = 15.0
@@ -197,6 +204,8 @@ def process_one(eid, meta, heads, work):
         from morgoth_slowing.io.edf import load_edf_referential
 
         ep = meta["source_edf"]                       # PINNED. No re-resolution: the file that was used.
+        if EDF_REMOTE != "s3:" and ep.startswith("s3:"):
+            ep = EDF_REMOTE + ep[len("s3:"):]         # same object, a remote name the box actually has
         local = work / "rec.edf"
         # SURFACE RCLONE'S STDERR. The original worker used check=True + capture_output=True, so a failed
         # fetch raised a bare CalledProcessError with the error text DISCARDED — which is why the first

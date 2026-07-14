@@ -92,6 +92,7 @@ export MANIFEST=/home/ubuntu/morgoth-slowing-growth-curves/data/manifest/report_
 export PANEL_ROOT=bdsp:bdsp-opendata-credentialed/morgoth-slowing/panels
 export OUTPUT_ROOT=/home/ubuntu/gate_out; mkdir -p \$OUTPUT_ROOT
 export SRC_V6=$SRC_V6 S3_OUT=$S3OUT SEED=\$RANDOM\$RANDOM
+export EDF_REMOTE=bdsp:   # the AMI has no s3: remote; bdsp: is the same S3 with the same creds
 export GATE_PILOT=$PILOT
 IMDS_TOK=\$(curl -sX PUT -m 2 "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 imds() { curl -s -m 2 -H "X-aws-ec2-metadata-token: \$IMDS_TOK" "http://169.254.169.254/latest/meta-data/\$1"; }
