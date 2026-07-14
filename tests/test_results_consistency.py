@@ -73,3 +73,22 @@ def test_every_referenced_figure_exists():
     ms = MS.read_text()
     missing = [f for f in sorted(set(re.findall(r"[A-Za-z0-9_/.-]+\.png", ms))) if not Path(f).exists()]
     assert not missing, f"manuscript references figures that do not exist: {missing}"
+
+
+DANGLING_BUDGET = 17   # ratchet: may only go DOWN
+
+
+@pytest.mark.skipif(not MS.exists(), reason="manuscript not present")
+def test_dangling_citations_do_not_grow():
+    """The manuscript cites files deleted in the legacy purge.
+
+    These are citations to EVIDENCE — a reader following one lands on nothing. 17 remain (listed by this
+    test when it fails). Each must either be regenerated on v6 or cut from the draft; six were repointed to
+    their v6 replacements already. This is a ratchet, not a pass: the count may only go down.
+    """
+    refs = set(re.findall(r"`((?:results|data|scripts|docs)/[A-Za-z0-9_/.-]+\.(?:md|csv|json|py|parquet))`",
+                          MS.read_text()))
+    missing = sorted(r for r in refs if not Path(r).exists())
+    assert len(missing) <= DANGLING_BUDGET, (
+        f"dangling citations grew to {len(missing)} (budget {DANGLING_BUDGET}):\n  " +
+        "\n  ".join(missing) + "\nRegenerate the evidence or cut the citation — do not raise the budget.")
