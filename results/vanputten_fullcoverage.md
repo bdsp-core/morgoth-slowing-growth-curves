@@ -1,15 +1,25 @@
-# van Putten benchmark — segment_summary arms at FULL fleet coverage
+# van Putten benchmark (SAP §8.7, Table 6) — FULL fleet coverage
 
-Recomputed on **27,003** recordings (the committed table used only **3,130** — an incomplete `segment_summary` download, not a fleet gap; S3 has all 27,478).
+All arms recomputed on the complete run: **27,003** recordings for the segment_master metrics (DAR/DTABR/SEF95/median_freq) and **27,003** for the whole-head metrics + the Morgoth gate (Q_*/p_slowing).
 
-Labels are the CORRECTED SAP labels (`label_rederive_sap.py`; physiologic generalized slowing is NOT a positive). AUROC [95% bootstrap CI].
+> The previously committed `vanputten_comparison.md` used only **3,130** recordings for the whole-head/gate arms and **14,450** for the rest — an incomplete `segment_summary` DOWNLOAD on the analysis box, not a fleet gap (S3 holds all 27,478; segment_master and segment_summary partition counts match exactly). This table supersedes it.
+
+Labels are the CORRECTED SAP labels (`label_rederive_sap.py`: physiologic generalized slowing is NOT a positive — 5,528 recordings were previously mislabelled pathologic). AUROC [95% CI from a PATIENT-CLUSTERED bootstrap — patients resampled with replacement, all of their recordings carried along, per SAP §3.3]; auto-oriented so >0.5.
 
 | method                         | abnormal            | generalized         | focal               |   n_scored |
 |:-------------------------------|:--------------------|:--------------------|:--------------------|-----------:|
-| Q_SLOWING (raw) [vP2013]       | 0.654 [0.647–0.661] | 0.702 [0.694–0.71]  | 0.63 [0.623–0.637]  |      21984 |
-| Q_APG (raw)                    | 0.649 [0.642–0.656] | 0.694 [0.686–0.702] | 0.622 [0.613–0.63]  |      21984 |
-| r_sBSI (raw)                   | 0.698 [0.692–0.706] | 0.692 [0.684–0.701] | 0.726 [0.718–0.733] |      21984 |
-| Q_ASYM (raw)                   | 0.684 [0.677–0.691] | 0.69 [0.682–0.698]  | 0.697 [0.689–0.704] |      21984 |
+| Q_SLOWING (raw) [vP2013 k=.76] | 0.654 [0.646–0.661] | 0.702 [0.693–0.711] | 0.63 [0.622–0.638]  |      21984 |
+| DAR (raw)                      | 0.667 [0.66–0.675]  | 0.731 [0.723–0.739] | 0.63 [0.622–0.638]  |      21984 |
+| DTABR (raw)                    | 0.684 [0.676–0.691] | 0.743 [0.735–0.752] | 0.651 [0.643–0.659] |      21984 |
+| SEF95 (raw)                    | 0.637 [0.629–0.645] | 0.665 [0.656–0.674] | 0.621 [0.613–0.629] |      21984 |
+| median_freq (raw)              | 0.653 [0.646–0.66]  | 0.714 [0.706–0.723] | 0.622 [0.614–0.631] |      21984 |
+| r_sBSI (raw)                   | 0.698 [0.691–0.706] | 0.692 [0.683–0.7]   | 0.726 [0.718–0.734] |      21984 |
+| Q_APG (raw)                    | 0.649 [0.642–0.657] | 0.694 [0.684–0.704] | 0.622 [0.613–0.63]  |      21984 |
+| Q_ASYM (raw)                   | 0.684 [0.677–0.692] | 0.69 [0.682–0.699]  | 0.697 [0.69–0.704]  |      21984 |
 | Q_SLOWING (age-normed)         | 0.692 [0.684–0.699] | 0.751 [0.743–0.759] | 0.671 [0.663–0.679] |      21973 |
-| r_sBSI (age-normed)            | 0.686 [0.68–0.693]  | 0.675 [0.665–0.684] | 0.715 [0.708–0.723] |      21973 |
-| ** Morgoth p_slowing (gate) ** | 0.881 [0.876–0.885] | 0.918 [0.913–0.923] | 0.875 [0.87–0.881]  |      21984 |
+| DAR (age-normed)               | 0.697 [0.69–0.704]  | 0.772 [0.763–0.78]  | 0.664 [0.655–0.671] |      21973 |
+| DTABR (age-normed)             | 0.719 [0.712–0.727] | 0.789 [0.78–0.797]  | 0.691 [0.683–0.699] |      21973 |
+| SEF95 (age-normed)             | 0.675 [0.667–0.682] | 0.71 [0.702–0.72]   | 0.664 [0.656–0.673] |      21973 |
+| r_sBSI (age-normed)            | 0.686 [0.678–0.693] | 0.675 [0.665–0.684] | 0.715 [0.707–0.723] |      21973 |
+| Q_ASYM (age-normed)            | 0.68 [0.672–0.687]  | 0.684 [0.674–0.693] | 0.693 [0.686–0.702] |      21973 |
+| ** Morgoth p_slowing (gate) ** | 0.881 [0.876–0.886] | 0.918 [0.913–0.923] | 0.875 [0.87–0.881]  |      21984 |

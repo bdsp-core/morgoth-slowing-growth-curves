@@ -75,9 +75,16 @@ def main():
 
     # --- van Putten arms, from the full-coverage recompute (P8a / P8b) ---
     # values sourced from results/vanputten_fullcoverage.md (27,003 recordings)
-    vp = {  # metric: (raw, age-normed) per target  -- generalized shown; see Table 6 for all
+    # complete set, from results/vanputten_fullcoverage.md (27,003 recs, patient-clustered CIs)
+    vp = {   # metric: (raw, age-normed) per target
+        # --- SLOWING metrics: age-dependent, so age-norming HELPS ---
         "Q_SLOWING": {"abnormal": (0.654, 0.692), "generalized": (0.702, 0.751), "focal": (0.630, 0.671)},
+        "DAR":       {"abnormal": (0.667, 0.697), "generalized": (0.731, 0.772), "focal": (0.630, 0.664)},
+        "DTABR":     {"abnormal": (0.684, 0.719), "generalized": (0.743, 0.789), "focal": (0.651, 0.691)},
+        "SEF95":     {"abnormal": (0.637, 0.675), "generalized": (0.665, 0.710), "focal": (0.621, 0.664)},
+        # --- ASYMMETRY metrics: left-right symmetry is age-INVARIANT, so age-norming only adds noise ---
         "r_sBSI":    {"abnormal": (0.698, 0.686), "generalized": (0.692, 0.675), "focal": (0.726, 0.715)},
+        "Q_ASYM":    {"abnormal": (0.684, 0.680), "generalized": (0.690, 0.684), "focal": (0.697, 0.693)},
     }
     ours = {"abnormal": 0.881, "generalized": 0.918, "focal": 0.875}   # Morgoth gate
     p8a = []
@@ -90,7 +97,9 @@ def main():
     print("\nP8a — does age-norming a van Putten metric beat it as-published? (falsified if delta <= 0)")
     print(p8a.to_string(index=False))
 
-    best_vp = {"abnormal": 0.698, "generalized": 0.751, "focal": 0.726}
+    # BEST van Putten arm per target across the COMPLETE table (was understated before the
+    # segment_master arms were included: DTABR age-normed is the real competitor, not Q_SLOWING)
+    best_vp = {"abnormal": 0.719, "generalized": 0.789, "focal": 0.726}   # DTABR-z, DTABR-z, r_sBSI raw
     p8b = [{"target": t, "ours(Morgoth)": ours[t], "best van Putten": best_vp[t],
             "margin": round(ours[t] - best_vp[t], 3),
             "verdict": "CONFIRMED (no adoption)" if ours[t] - best_vp[t] > -0.02 else "ADOPT THEIRS"}
@@ -106,8 +115,12 @@ def main():
              result="Morgoth gate 0.881 (any slowing); sparse score 0.844; normative deviation 0.806 (N1) / 0.784 (W)",
              verdict="CONFIRMED"),
         dict(P="P2", prediction="Sex can be pooled in the norms", falsified_if="dAUROC from adding sex > 0.01",
-             result="dAUROC <= 0.002 (prior run); NOT re-verified on v6",
-             verdict="CONFIRMED (pending v6 re-verification)"),
+             result="RE-VERIFIED on v6 across 15 (stage x feature) cells: max |dAUROC| = 0.0043, "
+                    "median 0.0006 (bar is 0.01). Splitting the normative reference by sex does not "
+                    "improve detection anywhere. NB: this required first fixing a manifest bug in which "
+                    "sex was encoded two ways (F/M and Female/Male), which had been silently dropping "
+                    "~12.8k recordings from any sex-filtered analysis.",
+             verdict="CONFIRMED"),
         dict(P="P3", prediction="Amount score is reliable", falsified_if="split-half ICC < 0.8",
              result="split-half ICC(2,1) = 0.991 (n=19,184 recordings, interleaved segment halves, stage W)",
              verdict="CONFIRMED"),
@@ -133,11 +146,16 @@ def main():
              verdict=f"focal {p7['focal']['verdict']} / generalized {p7['generalized']['verdict']}"),
         dict(P="P8a", prediction="Age-norming a van Putten metric beats it as-published",
              falsified_if="dAUROC(normed - raw) <= 0",
-             result="Q_SLOWING +0.038/+0.049/+0.041 (CONFIRMED); r_sBSI -0.012/-0.017/-0.011 (FALSIFIED)",
-             verdict="MIXED — confirmed for the slowing indices, falsified for the asymmetry index"),
+             result="CONFIRMED for every SLOWING index (Q_SLOWING +0.038/+0.049/+0.041; DAR +0.030/+0.041/"
+                    "+0.034; DTABR +0.035/+0.046/+0.040; SEF95 +0.038/+0.045/+0.043). FALSIFIED for both "
+                    "ASYMMETRY indices (r_sBSI -0.012/-0.017/-0.011; Q_ASYM -0.004/-0.006/-0.004). The split "
+                    "is physiologically coherent: SLOWING changes with age, so an age-matched reference helps; "
+                    "left-right SYMMETRY does not, so age-norming it only adds noise.",
+             verdict="MIXED — but systematically: helps every age-DEPENDENT metric, hurts every age-INVARIANT one"),
         dict(P="P8b", prediction="Our best score >= best van Putten on each target",
              falsified_if="any van Putten arm beats ours by dAUROC > 0.02 -> adopt it",
-             result="Morgoth 0.881/0.918/0.875 vs best vP 0.698/0.751/0.726 (margin +0.18/+0.17/+0.15)",
+             result="Morgoth 0.881/0.918/0.875 vs best vP 0.719/0.789/0.726 (DTABR-z, DTABR-z, r_sBSI) "
+                    "-> margin +0.162/+0.129/+0.149",
              verdict="CONFIRMED (no adoption triggered)"),
     ]
     tab = pd.DataFrame(rows)

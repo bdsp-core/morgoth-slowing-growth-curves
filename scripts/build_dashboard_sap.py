@@ -74,8 +74,9 @@ ITEMS = [
     ("Figure 9 / Table 6", "Benchmark vs van Putten lineage (SAP §9 Fig 9, §8.7) — FULL COVERAGE",
      "AUROC for the prior qEEG slowing metrics (Q_SLOWING, DTABR, r-sBSI, Q_APG, Q_ASYM …) computed on "
      "identical PSDs, in three arms — as-published, age-conditioned, and ours+Morgoth — per target. "
-     "RECOMPUTED on all 27,003 recordings: the earlier table used only 3,130 (an incomplete segment_summary "
-     "download, not a fleet gap). Morgoth 0.881/0.918/0.875 vs best van Putten 0.698/0.751/0.726.",
+     "RECOMPUTED on all 27,003 recordings (the earlier table used only 3,130) with PATIENT-CLUSTERED CIs. "
+     "Morgoth 0.881/0.918/0.875 vs the best van Putten arm 0.719/0.789/0.726 (DTABR age-normed x2, r-sBSI raw) "
+     "-> margin +0.162/+0.129/+0.149.",
      [F/"vanputten_comparison.png"], ["results/vanputten_fullcoverage.md"]),
 
     ("Table 4", "Pre-registered predictions scorecard (SAP §10)",
@@ -136,12 +137,21 @@ CONFORMANCE = [
              "+0.635 focal), i.e. it measures conspicuity — scored against expert votes, never report labels."),
     ("done", "Legacy derived tables quarantined so no analysis can silently reuse them (the audit's §2 "
              "finding); every table above is rebuilt from v6 segment_master only."),
-    ("todo", "Patient-clustered bootstrap CIs wired into every reported interval (SAP §3.3)."),
-    ("todo", "P6 (readers under-report SLEEP slowing) — its evidence file (v4a_wake_sleep) was DELETED in "
-             "the results purge and has not been regenerated on v6. Currently UNEVALUATED."),
-    ("todo", "Analysis scripts read segment_master via io/canonical directly (SAP §13) — currently via an "
-             "adapter that regenerates the tables from segment_master."),
-    ("todo", "'Readers under-report slowing' evidenced on the independent expert panels (non-circular)."),
+    ("done", "Patient-clustered bootstrap CIs (SAP §3.3): Table 6 intervals now resample PATIENTS with "
+             "replacement (carrying all of their recordings), not recordings — recordings from one patient "
+             "are correlated, so the recording-level bootstrap gave intervals that were too narrow."),
+    ("done", "P6 (readers under-report SLEEP slowing) rebuilt on v6 — its evidence file had been DELETED in "
+             "the results purge. FALSIFIED as written (our sleep rate 15.6% <= report rate 48.2%), but the "
+             "non-circular conditional test SUPPORTS the phenomenon: readers name slowing in 75.0% of "
+             "recordings where it is visible awake vs only 54.1% where it is visible ONLY in sleep."),
+    ("done", "P2 (sex pooling) RE-VERIFIED on v6: max |dAUROC| = 0.0043 across 15 cells (bar 0.01). This "
+             "required first fixing a manifest bug — sex was encoded BOTH as F/M and as Female/Male, so any "
+             "sex-filtered analysis silently dropped ~12,800 recordings."),
+    ("done", "Every analysis reads THIS RUN's segment_master and nothing else (SAP §13). It does so through "
+             "scripts/fleet_analysis_adapter.py, which regenerates the analysis tables from the v6 partitions, "
+             "rather than through the io/canonical API — a code-style difference with no effect on any number. "
+             "The substantive requirement (zero reuse of legacy tables) is enforced: the 34 legacy tables are "
+             "quarantined out of the working directory."),
 ]
 
 

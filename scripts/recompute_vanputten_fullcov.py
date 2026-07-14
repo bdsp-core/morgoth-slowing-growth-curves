@@ -81,17 +81,28 @@ def grid_z(age_ref, v_ref, age_q, v_q, bw=8.0, grid=np.arange(-1, 101, 0.5)):
            np.interp(age_q, grid[good], sd[good], np.nan, np.nan)
 
 
-def auc_ci(y, s, rng, n=300):
+def auc_ci(y, s, rng, n=300, groups=None):
+    """AUROC with a PATIENT-CLUSTERED bootstrap (SAP §3.3).
+
+    One patient can contribute several EEGs, so resampling RECORDINGS treats correlated observations as
+    independent and yields intervals that are too narrow. We instead resample PATIENTS with replacement and
+    take all of that patient's recordings — the standard cluster bootstrap."""
     s = np.asarray(s, float); m = np.isfinite(s)
     y2, s2 = np.asarray(y)[m], s[m]
+    g2 = np.asarray(groups)[m] if groups is not None else np.arange(len(y2))
     if m.sum() < 20 or len(np.unique(y2)) < 2:
         return (np.nan, np.nan, np.nan, int(m.sum()))
     a = roc_auc_score(y2, s2)
-    if a < 0.5:
+    flip = a < 0.5
+    if flip:
         s2 = -s2; a = 1 - a
+    # index the recordings belonging to each patient once
+    uniq, inv = np.unique(g2, return_inverse=True)
+    by_pat = [np.where(inv == k)[0] for k in range(len(uniq))]
     bs = []
     for _ in range(n):
-        j = rng.integers(0, len(y2), len(y2))
+        pick = rng.integers(0, len(uniq), len(uniq))            # resample PATIENTS
+        j = np.concatenate([by_pat[k] for k in pick])
         if len(np.unique(y2[j])) == 2:
             bs.append(roc_auc_score(y2[j], s2[j]))
     return (round(a, 3), round(np.percentile(bs, 2.5), 3), round(np.percentile(bs, 97.5), 3), int(m.sum()))
@@ -131,7 +142,9 @@ def main():
     y_f = foc.slowing_focal.fillna(False).astype(int).values
 
     def arm(col):
-        return auc_ci(y_ab, ab[col], rng), auc_ci(y_g, gen[col], rng), auc_ci(y_f, foc[col], rng)
+        return (auc_ci(y_ab, ab[col], rng, groups=ab.patient_id.values),
+                auc_ci(y_g,  gen[col], rng, groups=gen.patient_id.values),
+                auc_ci(y_f,  foc[col], rng, groups=foc.patient_id.values))
 
     specs = [
         # --- raw, as published ---
@@ -167,7 +180,8 @@ def main():
         "counts match exactly). This table supersedes it.\n\n"
         "Labels are the CORRECTED SAP labels (`label_rederive_sap.py`: physiologic generalized slowing is "
         "NOT a positive — 5,528 recordings were previously mislabelled pathologic). "
-        "AUROC [95% patient-bootstrap CI]; auto-oriented so >0.5.\n\n" + tab.to_markdown(index=False) + "\n")
+        "AUROC [95% CI from a PATIENT-CLUSTERED bootstrap — patients resampled with replacement, all of "
+        "their recordings carried along, per SAP §3.3]; auto-oriented so >0.5.\n\n" + tab.to_markdown(index=False) + "\n")
     print("\nwrote results/vanputten_fullcoverage.md")
 
 

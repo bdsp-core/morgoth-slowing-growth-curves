@@ -240,23 +240,42 @@ from the same signals and the same artifact-flagged segments**, rather than re-d
 arms per the analysis plan: raw as published, age-conditioned against our normative curves, and against our
 gate. On **27,003 recordings** (`results/vanputten_fullcoverage.md`; **Table 6**):
 
+AUROC [95% CI from a patient-clustered bootstrap]:
+
 | Method | any slowing | generalized | focal |
 |---|---|---|---|
 | Q_SLOWING (raw; van Putten 2013) | 0.654 | 0.702 | 0.630 |
-| r-sBSI (raw; van Putten 2007) | 0.698 | 0.692 | 0.726 |
+| DAR (raw) | 0.667 | 0.731 | 0.630 |
+| DTABR (raw; Finnigan & van Putten 2013) | 0.684 | 0.743 | 0.651 |
+| r-sBSI (raw; van Putten 2007) | 0.698 | 0.692 | **0.726** |
 | Q_ASYM (raw) | 0.684 | 0.690 | 0.697 |
-| Q_SLOWING (age-normed, ours) | 0.692 | **0.751** | 0.671 |
-| **Morgoth p_slowing (gate)** | **0.881** [0.876–0.885] | **0.918** [0.913–0.923] | **0.875** [0.870–0.881] |
+| Q_SLOWING (age-normed, ours) | 0.692 | 0.751 | 0.671 |
+| DAR (age-normed, ours) | 0.697 | 0.772 | 0.664 |
+| **DTABR (age-normed, ours)** | **0.719** | **0.789** | 0.691 |
+| r-sBSI (age-normed, ours) | 0.686 | 0.675 | 0.715 |
+| **Morgoth p_slowing (gate)** | **0.881** [0.876–0.886] | **0.918** [0.913–0.923] | **0.875** [0.870–0.881] |
 
-Two results follow. First, **lifespan normalization is a genuine gain even for existing instruments**:
-age-conditioning Q_SLOWING against our curves raises generalized detection from 0.702 to 0.751, and the
-same is true across the family — evidence that the normative framing, not merely a new classifier, adds
-information to metrics that have been used unnormalized for two decades. Second, **it does not close the
-gap**: the learned representation exceeds the best published metric by **+0.18 (any slowing), +0.17
-(generalized) and +0.15 (focal) AUROC**, far outside the bootstrap intervals. This is the central
-quantitative claim of the paper, and it is what motivates the two-stage architecture: the gate decides
-*whether* slowing is present, and the normative field — which is calibrated and graded by the expert call,
-but is a weaker detector — supplies the *description*.
+Two results follow, and the second is the more interesting one.
+
+First, **the learned representation exceeds the best published instrument by a wide margin**: +0.162 (any
+slowing), +0.129 (generalized) and +0.149 (focal) AUROC over the strongest van Putten arm in each column
+(age-normed DTABR twice; raw r-sBSI for focal), far outside the patient-clustered intervals. This is the
+central quantitative claim of the paper.
+
+Second — and this is what justifies the normative half of the architecture — **lifespan normalization is a
+real gain for the existing instruments, and it improves exactly the ones it should.** Age-conditioning every
+*slowing* index against our clean-normal curves raises it: Q_SLOWING +0.038/+0.049/+0.041, DAR
++0.030/+0.041/+0.034, DTABR +0.035/+0.046/+0.040, SEF95 +0.038/+0.045/+0.043 (abnormal/generalized/focal).
+Age-conditioning the *asymmetry* indices makes them slightly **worse**: r-sBSI −0.012/−0.017/−0.011, Q_ASYM
+−0.004/−0.006/−0.004. The dissociation is exactly what physiology predicts: spectral slowing changes
+systematically across the lifespan, so an age-matched reference removes a genuine confound; interhemispheric
+*symmetry* does not vary with age, so age-conditioning it adds variance and no signal. Our pre-registered
+prediction P8a is therefore confirmed for every age-dependent metric and falsified for every age-invariant
+one — a mixed result with a clean mechanism, not a wash.
+
+Together these motivate the two-stage design: the gate decides *whether* slowing is present, and the
+normative field — a weaker detector, but calibrated and graded by the expert call — supplies the
+*description*.
 
 ### 3.4b Dose-response across report strata — and the failure to reproduce the severity *grade*
 

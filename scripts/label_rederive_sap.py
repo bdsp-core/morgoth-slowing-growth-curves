@@ -132,6 +132,14 @@ def main():
         "clean_pair": m.get("clean_pair"), "age": m.get("age"), "sex": m.get("sex"),
         "label_source": src, "slowing_named_in_conclusion": named, "physio_attribution": physio,
     })
+    # NORMALISE SEX. The manifest carries TWO encodings: cohort/replacement rows use "F"/"M" while
+    # backfill/expansion rows use "Female"/"Male". Any analysis filtering on sex=="F" silently drops
+    # ~12.8k recordings. Collapse to F / M / unknown here so nothing downstream can hit that trap.
+    if "sex" in out.columns:
+        out["sex"] = (out.sex.astype(str).str.strip().str[:1].str.upper()
+                        .map({"F": "F", "M": "M"}).fillna("unknown"))
+        print("  sex normalised:", dict(out.sex.value_counts()))
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     out.to_parquet(OUT, index=False)
 
