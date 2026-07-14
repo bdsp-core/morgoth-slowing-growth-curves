@@ -8,19 +8,21 @@ Gate operating points, chosen by Youden J against the corrected report labels on
 
 ## Median deviation z
 
-| gate_call            |     W |    N1 |    N2 |    N3 |   REM |
-|:---------------------|------:|------:|------:|------:|------:|
-| Morgoth: no slowing  | -0.19 | -0.19 | -0.13 | -0.1  | -0.17 |
-| Morgoth: focal       |  0.68 |  0.64 |  0.41 |  0.23 |  0.55 |
-| Morgoth: generalized |  0.77 |  1.06 |  0.63 |  0.34 |  0.77 |
+| gate_call                 |     W |    N1 |    N2 |    N3 |   REM |
+|:--------------------------|------:|------:|------:|------:|------:|
+| Morgoth: neither          | -0.19 | -0.19 | -0.13 | -0.1  | -0.17 |
+| Morgoth: focal only       |  0.25 |  0.13 |  0.07 |  0.04 |  0.1  |
+| Morgoth: generalized only |  0.39 |  0.51 |  0.33 |  0.16 |  0.35 |
+| Morgoth: BOTH             |  0.99 |  1.29 |  0.77 |  0.38 |  1.03 |
 
 ## n recordings per cell
 
-| gate_call            |     W |    N1 |   N2 |   N3 |   REM |
-|:---------------------|------:|------:|-----:|-----:|------:|
-| Morgoth: no slowing  | 12835 | 11531 | 9550 | 3314 | 10747 |
-| Morgoth: focal       |  3682 |  3456 | 3258 | 2276 |  3031 |
-| Morgoth: generalized |  9086 |  8302 | 8612 | 6145 |  6737 |
+| gate_call                 |     W |    N1 |   N2 |   N3 |   REM |
+|:--------------------------|------:|------:|-----:|-----:|------:|
+| Morgoth: neither          | 12835 | 11531 | 9550 | 3314 | 10747 |
+| Morgoth: focal only       |  1536 |  1416 | 1251 |  697 |  1228 |
+| Morgoth: generalized only |  2880 |  2569 | 2738 | 1681 |  2068 |
+| Morgoth: BOTH             |  8352 |  7773 | 7881 | 6043 |  6472 |
 
 ## The honest limit
 

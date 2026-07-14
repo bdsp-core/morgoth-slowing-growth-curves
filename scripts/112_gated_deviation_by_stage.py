@@ -38,8 +38,14 @@ from sklearn.metrics import roc_curve
 
 STAGES = ["W", "N1", "N2", "N3", "REM"]
 SLOW_FEATS = ["log_delta", "TAR", "DAR"]          # higher = more slowing
-GROUPS = ["Morgoth: no slowing", "Morgoth: focal", "Morgoth: generalized"]
-COLORS = ["#8fa6bd", "#f0a259", "#c8443c"]
+# FOUR groups, not three. The two EEG-level heads (FOC_SLOWING_EEGlevel / GEN_SLOWING_EEGlevel) are
+# INDEPENDENT binary sigmoids, not a softmax: p_focal + p_generalized exceeds 1.0 in 15.7% of recordings,
+# and at the operating thresholds 8,691 (31.6%) fire BOTH. An earlier version of this figure forced three
+# mutually exclusive groups by argmax, which silently reassigned every one of those 8,691 recordings to
+# whichever probability happened to be larger. Focal and generalized slowing genuinely co-occur; the model
+# says so, and the figure must too.
+GROUPS = ["Morgoth: neither", "Morgoth: focal only", "Morgoth: generalized only", "Morgoth: BOTH"]
+COLORS = ["#8fa6bd", "#f0a259", "#c8443c", "#7b4b94"]
 
 
 def fit_norm(age, val, bw=8.0, grid=np.arange(0, 91, 0.5)):
@@ -93,10 +99,14 @@ def main():
     tg = youden(cp.slowing_gen_pathologic.fillna(False).astype(int), cp.p_generalized)
     print(f"gate operating points (Youden J on clean_pair): p_focal >= {tf:.3f} | p_generalized >= {tg:.3f}")
 
-    fire_f, fire_g = d.p_focal >= tf, d.p_generalized >= tg
-    d["gate_call"] = np.where(
-        ~fire_f & ~fire_g, GROUPS[0],
-        np.where(fire_g & (~fire_f | (d.p_generalized >= d.p_focal)), GROUPS[2], GROUPS[1]))
+    F, G = d.p_focal >= tf, d.p_generalized >= tg
+    d["gate_call"] = np.select(
+        [~F & ~G, F & ~G, ~F & G, F & G],
+        [GROUPS[0], GROUPS[1], GROUPS[2], GROUPS[3]], default=GROUPS[0])
+    _rc = d.drop_duplicates("eeg_id").gate_call.value_counts()
+    print("Morgoth's calls (independent heads — BOTH is a real category, not a tie-break):")
+    for _g in GROUPS:
+        print(f"   {_g:26s} {_rc.get(_g, 0):>6,}")
 
     # --- normative deviation: each feature z'd against ITS OWN STAGE's age-matched clean-normal curve
     d["dev"] = np.nan
@@ -119,15 +129,15 @@ def main():
     print(f"\nrecordings x stage cells: {len(p):,}  ({p.eeg_id.nunique():,} recordings)")
 
     # ------------------------------------------------------------------ the figure
-    fig, ax = plt.subplots(figsize=(11.5, 6))
-    W = 0.26
+    fig, ax = plt.subplots(figsize=(13, 6.2))
+    W = 0.20
     rows = []
     for gi, (grp, col) in enumerate(zip(GROUPS, COLORS)):
         for si, st in enumerate(STAGES):
             v = p[(p.gate_call == grp) & (p.stage == st)].dev.values
             if len(v) < 10:
                 continue
-            pos = si + (gi - 1) * W
+            pos = si + (gi - 1.5) * W
             bp = ax.boxplot([v], positions=[pos], widths=W * 0.88, showfliers=False,
                             patch_artist=True, medianprops=dict(color="black", lw=1.6))
             bp["boxes"][0].set_facecolor(col); bp["boxes"][0].set_alpha(.85)
@@ -139,12 +149,12 @@ def main():
                     rotation=90)
 
     ax.axhline(0, color="#333", lw=1.1, ls="--", zorder=0)
-    ax.text(-0.60, 0.10, "0 = normal\nfor this age\nAND this stage",
+    ax.text(-0.68, 0.10, "0 = normal\nfor this age\nAND this stage",
             fontsize=7, color="#555", va="bottom", ha="left")
     ax.set_xticks(range(len(STAGES)))
     ax.set_xticklabels([f"{s}" for s in STAGES], fontsize=11)
     ax.tick_params(axis="x", length=0, pad=26)          # keep the stage labels clear of the n counts
-    ax.set_xlim(-0.65, len(STAGES) - 0.35)
+    ax.set_xlim(-0.72, len(STAGES) - 0.28)
     ax.set_ylim(-4.1, 4.4)
     ax.set_xlabel("Sleep stage (each recording scored against its OWN stage's normal curve)")
     ax.set_ylabel("Normative deviation  (whole-head slowing z:  log δ, TAR, DAR)")
@@ -152,13 +162,15 @@ def main():
                  "The gate detects; the normative deviation quantifies. Boxes: median, IQR, 1.5×IQR.",
                  fontsize=12)
     handles = [plt.Rectangle((0, 0), 1, 1, fc=c, alpha=.85, ec="#333") for c in COLORS]
-    ax.legend(handles, GROUPS, frameon=False, fontsize=9, loc="upper right", ncol=3)
+    ax.legend(handles, GROUPS, frameon=False, fontsize=8.5, loc="upper right", ncol=4)
     ax.grid(alpha=.22, axis="y")
     fig.text(0.012, 0.012,
-             "Gating is PER-RECORDING (Morgoth's EEG-level FOC/GEN heads). Morgoth's window head is 3-class "
-             "{0 others, 1 focal, 2 generalized}, so per-SEGMENT focal/generalized probabilities exist — but the "
-             "fleet worker kept only 1−P(class 0) and discarded them. Recovering them needs a gate re-run.",
-             fontsize=6.6, color="#777", wrap=True)
+             "Gating is PER-RECORDING, from Morgoth's two EEG-level heads (FOC_SLOWING / GEN_SLOWING). They are "
+             "INDEPENDENT binary sigmoids, not a softmax — both can fire, and 31.6% of recordings do fire both, "
+             "so 'BOTH' is a real category rather than a tie-break. Morgoth's per-WINDOW head is a 3-class softmax "
+             "{0 others, 1 focal, 2 generalized} and IS mutually exclusive, but the fleet worker kept only "
+             "1−P(class 0) and discarded classes 1 and 2, so no per-SEGMENT focal/generalized split exists on disk.",
+             fontsize=6.5, color="#777", wrap=True)
     fig.tight_layout(rect=[0, 0.045, 1, 1])
     Path("figures/growth_v2").mkdir(parents=True, exist_ok=True)
     fig.savefig("figures/growth_v2/gated_deviation_by_stage.png", dpi=150)
