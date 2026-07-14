@@ -74,3 +74,6 @@ references/*.pdf
 # negatives, errors up to 10 y). It is small (~1 MB), HIPAA-safe (>89 binned to 90) and is the
 # single source of truth that scripts/34 + fleet_analysis_adapter.py + label_rederive_sap.py read.
 !metadata/ages_v6.parquet
+
+# rclone remote with live BDSP keys — SHIPPED IN THE BUNDLE (private S3), NEVER COMMITTED
+fleet/rclone_s3.conf

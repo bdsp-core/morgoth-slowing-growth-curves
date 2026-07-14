@@ -71,17 +71,37 @@ SCHEMA_VERSION = "gate-rerun-1"
 
 # --------------------------------------------------------------------------- pure, testable geometry
 def context_rows(center_s: float, ctx: int, n_rows: int):
-    """Row range for a `ctx`-second window centred on `center_s`, in a 1 s-step matrix of `n_rows`.
+    """Row range for a `ctx`-second window centred on `center_s`. None if the recording is too short.
 
-    NEVER pads with fabricated values. If the window would run off either end, it is SHIFTED to fit while
-    keeping its full length — so the model always sees `ctx` rows of REAL data. If the whole recording is
-    shorter than `ctx`, returns None and the caller records NaN (never a mean-padded guess).
+    Prefers REAL data: if the window runs off an end it is SHIFTED to fit while keeping its full length, so
+    the model sees `ctx` rows of genuine signal. Only when the whole recording is shorter does it give up and
+    return None -- and then `build_seq` mean-pads, and the row is FLAGGED.
     """
     if n_rows < max(ctx, MIN_ROWS):
         return None
     lo = int(round(center_s - ctx / 2.0))
     lo = max(0, min(lo, n_rows - ctx))          # shift to fit, do not shrink
     return lo, lo + ctx
+
+
+def build_seq(W, center_s, ctx):
+    """-> (sequence, length_to_report, padded_flag).
+
+    When the recording is shorter than the CNN's 30-row floor -- which is EVERY one of the 1,761 MoE clips,
+    all exactly 15 s -- we reproduce Morgoth's own CSVDataset behaviour: take the real rows and MEAN-PAD up
+    to 30, reporting the PRE-pad length to the model (that is what Morgoth records). The result is flagged
+    `padded`, stored ALONGSIDE the raw per-second softmax, never instead of it. So every case gets the same
+    columns, and a fabricated input can never be mistaken for a measured one.
+    """
+    T = len(W)
+    r = context_rows(center_s, ctx, T)
+    if r is not None:
+        lo, hi = r
+        return W[lo:hi], ctx, False
+    real = W                                    # the whole (short) recording
+    need = max(MIN_ROWS, 30)
+    pad = np.tile(real.mean(axis=0, keepdims=True), (max(0, need - T), 1))
+    return np.vstack([real, pad])[:need].astype(np.float32), T, True
 
 
 def guard_would_fire(W: np.ndarray, lo: int, hi: int, class_idx: int) -> bool:
@@ -113,12 +133,16 @@ class EEGLevelHeads:
                     for n, c in [("focal", "FOC_SLOWING_EEGlevel.pth"),
                                  ("gen", "GEN_SLOWING_EEGlevel.pth")]}
 
-    def run_slices(self, W, slices):
-        """W (T,3) float32; slices [(lo,hi), ...] each >= MIN_ROWS rows. -> (S,2) raw sigmoids [focal, gen]."""
-        if not len(slices):
+    def run_seqs(self, seqs, lens):
+        """seqs: list of (L,3) arrays (already mean-padded if short). -> (S,2) raw sigmoids [focal, gen]."""
+        if not len(seqs):
             return np.zeros((0, 2), np.float32)
-        np.save(self.scratch / "W.npy", np.ascontiguousarray(W, dtype=np.float32))
-        np.save(self.scratch / "slices.npy", np.asarray(slices, dtype=np.int64))
+        L = max(len(x) for x in seqs)
+        X = np.zeros((len(seqs), L, 3), dtype=np.float32)
+        for j, x in enumerate(seqs):
+            X[j, :len(x)] = x
+        np.save(self.scratch / "X.npy", X)
+        np.save(self.scratch / "lens.npy", np.asarray(lens, dtype=np.int64))
         r = subprocess.run(["bash", "-lc",
             f"KMP_DUPLICATE_LIB_OK=TRUE MORGOTH2_DIR={os.environ.get('MORGOTH2_DIR','')} "
             f"{self.venv} {self.shim} --scratch {self.scratch} --ckpt-dir {self.ckpt_dir}"],
@@ -252,41 +276,43 @@ def process_one(eid, meta, heads, work):
         rows[f"{cls}_mean"], rows[f"{cls}_max"] = mean_v, max_v
 
     for ctx in CONTEXTS:
-        slices, idx = [], []
+        seqs, lens, padded, idx = [], [], [], []
         gf = np.zeros(len(seg), bool); gg = np.zeros(len(seg), bool)
-        ranges = []
         for i, c in enumerate(centers):
-            r = context_rows(c, ctx, T)
-            if r is None:
-                continue
-            lo, hi = r
-            ranges.append((lo, hi)); slices.append(1); idx.append(i)
+            sq, ln, pd_ = build_seq(W, c, ctx)      # ALWAYS produces a sequence; pd_ says if it was padded
+            seqs.append(sq); lens.append(ln); padded.append(pd_); idx.append(i)
+            lo, hi = (0, T) if pd_ else context_rows(c, ctx, T)
             gf[i] = guard_would_fire(W, lo, hi, 1)
             gg[i] = guard_would_fire(W, lo, hi, 2)
         pf = np.full(len(seg), np.nan, np.float32); pg = np.full(len(seg), np.nan, np.float32)
-        if slices:
+        if seqs:
             if DRY:
                 rng = np.random.default_rng(ctx)
-                vf, vg = rng.random(len(slices)).astype(np.float32), rng.random(len(slices)).astype(np.float32)
+                vf, vg = rng.random(len(seqs)).astype(np.float32), rng.random(len(seqs)).astype(np.float32)
             else:
-                pr = heads.run_slices(W, ranges); vf, vg = pr[:, 0], pr[:, 1]
+                pr = heads.run_seqs(seqs, lens); vf, vg = pr[:, 0], pr[:, 1]
             pf[idx], pg[idx] = vf, vg
         rows[f"p_focal_{ctx}"], rows[f"p_gen_{ctx}"] = pf, pg
         rows[f"guard_focal_{ctx}"], rows[f"guard_gen_{ctx}"] = gf, gg
+        rows[f"padded_{ctx}"] = np.asarray(padded, bool)   # True = input was mean-padded (Morgoth-style)
 
     sg = pd.DataFrame(rows)
     (SGATE / f"eeg_id={eid}").mkdir(parents=True, exist_ok=True)
     sg.to_parquet(SGATE / f"eeg_id={eid}" / "part.parquet", index=False)
 
     # ---- recording level, on the FULL 1 s sequence (this is what the 5 s run got wrong)
-    if T >= MIN_ROWS:
-        if DRY:
-            rf = rg = float(np.random.default_rng(7).random())
-        else:
-            pr = heads.run_slices(W, [(0, T)]); rf, rg = float(pr[0, 0]), float(pr[0, 1])
-        grec_f, grec_g = guard_would_fire(W, 0, T, 1), guard_would_fire(W, 0, T, 2)
+    rec_padded = T < MIN_ROWS
+    if DRY:
+        rf = rg = float(np.random.default_rng(7).random())
     else:
-        rf = rg = np.nan; grec_f = grec_g = False
+        if rec_padded:                            # e.g. every MoE clip: 15 real rows, mean-padded to 30
+            pad = np.tile(W.mean(axis=0, keepdims=True), (MIN_ROWS - T, 1))
+            sq = np.vstack([W, pad]).astype(np.float32)
+            pr = heads.run_seqs([sq], [T])
+        else:
+            pr = heads.run_seqs([W], [T])
+        rf, rg = float(pr[0, 0]), float(pr[0, 1])
+    grec_f, grec_g = guard_would_fire(W, 0, T, 1), guard_would_fire(W, 0, T, 2)
 
     (GDONE / f"{eid}.done").write_text(json.dumps({
         "eeg_id": eid, "schema_version": SCHEMA_VERSION,
@@ -295,6 +321,7 @@ def process_one(eid, meta, heads, work):
         "p_focal_recording": rf, "p_generalized_recording": rg,
         "guard_would_fire_focal_recording": bool(grec_f),
         "guard_would_fire_gen_recording": bool(grec_g),
+        "recording_padded": bool(rec_padded),   # True = shorter than the 30-row CNN floor (all MoE clips)
         "source_edf": meta.get("source_edf"), "sha256": src_sha,
         "checkpoint_sha256": (heads.sha if heads else {}),
         "instance_type": os.environ.get("INSTANCE_TYPE"), "n_gpus": os.environ.get("N_GPUS"),

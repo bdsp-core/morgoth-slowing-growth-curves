@@ -53,7 +53,7 @@ if [ "${PUBLISH:-0}" = "1" ]; then
   BUNDLE=/tmp/gate_bundle_$HASH.tgz
   tar czf "$BUNDLE" \
       src scripts/32_gate_rerun_worker.py scripts/35_validate_gate_output.py scripts/shims \
-      fleet/gate_worker.py data/manifest/report_manifest_v6.parquet
+      fleet/gate_worker.py fleet/rclone_s3.conf data/manifest/report_manifest_v6.parquet
   aws s3 cp --profile bdspwrite "$BUNDLE" "$S3_CODE/bundle.tgz" >/dev/null || { echo "publish failed"; exit 1; }
   echo "  + bundle.tgz  ($(du -h "$BUNDLE" | cut -f1))  commit $HASH"
   echo "published $(date -u +%FT%TZ)"
@@ -83,6 +83,12 @@ rclone copyto $CODE/bundle.tgz /tmp/bundle.tgz || { echo "FATAL: bundle fetch fa
 tar xzf /tmp/bundle.tgz -C . || { echo "FATAL: bundle extract failed"; exit 93; }
 echo "STEP bundle OK: $(python -c "import sys;sys.path.insert(0,\"src\");from morgoth_slowing.fleet import ingest;print(\"morgoth_slowing.fleet OK\")" 2>&1)"
 echo "STEP manifest: $(du -h data/manifest/report_manifest_v6.parquet 2>/dev/null | cut -f1)"
+# The AMI has a bdsp: remote but NO s3: remote, and the .done sidecars record EDF paths as s3:...
+# Merge in an s3: section (BDSP keys, verified to read the BIDS bucket) so the recorded paths work as-is.
+mkdir -p ~/.config/rclone
+grep -q "^\[s3\]" ~/.config/rclone/rclone.conf 2>/dev/null || cat fleet/rclone_s3.conf >> ~/.config/rclone/rclone.conf
+chmod 600 ~/.config/rclone/rclone.conf
+echo "STEP remotes: $(rclone listremotes | tr "\n" " ")"
 export MORGOTH2_DIR=/home/ubuntu/morgoth2
 export PILOT_VENV=\$MORGOTH2_DIR/.venv/bin/python     # Morgoth OWN venv — the only one with torch
 export CKPT_DIR=\$MORGOTH2_DIR/checkpoints
@@ -92,7 +98,6 @@ export MANIFEST=/home/ubuntu/morgoth-slowing-growth-curves/data/manifest/report_
 export PANEL_ROOT=bdsp:bdsp-opendata-credentialed/morgoth-slowing/panels
 export OUTPUT_ROOT=/home/ubuntu/gate_out; mkdir -p \$OUTPUT_ROOT
 export SRC_V6=$SRC_V6 S3_OUT=$S3OUT SEED=\$RANDOM\$RANDOM
-export EDF_REMOTE=bdsp:   # the AMI has no s3: remote; bdsp: is the same S3 with the same creds
 export GATE_PILOT=$PILOT
 IMDS_TOK=\$(curl -sX PUT -m 2 "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 imds() { curl -s -m 2 -H "X-aws-ec2-metadata-token: \$IMDS_TOK" "http://169.254.169.254/latest/meta-data/\$1"; }

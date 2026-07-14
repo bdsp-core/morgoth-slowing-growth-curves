@@ -14,9 +14,13 @@ WHY THIS EXISTS, AND WHY IT IS A SHIM
     So we import the model class and drive it ourselves. Nothing is thresholded, zeroed or padded.
 
 CONTRACT (all arrays .npy, passed through a scratch dir so no torch object crosses the venv boundary)
-  in : W.npy       float32 (T, 3)   the 1 s-step SLOWING softmax: class_0/1/2
-       slices.npy  int64   (S, 2)   [lo, hi) row ranges. Caller guarantees hi-lo >= 30 (the CNN's floor)
-  out: probs.npy   float32 (S, 2)   column 0 = P(focal), column 1 = P(generalized)  -- RAW sigmoids
+  in : X.npy    float32 (S, L, 3)  the sequences to score, right-zero-padded to a common L
+       lens.npy int64   (S,)       the length to REPORT to the model (Morgoth records the pre-pad length)
+  out: probs.npy float32 (S, 2)    column 0 = P(focal), column 1 = P(generalized) -- RAW sigmoids
+
+Sequences shorter than the CNN's 30-row floor are MEAN-PADDED to 30 by the caller, exactly as Morgoth's
+CSVDataset does, and flagged `padded` in the output table. That reproduces the official number for the
+1,761 MoE clips (all exactly 15 s) WITHOUT overwriting anything: the raw per-second softmax is kept too.
 
 Usage (from the worker, under PILOT_VENV):
     python eeg_level_sliding.py --scratch <dir> --ckpt-dir <morgoth2/checkpoints> [--batch 512]
@@ -47,39 +51,31 @@ def main():
         pass
     from EEG_level_head import CNNTransformerClassifier, load_model_parameters
 
-    W = np.load(os.path.join(a.scratch, "W.npy")).astype(np.float32)
-    sl = np.load(os.path.join(a.scratch, "slices.npy")).astype(np.int64)
-    assert W.ndim == 2 and W.shape[1] == 3, f"W must be (T,3), got {W.shape}"
-    if len(sl):
-        assert (sl[:, 1] - sl[:, 0]).min() >= MIN_ROWS, "a slice is under the 30-row CNN floor"
+    X = np.load(os.path.join(a.scratch, "X.npy")).astype(np.float32)
+    lens = np.load(os.path.join(a.scratch, "lens.npy")).astype(np.int64)
+    assert X.ndim == 3 and X.shape[2] == 3, f"X must be (S,L,3), got {X.shape}"
+    assert X.shape[1] >= MIN_ROWS, f"padded length {X.shape[1]} is under the 30-row CNN floor"
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    out = np.full((len(sl), 2), np.nan, dtype=np.float32)
+    out = np.full((len(X), 2), np.nan, dtype=np.float32)
 
     for h, (ckpt, _class_idx) in enumerate(HEADS):
         model = CNNTransformerClassifier(input_dim=3, output_dim=1, pe_max_length=15000).to(dev)
         load_model_parameters(model, os.path.join(a.ckpt_dir, ckpt), device=torch.device(dev))
         model.eval()
         with torch.no_grad():
-            for i in range(0, len(sl), a.batch):
-                chunk = sl[i:i + a.batch]
-                L = int((chunk[:, 1] - chunk[:, 0]).max())
-                X = np.zeros((len(chunk), L, 3), dtype=np.float32)
-                lens = np.zeros(len(chunk), dtype=np.int64)
-                for j, (lo, hi) in enumerate(chunk):
-                    seq = W[lo:hi]
-                    X[j, :len(seq)] = seq          # zero-fill ONLY to square the batch; masked by `lengths`
-                    lens[j] = len(seq)
-                logits = model(torch.from_numpy(X).to(dev),
-                               lengths=torch.from_numpy(lens).to(dev))
+            for i in range(0, len(X), a.batch):
+                xb = torch.from_numpy(X[i:i + a.batch]).to(dev)
+                lb = torch.from_numpy(lens[i:i + a.batch]).to(dev)
+                logits = model(xb, lengths=lb)
                 # RAW sigmoid. No guard, no threshold, no zeroing. This is the whole point of the shim.
-                out[i:i + len(chunk), h] = torch.sigmoid(logits).view(-1).float().cpu().numpy()
+                out[i:i + len(xb), h] = torch.sigmoid(logits).view(-1).float().cpu().numpy()
         del model
         if dev == "cuda":
             torch.cuda.empty_cache()
 
     np.save(os.path.join(a.scratch, "probs.npy"), out)
-    print(f"eeg_level_sliding: {len(sl)} slices x 2 heads on {dev}; "
+    print(f"eeg_level_sliding: {len(X)} sequences x 2 heads on {dev}; "
           f"focal[{np.nanmin(out[:,0]):.3f},{np.nanmax(out[:,0]):.3f}] "
           f"gen[{np.nanmin(out[:,1]):.3f},{np.nanmax(out[:,1]):.3f}]")
 
