@@ -97,7 +97,7 @@ class EEGLevelHeads:
     """
 
     def __init__(self, ckpt_dir, scratch):
-        import fleet_io as fi
+        from morgoth_slowing.fleet import ingest as fi
         self.ckpt_dir = os.path.abspath(ckpt_dir)
         self.scratch = Path(scratch); self.scratch.mkdir(parents=True, exist_ok=True)
         self.venv = fi.VENV                       # PILOT_VENV = Morgoth's python (the one WITH torch)
@@ -133,7 +133,7 @@ def _sha256(p, buf=1 << 20):
 # --------------------------------------------------------------------------- window head (Morgoth CLI)
 def run_window_heads(sin, sout, eid):
     """SLOWING (3-class) + NORMAL (binary) window heads at 1 s step. Returns (W[T,3], p_abnormal[T])."""
-    import fleet_io as fi
+    from morgoth_slowing.fleet import ingest as fi
     shim = os.path.abspath(fi.SHIMS)
 
     def _win(ckpt, ds, outdir):
@@ -190,7 +190,7 @@ def process_one(eid, meta, heads, work):
         pabn = rng.random(T).astype(np.float32)
         src_sha = meta.get("sha256")
     else:
-        import fleet_io as fi
+        from morgoth_slowing.fleet import ingest as fi
         from morgoth_slowing.io import edf as _edf                       # noqa: F401
         from morgoth_slowing.features import extract as ex
         from scipy.io import savemat

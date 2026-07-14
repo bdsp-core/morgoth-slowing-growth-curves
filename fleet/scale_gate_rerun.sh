@@ -81,7 +81,19 @@ export GATE_PILOT=$PILOT
 export INSTANCE_TYPE=\$(curl -s -m 2 http://169.254.169.254/latest/meta-data/instance-type || echo unknown)
 export N_GPUS=\$(nvidia-smi -L 2>/dev/null | wc -l)
 export MORGOTH2_COMMIT=\$(git -C \$MORGOTH2_DIR rev-parse --short HEAD 2>/dev/null || echo unknown)
-timeout 216000 python fleet/gate_worker.py
+# SHIP THE LOG TO S3, CONTINUOUSLY. The fleet writes worker logs to /var/log on an EPHEMERAL SPOT BOX that
+# TERMINATES ITSELF — so a failed worker's log evaporates and you are left guessing (which is exactly how
+# the first run lost its hardware provenance, and how the first acceptance run died invisibly: no SSH key,
+# port 22 closed). A worker log must be durable and readable without a shell.
+IID=\$(curl -s -m 2 http://169.254.169.254/latest/meta-data/instance-id || echo unknown)
+LOG=/home/ubuntu/gate_\$IID.log
+( while true; do rclone copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null; sleep 20; done ) &
+SHIPPER=\$!
+timeout 216000 python fleet/gate_worker.py > \$LOG 2>&1
+RC_=\$?
+kill \$SHIPPER 2>/dev/null
+echo "--- worker exited rc=\$RC_ ---" >> \$LOG
+rclone copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null    # final flush, ALWAYS
 '
 $SHUTDOWN
 EOF

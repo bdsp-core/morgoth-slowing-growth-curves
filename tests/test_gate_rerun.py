@@ -52,3 +52,20 @@ def test_contexts_are_multiples_of_the_cnn_factor():
     for c in gw.CONTEXTS:
         assert c % 30 == 0, f"{c}s is not a whole number of CNN-reduced tokens"
         assert (c // 10) // 3 >= 1
+
+
+def test_worker_imports_resolve():
+    """scripts/32 imported a module named `fleet_io` that DOES NOT EXIST. It passed every local test —
+    because the dry run never reaches the code path that imports it — and then died on the fleet inside
+    cloud-init, where the log was unreachable (no SSH key, port 22 closed). Import it for real."""
+    import subprocess, sys
+    r = subprocess.run(
+        [sys.executable, "-c",
+         "import sys; sys.path.insert(0,'src');"
+         "import importlib.util as u;"
+         "s=u.spec_from_file_location('p32','scripts/32_gate_rerun_worker.py');"
+         "m=u.module_from_spec(s); s.loader.exec_module(m);"
+         "from morgoth_slowing.fleet import ingest;"          # what EEGLevelHeads actually needs
+         "assert 'fleet_io' not in open('scripts/32_gate_rerun_worker.py').read()"],
+        capture_output=True, text=True, env={"PATH": "/usr/bin:/bin", "OUTPUT_ROOT": "/tmp/_gr_test"})
+    assert r.returncode == 0, f"scripts/32 does not import cleanly:\n{r.stderr[-800:]}"
