@@ -60,14 +60,16 @@ def main():
     for nm, ax in AXES:
         E = votes.pivot_table(index="fid", columns="rater", values=f"r1.{ax}")
         E.index = E.index.astype(str)
-        # majority over ALL raters = the target used everywhere else in the paper
-        maj = (E.mean(1) >= 0.5).astype(int)
+        # STRICT majority (> 0.5), matching Table 5 / P7 (scripts/table4_predictions_scorecard.py).
+        # Using >= 0.5 counts a 9-9 tie among 18 raters as a positive and inflates prevalence
+        # (focal 14 vs the canonical 12, generalized 19 vs 18) -- the two must not disagree.
+        maj = (E.mean(1) > 0.5).astype(int)
 
         # ---- human ceiling: each rater vs the majority of the OTHER raters
         accs = []
         for r in E.columns:
             oth = E.drop(columns=[r])
-            cons = (oth.mean(1) >= 0.5).astype(int)
+            cons = (oth.mean(1) > 0.5).astype(int)
             e = E[r]
             m = e.notna()
             b = bal_acc(cons[m].values, e[m].astype(int).values)
@@ -83,13 +85,13 @@ def main():
 
         # sensitivity at the experts' own average specificity
         spec_exp = float(np.mean([
-            (E[r][(E[r].notna()) & ((E.drop(columns=[r]).mean(1) >= 0.5).astype(int) == 0)] == 0).mean()
+            (E[r][(E[r].notna()) & ((E.drop(columns=[r]).mean(1) > 0.5).astype(int) == 0)] == 0).mean()
             for r in E.columns]))
         sv = np.sort(s.values[ok][y == 0])
         thr = np.quantile(sv, spec_exp) if len(sv) else np.nan
         sens_at = float((s.values[ok][y == 1] >= thr).mean()) if np.isfinite(thr) else np.nan
         sens_exp = float(np.mean([
-            (E[r][(E[r].notna()) & ((E.drop(columns=[r]).mean(1) >= 0.5).astype(int) == 1)] == 1).mean()
+            (E[r][(E[r].notna()) & ((E.drop(columns=[r]).mean(1) > 0.5).astype(int) == 1)] == 1).mean()
             for r in E.columns]))
 
         verdict = "MEETS/EXCEEDS" if b_s >= ceiling else "BELOW"

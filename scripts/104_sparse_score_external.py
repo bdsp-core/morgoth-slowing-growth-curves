@@ -23,8 +23,27 @@ import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 spec = importlib.util.spec_from_file_location("m103", "scripts/103_sparse_slowing_score.py")
 m103 = importlib.util.module_from_spec(spec); spec.loader.exec_module(m103)
 
-HAND = {"generalized": 0.903, "focal": 0.738}          # scripts/94, hand-picked scores
-MORGOTH = {"generalized": 0.895, "focal": 0.923}
+HAND = {"generalized": 0.903, "focal": 0.738}          # scripts/94, hand-picked scores (historical)
+
+
+def _morgoth_v6():
+    """The Morgoth comparator, COMPUTED from the v6 panel scores.
+
+    These were hardcoded as {"generalized": 0.895, "focal": 0.923} — numbers carried over from the LEGACY
+    run. The v6 gate scores 0.860 / 0.904 (see results/table5_human_ceiling.md), so the figure was
+    comparing our v6 score against a stale legacy comparator that flattered Morgoth. Compute it.
+    """
+    from sklearn.metrics import roc_auc_score
+    pv = pd.read_parquet("data/derived/panel_v6_scores.parquet")
+    out = {}
+    # use the SAME majority column Table 5 uses, so the two agree exactly
+    for nm, sc, mj in [("generalized", "p_generalized", "GN_maj"), ("focal", "p_focal", "FN_maj")]:
+        y = pv[mj].astype(int)
+        out[nm] = round(float(roc_auc_score(y, pv[sc])), 3)
+    return out
+
+
+MORGOTH = _morgoth_v6()
 rng = np.random.default_rng(0)
 
 
