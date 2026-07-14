@@ -31,6 +31,7 @@ import numpy as np, pandas as pd
 FA = "data/derived/fractional_age.parquet"
 LAB = "data/derived/recording_labels_sap.parquet"
 CSF = "data/derived/channel_stage_features.parquet"
+OMOP = "data/derived/omop_ages.parquet"
 
 
 def best_age_table():
@@ -60,12 +61,38 @@ def best_age_table():
           f"(DOB is exact: 0.0-day spread across a patient's EEGs)")
     m["age_frac"] = m.age_frac.where(m.age_frac.notna(), age_dob)
 
+    # 3) OMOP birth_datetime lookup (person_id IS the BDSPID). Age at an event is EXACT in the de-id DB:
+    #    the per-patient random date shift applies to birth AND to every event, so the interval survives.
+    #    ("age today" would be wrong — never compute that.) Uses birth_datetime, never year_of_birth,
+    #    which holds junk (values 0..2044). Negative ages are filtered.
+    if Path(OMOP).exists():
+        om = pd.read_parquet(OMOP)
+        m = m.merge(om, on="eeg_id", how="left")
+        n_om = int((m.age_frac.isna() & m.age_omop.notna()).sum())
+        print(f"  recovered via OMOP birth_datetime : {n_om:,} exact ages")
+        m["age_frac"] = m.age_frac.where(m.age_frac.notna(), m.age_omop)
+
+    # IMPLAUSIBLE ages are data errors, not signal. The de-id DB does not sanity-check birth_datetime.
+    n_imp = int((m.age_frac > 110).sum())
+    if n_imp:
+        print(f"  dropped implausible ages (>110 y) : {n_imp}")
+        m.loc[m.age_frac > 110, "age_frac"] = np.nan
+
     a_int = pd.to_numeric(m.age, errors="coerce")
     n_neg = int((a_int < 0).sum())
     best = m.age_frac.where(m.age_frac.notna(), a_int)
-    best = best.where(best >= 0)                      # a negative age is impossible; never fit on it
+    # impossible ages are data errors, not signal — never FIT on them either (the integer fallback
+    # could otherwise smuggle a 121-year-old back in after the fractional value was rejected).
+    best = best.where((best >= 0) & (best <= 110))   # >110 is a bad birth_datetime, not a patient
     src = np.where(m.age_frac.notna(), "fractional(OMOP)", "integer(AgeAtVisit)")
     src = np.where(best.isna(), "MISSING", src)
+
+    # HIPAA SAFE HARBOR: ages over 89 must be reported as "90+". The de-identified OMOP does NOT do this
+    # for us (it returned ages up to 121). `age` stays exact for the normative FIT (never published per
+    # record); `age_pub` is the ONLY age that may appear in a figure or table.
+    age_pub = best.where(best <= 89, 90.0)
+    n89 = int((best > 89).sum())
+    print(f"  ages > 89 binned to 90+ for publication (HIPAA Safe Harbor): {n89:,}")
 
     print(f"recordings                 : {len(m):,}")
     print(f"  true fractional age      : {int(m.age_frac.notna().sum()):,}  ({100*m.age_frac.notna().mean():.1f}%)")
@@ -74,20 +101,23 @@ def best_age_table():
     d = (a_int - m.age_frac).abs()
     print(f"  |integer - fractional|   : median {d.median():.2f} y, 95th {d.quantile(.95):.2f} y, "
           f"max {d.max():.2f} y")
-    return pd.DataFrame({"eeg_id": m.eeg_id, "age_best": best.values, "age_source": src})
+    return pd.DataFrame({"eeg_id": m.eeg_id, "age_best": best.values,
+                         "age_pub": age_pub.values, "age_source": src})
 
 
 def main():
     ba = best_age_table()
 
-    lab = pd.read_parquet(LAB).merge(ba, on="eeg_id", how="left")
+    lab = pd.read_parquet(LAB)
+    lab = lab.drop(columns=[c for c in ("age_source", "age_pub") if c in lab.columns])
+    lab = lab.merge(ba, on="eeg_id", how="left")
     lab["age_integer_orig"] = lab.age                  # keep the old column for audit
     lab["age"] = lab.age_best
     lab.drop(columns=["age_best"]).to_parquet(LAB, index=False)
     print(f"\npatched {LAB}")
 
     d = pd.read_parquet(CSF)
-    d = d.drop(columns=[c for c in ("age_source",) if c in d.columns])
+    d = d.drop(columns=[c for c in ("age_source", "age_pub") if c in d.columns])
     d = d.merge(ba.rename(columns={"eeg_id": "bdsp_id"}), on="bdsp_id", how="left")
     d["age"] = d.age_best
     d.drop(columns=["age_best"]).to_parquet(CSF, index=False)

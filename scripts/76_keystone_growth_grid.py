@@ -43,7 +43,11 @@ def rolling_pctile(t_data, v_data, t_grid, q=0.5, h=0.11):
 def fit_feature(df, feat):
     """central per-(recording,stage) for one feature, overnight only -> GAMLSS curves per stage."""
     c = df[df.region.isin(CENTRAL)].groupby(["bdsp_id", "stage"]).agg(
-        val=(feat, "mean"), age=("age", "first")).reset_index()
+        val=(feat, "mean"),
+        # PUBLISHED artefact -> HIPAA Safe Harbor: ages >89 are binned to 90+ (the de-identified
+        # OMOP does NOT do this for us; it returns ages up to 121). age_pub is the only age that
+        # may appear in a figure. The normative FIT still uses the exact age.
+        age=("age_pub", "first")).reset_index()
     c = c[c.age.between(0, 95) & np.isfinite(c.val)]
     lo, hi = c.val.quantile([0.002, 0.998])            # trim extreme ratio outliers (BCT needs positive)
     c = c[(c.val > max(lo, 1e-6)) & (c.val < hi)]
