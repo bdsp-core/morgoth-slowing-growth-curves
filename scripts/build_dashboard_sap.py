@@ -19,6 +19,7 @@ import pandas as pd
 
 OUT = Path("results/analysis_dashboard.html")
 G = Path("figures/growth_v2"); C = Path("figures/curves"); S = Path("figures/stage_curves"); F = Path("results/figs")
+RT = Path("figures"); RP = Path("figures/roc_prc")
 TOTAL = 27524
 
 # (SAP item, title, what the SAP requires — the METHOD, no results, [figure paths], [table paths])
@@ -33,7 +34,7 @@ ITEMS = [
      "GAMLSS/BCT (Box-Cox-t) centile fans per (stage × region × feature): μ, σ, ν (skew), τ (kurtosis) as "
      "smooth functions of age, fit on clean_normal recordings ONLY. Skew is modelled because these features "
      "are strongly right-skewed in children; a symmetric model would bias the normative median high there.",
-     [G/"keystone_growth_grid.png"], []),
+     [G/"keystone_growth_grid.png", C/"log_delta__whole_head.png"], []),
 
     ("Figure 3", "Stage dependence at fixed age (SAP §9 Fig 3)",
      "The same feature across W/N1/N2/N3/REM — why vigilance matching is built into the norms rather than "
@@ -45,8 +46,10 @@ ITEMS = [
      "and stage-pooled), reported by src. Positives are recordings whose report NAMES slowing among the "
      "abnormalities; recordings abnormal for other reasons (e.g. epileptiform) are a separate stratum, not "
      "positives. CIs by stratified bootstrap, patient-clustered on patient_id (SAP §3.3).",
-     [G/"vigilance_matched_detection.png", F/"age_auroc.png"],
-     ["results/vigilance_matched_detection.csv", "results/sparse_slowing_score.md"]),
+     [G/"vigilance_matched_detection.png", F/"age_auroc.png", F/"age_auroc_by_stage.png",
+      RP/"roc.png", RP/"prc.png", RT/"discrimination_auc.png"],
+     ["results/vigilance_matched_detection.csv", "results/sparse_slowing_score.md",
+      "results/lr_vs_morgoth.md"]),
 
     ("Ablation", "Attribution of the detection estimate (audit §1)",
      "Toggling, one at a time, the factors that changed from the legacy pipeline: label definition "
@@ -55,10 +58,15 @@ ITEMS = [
      [], ["results/ablation_auroc.md"]),
 
     ("Figure 5", "Focal / generalized localisation (SAP §9 Fig 5, §8.2)",
-     "Focal side/lobe confusion (macro-F1, not accuracy — the temporal default inflates accuracy) and the "
-     "generalized anterior–posterior gradient.",
-     [F/"lateralization_by_band_roc.png", F/"lateralization_roc.png", F/"region_detection_bars.png",
-      F/"generalized_ap.png"], ["results/region_detection.md"]),
+     "Focal lateralisation (band-matched left-vs-right AUROC) on the v6 run. THREE figures that used to sit "
+     "here — lateralization_roc, region_detection_bars, generalized_ap — have been REMOVED rather than "
+     "shown: their producers were archived with the legacy tables and their inputs "
+     "(recording_features.parquet) no longer exist, so the images on disk predate both the label fix and "
+     "the age fix. A stale figure is worse than an absent one. The forced-choice region confusion matrix is "
+     "deliberately omitted for a separate reason (see results/region_detection.md): the deployed system "
+     "reports the region of maximum deviation rather than performing lobe classification, and the report's "
+     "region label is majority-temporal, so its 0.92 'agreement' is a base-rate artifact.",
+     [F/"lateralization_by_band_roc.png"], ["results/region_detection.md"]),
 
     ("Figure 6", "Descriptor reliability (SAP §9 Fig 6, §8.2)",
      "Split-half amount ICC, prevalence ICC, and band agreement — reported as PROVISIONAL unless they clear "
@@ -69,14 +77,18 @@ ITEMS = [
      "point; Fleiss κ, pairwise Cohen κ, Gwet AC1, within-rater κ, and our balanced accuracy against the "
      "expert consensus. These panels carry INDEPENDENT expert reads, so they are also the non-circular test "
      "of the 'readers under-report slowing' claim (the report labels S is fit on are not used here).",
-     [G/"occasion_roc_experts.png"], ["results/table5_human_ceiling.md"]),
+     [G/"occasion_roc_experts.png", G/"two_stage_gate_and_quantify.png", G/"sparse_score_external.png"],
+     ["results/table5_human_ceiling.md", "results/deviation_vs_ceiling_v6.md",
+      "results/kappa_algorithm_vs_experts_v6.md", "results/sparse_score_external.md"]),
 
     ("Figure 9 / Table 6", "Benchmark vs van Putten lineage (SAP §9 Fig 9, §8.7) — FULL COVERAGE",
      "AUROC for the prior qEEG slowing metrics (Q_SLOWING, DTABR, r-sBSI, Q_APG, Q_ASYM …) computed on "
      "identical PSDs, in three arms — as-published, age-conditioned, and ours+Morgoth — per target. "
-     "RECOMPUTED on all 27,003 recordings (the earlier table used only 3,130) with PATIENT-CLUSTERED CIs. "
-     "Morgoth 0.881/0.918/0.875 vs the best van Putten arm 0.719/0.789/0.726 (DTABR age-normed x2, r-sBSI raw) "
-     "-> margin +0.162/+0.129/+0.149.",
+     "RECOMPUTED on the full run with PATIENT-CLUSTERED CIs, and restricted to the 21,146 recordings that "
+     "pass the SAP §3.3 clean_pair filter — an earlier version of this table omitted that filter and so "
+     "included ~840 recordings whose report describes a DIFFERENT study of the same patient. "
+     "Morgoth 0.875/0.911/0.870 vs the best van Putten arm 0.707/0.773/0.723 (DTABR age-normed x2, r-sBSI raw) "
+     "-> margin +0.168/+0.138/+0.147.",
      [F/"vanputten_comparison.png"], ["results/vanputten_fullcoverage.md"]),
 
     ("Table 4", "Pre-registered predictions scorecard (SAP §10)",
@@ -102,14 +114,16 @@ ITEMS = [
     ("Deviation field", "Normative deviation z (SAP §6.3)",
      "Z[recording, stage, region, feature] from the GAMLSS/BCT fit, with k-fold cross-fitting so a normal's "
      "own z uses OUT-OF-FOLD parameters (no self-normalisation optimism), folds split by patient_id.",
-     [G/"region_z_boxplots.png", G/"dose_response.png"], ["results/region_z_boxplots.md"]),
+     [G/"region_z_boxplots.png", G/"dose_response.png", G/"severity_recalibrated.png"],
+     ["results/region_z_boxplots.md", "results/severity_null_v6.md"]),
 
     ("Sparse score", "Parsimonious detector (SAP §8.1)",
      "L1-regularised score over the normative deviations; nested CV with patient-clustered folds, reporting "
      "the optimism. NOTE: this score is SUPERVISED on report labels, so it may not be used to evidence the "
      "'readers under-report slowing' claim — that claim must rest on the unsupervised z, tested on the "
      "independent expert panels.",
-     [G/"sparse_score.png"], ["results/sparse_slowing_score.md"]),
+     [G/"sparse_score.png", RT/"lr_vs_morgoth.png"],
+     ["results/sparse_slowing_score.md", "results/lr_vs_morgoth.md"]),
 ]
 
 CONFORMANCE = [

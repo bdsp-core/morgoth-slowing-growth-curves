@@ -47,8 +47,10 @@ def build():
     d = pd.read_parquet("data/derived/channel_stage_features.parquet")
     lu = pd.read_parquet("data/derived/labels_unified.parquet")[
         ["bdsp_id", "clean_normal", "is_abnormal", "has_focal_slow", "has_gen_slow",
-         "gen_class", "focal_side", "focal_region"]].drop_duplicates("bdsp_id")
-    cp = pd.read_parquet("data/derived/report_pairing.parquet")[["bdsp_id", "clean_pair"]]
+         "gen_class", "focal_side", "focal_region", "clean_pair"]].drop_duplicates("bdsp_id")
+    # clean_pair from the V6 MANIFEST (carried on labels_unified), NOT the legacy report_pairing.parquet,
+    # which covers only 12,379 of the 27k recordings and would silently mark the rest clean_pair=False.
+    cp = None   # clean_pair now rides on lu
     ex = set(pd.read_parquet("data/derived/excluded_bdsp_ids.parquet").bdsp_id)
 
     d = d[d.region.isin(LOBES) & d.stage.isin(ALERT) & ~d.bdsp_id.isin(ex)]
@@ -69,7 +71,7 @@ def build():
     Z = (Z.groupby(["bdsp_id", "region", "feature"])
            .apply(lambda g: np.average(g.z, weights=g.n_seg), include_groups=False)
            .rename("z").reset_index())
-    Z = Z.merge(lu, on="bdsp_id", how="left").merge(cp, on="bdsp_id", how="left")
+    Z = Z.merge(lu, on="bdsp_id", how="left")   # lu already carries clean_pair (v6 manifest)
     Z["clean_pair"] = Z.clean_pair.fillna(False)
     return Z
 

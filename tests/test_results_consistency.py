@@ -92,3 +92,29 @@ def test_dangling_citations_do_not_grow():
     assert len(missing) <= DANGLING_BUDGET, (
         f"dangling citations grew to {len(missing)} (budget {DANGLING_BUDGET}):\n  " +
         "\n  ".join(missing) + "\nRegenerate the evidence or cut the citation — do not raise the budget.")
+
+
+def test_dashboard_figures_all_exist():
+    """Every figure the dashboard embeds must exist on disk.
+
+    The dashboard inlines its figures as base64 data URIs, so an audit that greps the HTML for
+    `src="....png"` finds NOTHING and cheerfully reports "0 missing, 0 stale" — a vacuous pass. (That is
+    exactly what happened, and it hid six stale figures, including a van Putten chart from the superseded
+    3,130-recording table.) Check the builder's own figure list instead.
+    """
+    import importlib.util, sys
+    spec = importlib.util.spec_from_file_location("bd_", "scripts/build_dashboard_sap.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["bd_"] = mod
+    try:
+        spec.loader.exec_module(mod)
+    except SystemExit:
+        pass
+    figs = [f for item in mod.ITEMS for f in item[3]]
+    assert figs, "dashboard builder exposes no figures — the ITEMS structure changed"
+    missing = [str(f) for f in figs if not Path(f).exists()]
+    assert not missing, f"dashboard embeds figures that do not exist: {missing}"
+
+    tables = [t for item in mod.ITEMS for t in item[4]]
+    missing_t = [str(t) for t in tables if not Path(t).exists()]
+    assert not missing_t, f"dashboard links tables that do not exist: {missing_t}"

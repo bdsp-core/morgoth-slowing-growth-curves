@@ -156,6 +156,25 @@ def main():
     order = " < ".join(sorted(med, key=med.get))
     print(f"wrote figures/stage_curves/rel_delta__whole_head.png  (F2)  median rel_delta order: {order}")
 
+    # DAR stage curves — the dashboard's Figure 3 pairs rel_delta with DAR. Its DAR panel was the last
+    # figure still dating from the pre-age-fix run.
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for st, col in zip(STAGES, ["#4575b4", "#91bfdb", "#fdae61", "#d73027", "#7b3294"]):
+        s = d[(d.stage == st) & (d.clean_normal == True)]              # noqa: E712
+        if len(s) < 200 or "DAR" not in s.columns:
+            continue
+        q = smooth_median(s.age, s.DAR, grid, qs=(0.5,))
+        ax.plot(grid, q[0.5], color=col, lw=2.2, label=f"{st} (n={len(s):,})")
+    ax.set_xscale("log")
+    ax.set_xticks([0.25, 0.5, 1, 2, 5, 10, 20, 40, 60, 90])
+    ax.set_xticklabels(["3 mo", "6 mo", "1", "2", "5", "10", "20", "40", "60", "90"])
+    ax.set_xlim(0.15, 90)
+    ax.set_xlabel("Age (years, log scale)"); ax.set_ylabel("DAR (delta/alpha ratio, whole head)")
+    ax.set_title("Stage-resolved DAR norms, clean-normals (v6)")
+    ax.legend(frameon=False, fontsize=8, title="stage"); ax.grid(alpha=.25)
+    fig.tight_layout(); fig.savefig("figures/stage_curves/DAR__whole_head.png", dpi=150); plt.close(fig)
+    print("wrote figures/stage_curves/DAR__whole_head.png")
+
     # ---------------------------------------------------------------- deviation score (for F2b)
     # sum of |z| over rel_delta/DAR/TAR, each z'd against its own (stage) age-matched normal curve
     d["dev"] = 0.0; d["dev_ok"] = True
@@ -327,6 +346,47 @@ def main():
         "field as the *descriptor*.\n")
     print(f"wrote figures/lr_vs_morgoth.png + results/lr_vs_morgoth.md  (F4)  "
           f"r={pearson:.3f} rho={spear:.3f} | AUROC LR={a_lr:.3f} vs Morgoth={a_mg:.3f}")
+
+    # ---------------------------------------------------------------- van Putten comparison (dashboard Fig 9)
+    # The dashboard embedded results/figs/vanputten_comparison.png from the LEGACY run (3,130 recordings,
+    # no clean_pair filter). Redraw it straight from the current Table 6 so the two cannot disagree.
+    import re as _re
+    rows_vp = {}
+    for ln in Path("results/vanputten_fullcoverage.md").read_text().splitlines():
+        if not ln.startswith("|") or ln.startswith("|:") or "method" in ln:
+            continue
+        c = [x.strip() for x in ln.strip().strip("|").split("|")]
+        if len(c) < 4:
+            continue
+        v = [float(_re.match(r"([0-9.]+)", x).group(1)) for x in c[1:4] if _re.match(r"([0-9.]+)", x)]
+        if len(v) == 3:
+            rows_vp[c[0].replace("*", "").strip()] = v
+    if rows_vp:
+        names = list(rows_vp)
+        gate = [n for n in names if "Morgoth" in n]
+        others = [n for n in names if n not in gate]
+        order = others + gate
+        y = np.arange(len(order))[::-1]
+        fig, ax = plt.subplots(figsize=(10, 0.42 * len(order) + 2))
+        w = 0.26
+        for k, (tname, col) in enumerate(zip(["abnormal", "generalized", "focal"],
+                                             ["#4c78a8", "#e45756", "#54a24b"])):
+            vals = [rows_vp[n][k] for n in order]
+            bars = ax.barh(y + (1 - k) * w, vals, w, color=col, label=tname)
+            for b, n in zip(bars, order):
+                if "Morgoth" in n:
+                    b.set_edgecolor("black"); b.set_linewidth(1.4)
+        ax.set_yticks(y); ax.set_yticklabels(order, fontsize=8)
+        ax.set_xlim(0.5, 1.0); ax.axvline(.5, color="gray", lw=1, ls=":")
+        ax.set_xlabel("AUROC vs clean-normal (patient-clustered bootstrap)")
+        ax.set_title("Table 6 — Morgoth gate vs the van Putten lineage (v6, SAP §3.3 clean_pair set)")
+        ax.legend(frameon=False, fontsize=9, ncol=3, loc="lower right")
+        ax.grid(alpha=.25, axis="x")
+        Path("results/figs").mkdir(parents=True, exist_ok=True)
+        fig.tight_layout(); fig.savefig("results/figs/vanputten_comparison.png", dpi=150); plt.close(fig)
+        g = rows_vp[gate[0]] if gate else [np.nan] * 3
+        print(f"wrote results/figs/vanputten_comparison.png  (gate {g[0]}/{g[1]}/{g[2]}, "
+              f"{len(order)} arms, redrawn from Table 6)")
 
     Path("results/appendix_v6_numbers.json").write_text(json.dumps({
         "f2b_auroc_by_stage": t2b.to_dict("records"),
