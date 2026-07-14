@@ -60,9 +60,18 @@ if [ "$PILOT" -gt 0 ]; then SHUTDOWN="echo 'PILOT: staying up for inspection'"; 
 UD=/tmp/ud/gate.sh; mkdir -p /tmp/ud
 cat > "$UD" <<EOF
 #!/bin/bash
-exec >> /var/log/morgoth-gate.log 2>&1
+# NOT redirected to a file: cloud-init sends stdout/stderr to the SERIAL CONSOLE, which is readable with
+# `aws ec2 get-console-output` — no SSH, no key, works even after the box self-terminates. The box's local
+# /var/log is unreachable by design (port 22 closed, spot box terminates itself), so anything written only
+# there is lost. Every boot step below echoes a marker so a failure can be bisected from the console alone.
+set -x
+echo "=== GATE RERUN BOOT $(date -u +%FT%TZ) ==="
 sudo -u ubuntu bash -lc '
-cd ~/morgoth-slowing-growth-curves && source .venv/bin/activate
+set -x
+echo "STEP repo"; cd ~/morgoth-slowing-growth-curves || { echo "FATAL: repo missing"; exit 90; }
+echo "STEP venv"; source .venv/bin/activate || { echo "FATAL: venv missing"; exit 91; }
+echo "STEP python: $(which python) $(python -V 2>&1)"
+echo "STEP rclone: $(which rclone)"; rclone listremotes || echo "FATAL: no rclone remotes"
 mkdir -p fleet scripts/shims
 rclone copyto $CODE/gate_worker.py fleet/gate_worker.py
 rclone copyto $CODE/32_gate_rerun_worker.py scripts/32_gate_rerun_worker.py
@@ -78,14 +87,14 @@ export PANEL_ROOT=bdsp:bdsp-opendata-credentialed/morgoth-slowing/panels
 export OUTPUT_ROOT=/home/ubuntu/gate_out; mkdir -p \$OUTPUT_ROOT
 export SRC_V6=$SRC_V6 S3_OUT=$S3OUT SEED=\$RANDOM\$RANDOM
 export GATE_PILOT=$PILOT
-export INSTANCE_TYPE=\$(curl -s -m 2 http://169.254.169.254/latest/meta-data/instance-type || echo unknown)
+IMDS_TOK=\$(curl -sX PUT -m 2 "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+imds() { curl -s -m 2 -H "X-aws-ec2-metadata-token: \$IMDS_TOK" "http://169.254.169.254/latest/meta-data/\$1"; }
+export INSTANCE_TYPE=\$(imds instance-type)
 export N_GPUS=\$(nvidia-smi -L 2>/dev/null | wc -l)
 export MORGOTH2_COMMIT=\$(git -C \$MORGOTH2_DIR rev-parse --short HEAD 2>/dev/null || echo unknown)
-# SHIP THE LOG TO S3, CONTINUOUSLY. The fleet writes worker logs to /var/log on an EPHEMERAL SPOT BOX that
-# TERMINATES ITSELF — so a failed worker's log evaporates and you are left guessing (which is exactly how
-# the first run lost its hardware provenance, and how the first acceptance run died invisibly: no SSH key,
-# port 22 closed). A worker log must be durable and readable without a shell.
-IID=\$(curl -s -m 2 http://169.254.169.254/latest/meta-data/instance-id || echo unknown)
+# NOTE: no apostrophes below this line -- we are inside a single-quoted bash -lc block.
+# Log shipping: /var/log on a self-terminating spot box is unreadable, so stream the log to S3.
+IID=\$(imds instance-id); [ -z "\$IID" ] && IID=unknown
 LOG=/home/ubuntu/gate_\$IID.log
 ( while true; do rclone copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null; sleep 20; done ) &
 SHIPPER=\$!
@@ -97,6 +106,14 @@ rclone copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null    # final flush, ALWAYS
 '
 $SHUTDOWN
 EOF
+
+if ! bash -n "$UD" 2>/tmp/ud_err; then
+  echo "FATAL: generated user-data has a shell syntax error -- refusing to launch:"
+  sed -n '1,3p' /tmp/ud_err
+  echo "(this is what killed the first three instances: an apostrophe inside the single-quoted bash -lc block)"
+  exit 1
+fi
+echo "user-data syntax OK"
 
 CUR=$(aws ec2 describe-instances --profile fleet --region us-east-1 \
   --filters "Name=tag:fleet,Values=morgoth-gate-rerun" "Name=instance-state-name,Values=pending,running" \
