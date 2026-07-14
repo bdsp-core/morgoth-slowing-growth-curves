@@ -8,7 +8,7 @@ A correct OMOP-derived fractional-age table existed (`fractional_age.parquet`) a
 
 | age source | n | share |
 |---|---|---|
-| true fractional (OMOP) | 10,432 | 37.9% |
-| integer only (AgeAtVisit) | 15,229 | 55.3% |
+| true fractional (OMOP) | 12,429 | 45.2% |
+| integer only (AgeAtVisit) | 13,232 | 48.1% |
 
 **Honest limitation.** Only ~38% of recordings have a true fractional age; the expansion/backfill rows have nothing better than whole years. The negative ages are fixed and no analysis is fit on them. Effect on the headline detection AUROC is negligible (0.7328 → 0.7329 — adults dominate and the curve is flat there). Effect on the **paediatric growth curves is material**, and the manuscript's claim of precise fractional ages must be restricted to the cohort subset.

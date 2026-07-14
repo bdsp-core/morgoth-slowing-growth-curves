@@ -35,13 +35,30 @@ CSF = "data/derived/channel_stage_features.parquet"
 
 def best_age_table():
     fa = pd.read_parquet(FA)
-    fa["date"] = pd.to_datetime(fa.eeg_date, errors="coerce").dt.strftime("%Y%m%d")
-    fa = fa.dropna(subset=["date"]).drop_duplicates(["bdsp_id", "date"])
+    fa["eeg_dt"] = pd.to_datetime(fa.eeg_date, errors="coerce")
+    fa = fa.dropna(subset=["eeg_dt", "age_frac"])
+    fa["date"] = fa.eeg_dt.dt.strftime("%Y%m%d")
+
+    # RECOVER DATE OF BIRTH. age_frac is exact, so dob = eeg_date - age_frac. For patients with several
+    # EEGs the recovered DOB agrees to 0.0 days, so this is exact, not an approximation. Any OTHER
+    # recording of the same patient then gets an exact fractional age for free — no OMOP query needed.
+    fa["dob_est"] = fa.eeg_dt - pd.to_timedelta(fa.age_frac * 365.25, unit="D")
+    dob = fa.groupby("bdsp_id").dob_est.median().rename("dob")
 
     lab = pd.read_parquet(LAB)
     lab["date"] = lab.eeg_id.str.split("_").str[-1].str[:8]
-    m = lab.merge(fa[["bdsp_id", "date", "age_frac"]], left_on=["patient_id", "date"],
-                  right_on=["bdsp_id", "date"], how="left", suffixes=("", "_fa"))
+    lab["eeg_dt"] = pd.to_datetime(lab.date, format="%Y%m%d", errors="coerce")
+    m = lab.merge(fa[["bdsp_id", "date", "age_frac"]].drop_duplicates(["bdsp_id", "date"]),
+                  left_on=["patient_id", "date"], right_on=["bdsp_id", "date"],
+                  how="left", suffixes=("", "_fa"))
+    m = m.merge(dob, left_on="patient_id", right_index=True, how="left")
+
+    # age from the recovered DOB, wherever we have one and no direct fractional age
+    age_dob = (m.eeg_dt - m.dob).dt.total_seconds() / (365.25 * 24 * 3600)
+    n_dob = int((m.age_frac.isna() & age_dob.notna()).sum())
+    print(f"  recovered via DOB back-calculation: {n_dob:,} extra fractional ages "
+          f"(DOB is exact: 0.0-day spread across a patient's EEGs)")
+    m["age_frac"] = m.age_frac.where(m.age_frac.notna(), age_dob)
 
     a_int = pd.to_numeric(m.age, errors="coerce")
     n_neg = int((a_int < 0).sum())
