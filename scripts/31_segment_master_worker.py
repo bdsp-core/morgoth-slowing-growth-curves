@@ -152,9 +152,22 @@ def run_gate(sin, sout, rid, n_seg, centers_s):
             tail = "\n".join([l for l in r.stderr.splitlines() if "libomp" not in l and "warn" not in l.lower()][-6:])
             raise RuntimeError(f"EEG_level_head {ds} failed:\n{tail}")
     ps = f"{sout}/pred_SLOWING"
-    _win("SLOWING.pth", "SLOWING", ps)                      # 3-class window head: class_0=no-slowing, 1/2=slowing
-    # per-window P(slowing) = 1 - P(class_0=no-slowing) -> per-segment p_slowing (map center to window index)
+    _win("SLOWING.pth", "SLOWING", ps)
+    # Morgoth's SLOWING window head is 3-class SOFTMAX (CrossEntropyLoss, nb_classes=3), i.e. the classes
+    # are MUTUALLY EXCLUSIVE per window:
+    #     class_0 = Others (no slowing) | class_1 = Focal Slowing | class_2 = Generalized Slowing
+    #     (morgoth2/results_figures.py label_maps, aligned to labels[0]="SLOWING")
+    # The recording-level focal/generalized calls come from two SEPARATE BINARY heads
+    # (FOC_SLOWING_EEGlevel / GEN_SLOWING_EEGlevel, torch.sigmoid) which are INDEPENDENT — both may fire.
+    #
+    # HISTORY / WHY ALL THREE ARE KEPT NOW: the first version of this block kept only
+    # `p_slowing = 1 - class_0_prob` and discarded class_1_prob / class_2_prob. The CSV lives in a
+    # tempfile.mkdtemp() dir that is rmtree'd after every recording, so those two columns were computed and
+    # then destroyed on the worker node — they never reached OUTPUT_ROOT and therefore never reached S3.
+    # Recovering them costs a full gate re-run. Never collapse the head on the way in again.
     p_slow = [np.nan] * n_seg
+    p_foc_seg = [np.nan] * n_seg          # per-SEGMENT P(focal slowing)      <- class_1
+    p_gen_seg = [np.nan] * n_seg          # per-SEGMENT P(generalized slowing) <- class_2
     wf = next(Path(ps).glob("*.csv"), None)
     if wf is not None:
         w = pd.read_csv(wf)
@@ -164,11 +177,17 @@ def run_gate(sin, sout, rid, n_seg, centers_s):
             pw = (w["pred_class"].to_numpy() > 0).astype(float)   # fallback: any-slowing class
         else:
             pw = np.array([])
+        pf = w["class_1_prob"].to_numpy() if "class_1_prob" in w.columns else np.array([])
+        pg = w["class_2_prob"].to_numpy() if "class_2_prob" in w.columns else np.array([])
         step = float(GATE_STEP)
         for i, c in enumerate(centers_s):
             wi = int(c / step)
             if 0 <= wi < len(pw):
                 p_slow[i] = float(pw[wi])
+            if 0 <= wi < len(pf):
+                p_foc_seg[i] = float(pf[wi])
+            if 0 <= wi < len(pg):
+                p_gen_seg[i] = float(pg[wi])
     # EEG-level focal/gen aggregators (authoritative recording-level focal/gen; broadcast to segments)
     def _eeg_prob(tag):
         f = Path(sout) / f"pred_EEG_level_{tag}.csv"
@@ -181,7 +200,7 @@ def run_gate(sin, sout, rid, n_seg, centers_s):
         _eeg("GEN_SLOWING_EEGlevel.pth", "GEN_SLOWING", ps, str(sout)); p_gen = _eeg_prob("GEN_SLOWING")
     except Exception as e:
         print(f"    gate EEG-level focal/gen failed (per-segment p_slowing kept): {e}")
-    return p_slow, p_focal, p_gen
+    return p_slow, p_focal, p_gen, p_foc_seg, p_gen_seg
 
 
 _BANDS6 = ["delta", "theta", "alpha", "beta", "gamma", "total"]
@@ -205,6 +224,10 @@ def segment_master_rows(eid, pid, edt, bip, fs, stages, gate=None):
         # per-segment summary: whole-head/spatial vP + per-segment gate (can't live on one channel)
         summary_rows.append({"patient_id": pid, "eeg_datetime": edt, **ctx,
             "p_slowing": (float(gate[0][i]) if gate and i < len(gate[0]) else np.nan),
+            # ALL THREE classes of the SOFTMAX window head, not just 1 - class_0. p_slowing is redundant
+            # with these two (p_slowing = p_focal_seg + p_gen_seg up to rounding) but is kept for continuity.
+            "p_focal_seg": (float(gate[3][i]) if gate and len(gate) > 3 and i < len(gate[3]) else np.nan),
+            "p_gen_seg": (float(gate[4][i]) if gate and len(gate) > 4 and i < len(gate[4]) else np.nan),
             "Q_SLOWING": vp.q_slowing(freqs, psd), "Q_APG": vp.q_apg(freqs, psd),
             "r_sBSI": vp.r_sbsi(freqs, psd), "pdBSI": vp.pdbsi(freqs, psd), "Q_ASYM": vp.q_asym(freqs, psd)})
         bp_all = ex.band_powers(freqs, psd)              # dict band -> (18,) power, all channels at once

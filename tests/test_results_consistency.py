@@ -118,3 +118,18 @@ def test_dashboard_figures_all_exist():
     tables = [t for item in mod.ITEMS for t in item[4]]
     missing_t = [str(t) for t in tables if not Path(t).exists()]
     assert not missing_t, f"dashboard links tables that do not exist: {missing_t}"
+
+
+def test_worker_keeps_all_three_slowing_classes():
+    """Morgoth's SLOWING window head is 3-class softmax {0: Others, 1: Focal, 2: Generalized}.
+
+    The first fleet run kept only `p_slowing = 1 - class_0_prob` and discarded class_1_prob/class_2_prob.
+    The prediction CSV lives in a tempfile.mkdtemp() dir that is rmtree'd after every recording, so those
+    columns were computed and destroyed on the worker node — never written to OUTPUT_ROOT, never synced to
+    S3, unrecoverable without a full gate re-run. Any future run MUST persist all three.
+    """
+    src = Path("scripts/31_segment_master_worker.py").read_text()
+    for col in ("class_1_prob", "class_2_prob"):
+        assert col in src, f"worker no longer reads {col} — the 3-class head is being collapsed again"
+    for out in ("p_focal_seg", "p_gen_seg"):
+        assert out in src, f"worker no longer persists {out} to segment_summary"
