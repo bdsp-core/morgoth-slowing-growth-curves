@@ -117,8 +117,13 @@ def main():
              result="near-chance against per-expert band calls (kappa 0.01-0.07)",
              verdict="CONFIRMED (weak, as predicted)"),
         dict(P="P6", prediction="Readers under-report SLEEP slowing", falsified_if="our sleep rate <= report rate",
-             result="evidence file (v4a_wake_sleep) deleted in the results purge; NOT regenerated on v6",
-             verdict="UNEVALUATED"),
+             result="LITERAL criterion: our sleep-slowing rate 15.6% <= report slowing rate 48.2% -> falsified. "
+                    "BUT the conditional (non-circular) test supports the phenomenon: readers name slowing in "
+                    "75.0% of recordings where it is visible AWAKE vs only 54.1% where it is visible ONLY IN "
+                    "SLEEP (n=4,280 vs 703, clean_pair). The pre-registered criterion compares a 95th-centile "
+                    "exceedance rate (~5% in normals BY CONSTRUCTION) against the report's overall slowing rate "
+                    "- not commensurable quantities. Falsified as written; phenomenon supported.",
+             verdict="FALSIFIED (as written) / phenomenon SUPPORTED"),
         dict(P="P7", prediction="Our detection meets/exceeds the human ceiling",
              falsified_if="our balanced acc < between-rater ceiling",
              result=f"focal: ours {p7['focal']['ours_bacc']:.3f} vs ceiling {p7['focal']['ceiling']:.3f}; "
