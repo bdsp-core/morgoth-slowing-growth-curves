@@ -28,9 +28,9 @@ Morgoth's reference pipeline (`morgoth2/run_predict_linux.py`) runs the SLOWING 
 which is then the input to the EEG-level FOC/GEN heads.
 
 We ran at 5 s. Every `p_focal` / `p_generalized` in the study therefore came from a sequence **5× sparser**
-than the heads were trained on (720 rows instead of 3,600 for a 60-minute record). The EEG-level head is a
-CNN + Transformer with positional encoding over that sequence, so decimating it 5× rescales the positional
-encoding and shifts the CNN's receptive field in wall-clock time.
+than the heads were trained on. Concretely, because the head's CNN reduces length by 30×, a 60-minute
+recording at 1 s step is 3,600 rows → **120 transformer tokens**; our 5 s run gave 720 rows → **24 tokens**.
+The EEG-level head saw a sequence **one-fifth as long as it was built for**.
 
 It also made Morgoth's low-signal guard fire far more often than it should (fewer rows = fewer chances for
 any row to exceed 1/3): **20.6% of our `p_focal` values are exactly 0.0** — the model never ran on them —
@@ -53,35 +53,46 @@ decision. **Cost: 5.2 GB** — against the 59 GB of spectral features we already
 These three are a softmax and therefore **mutually exclusive per window**. That is Morgoth's modelling
 assumption, not ours, and it is why we also need (3).
 
-### 3. An EEG-level probability every 15 seconds. **Yes — and it is not a hack.**
+### 3. An EEG-level probability on a sliding window. **Yes — and the natural unit is 30 s, not 15 s.**
 
 The EEG-level heads (`FOC_SLOWING_EEGlevel`, `GEN_SLOWING_EEGlevel`) are `CNNTransformerClassifier` models
 that consume a **variable-length sequence of window class-probabilities** (T × 3) and emit **one sigmoid**.
 They are two **separate models** (`class_idx=1` and `class_idx=2`), so their outputs are **independent** —
-both can be high, which is exactly the co-occurrence the window softmax cannot express.
+both can be high, which is exactly the co-occurrence the per-window softmax cannot express. That is the
+whole reason we want them per segment.
 
-Feeding one 15-second segment is *supported by the code*, not a stretch of it:
+**The natural input length is 30 rows, and this is architectural.** The head's CNN reduces sequence length
+by exactly **30×** — `MaxPool1d(10)` then `MaxPool1d(3)`, which the source itself comments as *"combine 10s"*
+and *"combine 30s"*, and `self.seq_len_factor = 30`:
 
-- `CSVDataset.__getitem__` **pads any sequence shorter than 30 rows to 30** with its own column means.
-  Short input is a designed-for case.
-- The training augmentation `clip()` cuts sequences to **as few as 10 rows**. Short sequences were in the
-  training distribution.
-- `collate_fn` uses `pad_sequence` with explicit lengths — variable length is native.
+| input rows (= seconds at 1 s step) | transformer tokens |
+|---|---|
+| 10 / 15 / 20 / 29 | **0 — the CNN collapses to zero length; the model cannot run** |
+| **30** | **1 token, from 30 rows of entirely real data** |
+| 60 | 2 tokens |
+| 120 | 4 tokens |
+| 3600 (a 60-min record) | 120 tokens |
 
-At 1 s step a 15 s segment is **15 window rows** → padded to 30 → inside the trained regime.
+This is why `CSVDataset` pads anything under 30 rows **up** to 30 — the pad is **load-bearing**, not
+cosmetic. A 15 s segment would therefore be padded to 30 with the column *means*: **half the model's input
+would be fabricated**, and its single output token computed from 15 real + 15 synthetic rows. A 30 s window
+needs no padding at all.
 
-So per segment we persist:
+**So: a 30-second window, stepped every 15 seconds.** 30 real rows per forward (one clean token, zero
+fabrication), emitting **one probability per 15 s** — which aligns 1:1 with the existing 15 s segments in
+`segment_master` and joins trivially. Consecutive values share half their input; that is a sliding estimate,
+which is what we want.
+
+We also store **60 s** and **120 s** context variants at the same 15 s cadence (2 and 4 clean tokens), so the
+dependence on context length is **measured**, not argued about.
 
 | column | meaning |
 |---|---|
-| `p_focal_seg` | independent P(focal slowing) for this 15 s |
-| `p_gen_seg` | independent P(generalized slowing) for this 15 s |
+| `p_focal_30`, `p_gen_30` | independent P(focal), P(generalized) — 30 s window (primary) |
+| `p_focal_60`, `p_gen_60` | same, 60 s context |
+| `p_focal_120`, `p_gen_120` | same, 120 s context |
 
-**Cost: 0.18 GB.**
-
-We also store a **wider-context variant** (`p_focal_ctx60`, `p_gen_ctx60`) — the same heads run on a
-60-window window centred on the segment. It is more comfortably in-distribution and costs one extra forward
-pass. Having both lets us *measure* the sensitivity to context length instead of arguing about it.
+**Cost: ~0.5 GB.** The forwards are 1–4 token transformers — tiny, and they batch hard.
 
 ### 4. **No thresholding. No zeroing. Morgoth's guard is DISABLED and its verdict is recorded as a flag.**
 
