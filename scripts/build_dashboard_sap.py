@@ -71,10 +71,32 @@ ITEMS = [
      "of the 'readers under-report slowing' claim (the report labels S is fit on are not used here).",
      [G/"occasion_roc_experts.png"], ["results/ea_irr_and_recalibration.md"]),
 
-    ("Figure 9 / Table 6", "Benchmark vs van Putten lineage (SAP §9 Fig 9, §8.7)",
-     "AUROC for the prior qEEG slowing metrics (Q_SLOWING, DTABR, ADR, pdBSI …) computed on identical PSDs, "
-     "in three arms — as-published, age/sex/stage-normed, and ours+Morgoth — per target.",
-     [F/"vanputten_comparison.png"], ["results/vanputten_comparison.md"]),
+    ("Figure 9 / Table 6", "Benchmark vs van Putten lineage (SAP §9 Fig 9, §8.7) — FULL COVERAGE",
+     "AUROC for the prior qEEG slowing metrics (Q_SLOWING, DTABR, r-sBSI, Q_APG, Q_ASYM …) computed on "
+     "identical PSDs, in three arms — as-published, age-conditioned, and ours+Morgoth — per target. "
+     "RECOMPUTED on all 27,003 recordings: the earlier table used only 3,130 (an incomplete segment_summary "
+     "download, not a fleet gap). Morgoth 0.881/0.918/0.875 vs best van Putten 0.698/0.751/0.726.",
+     [F/"vanputten_comparison.png"], ["results/vanputten_fullcoverage.md"]),
+
+    ("Table 4", "Pre-registered predictions scorecard (SAP §10)",
+     "EVERY pre-registered prediction P1–P8b scored against its stated falsification threshold, including "
+     "the failures. P7 is FALSIFIED (our balanced accuracy is below the between-rater ceiling); P8a is MIXED "
+     "(age-norming helps the slowing indices but degrades the asymmetry index). Predictions we cannot yet "
+     "honestly score are marked UNEVALUATED rather than omitted.",
+     [], ["results/table4_predictions.md"]),
+
+    ("Table 3", "Descriptor reliability (SAP §10) — resolves P3 / P4",
+     "Split-half reliability: within each recording the usable segments are split into interleaved halves, "
+     "each descriptor computed independently on each half, ICC(2,1) taken across recordings. Pre-registered "
+     "bar: ICC >= 0.80 for both the amount score (P3) and the prevalence descriptor (P4).",
+     [], ["results/table3_descriptor_reliability.md"]),
+
+    ("Gate calibration", "Morgoth p_slowing calibration (SAP §4.7)",
+     "The raw softmax gate is uncalibrated. Platt/isotonic maps fitted cross-validated by PATIENT, with the "
+     "calibrated probability stored alongside the raw one. Required before any operating-point claim. "
+     "AUROC is unchanged by construction (calibration is monotonic), so Table 6 is unaffected; what improves "
+     "is whether the probability means anything (ECE 0.111 -> 0.0036).",
+     [], ["results/gate_calibration.md"]),
 
     ("Deviation field", "Normative deviation z (SAP §6.3)",
      "Z[recording, stage, region, feature] from the GAMLSS/BCT fit, with k-fold cross-fitting so a normal's "
@@ -100,7 +122,23 @@ CONFORMANCE = [
     ("done", "clean_pair filter applied to all label-dependent analyses (SAP §3.3, report-broadcast guard)."),
     ("done", "Table 1 rebuilt to the SAP §10 specification."),
     ("done", "Detection ablation run; the θ band edge (4–8 Hz) is already applied in this run's features."),
+    ("done", "Table 6 (van Putten benchmark) recomputed at FULL coverage — 27,003 recordings, not the 3,130 "
+             "the first pass used (an incomplete segment_summary download, not a fleet gap). Morgoth "
+             "0.881/0.918/0.875 vs best van Putten 0.698/0.751/0.726."),
+    ("done", "Table 4 — the PRE-REGISTERED PREDICTIONS SCORECARD (P1–P8b), reported in full including the "
+             "failures: P7 FALSIFIED (balanced accuracy below the between-rater ceiling), P8a MIXED."),
+    ("done", "Table 5 — human-ceiling panel RE-RUN on v6: Fleiss κ 0.373/0.450 and the average-expert "
+             "balanced accuracy 0.809 reproduce EXACTLY; conspicuity ρ = +0.609/+0.635 holds."),
+    ("done", "SAP §4.7 gate calibration fitted (isotonic, cross-fitted by patient): ECE 0.111 → 0.0036. "
+             "AUROC unchanged (calibration is monotonic), so the Table 6 benchmark stands."),
+    ("done", "'Readers under-report slowing' evidenced NON-CIRCULARLY on the independent expert panel: our "
+             "score tracks the PROPORTION of experts who saw the slowing (Spearman ρ = +0.609 generalized, "
+             "+0.635 focal), i.e. it measures conspicuity — scored against expert votes, never report labels."),
+    ("done", "Legacy derived tables quarantined so no analysis can silently reuse them (the audit's §2 "
+             "finding); every table above is rebuilt from v6 segment_master only."),
     ("todo", "Patient-clustered bootstrap CIs wired into every reported interval (SAP §3.3)."),
+    ("todo", "P6 (readers under-report SLEEP slowing) — its evidence file (v4a_wake_sleep) was DELETED in "
+             "the results purge and has not been regenerated on v6. Currently UNEVALUATED."),
     ("todo", "Analysis scripts read segment_master via io/canonical directly (SAP §13) — currently via an "
              "adapter that regenerates the tables from segment_master."),
     ("todo", "'Readers under-report slowing' evidenced on the independent expert panels (non-circular)."),
