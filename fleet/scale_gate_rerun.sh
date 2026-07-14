@@ -44,13 +44,18 @@ CODE="$BUCKET/code_gate_rerun"      # where we publish the new worker files (see
 # machine. The WORKER still uses rclone for everything (S3_CODE below is the same prefix, aws-written).
 S3_CODE="s3://bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/code_gate_rerun"
 if [ "${PUBLISH:-0}" = "1" ]; then
-  echo "publishing worker code -> $S3_CODE"
-  for f in fleet/gate_worker.py scripts/32_gate_rerun_worker.py scripts/shims/eeg_level_sliding.py \
-           scripts/35_validate_gate_output.py; do
-    aws s3 cp --profile bdspwrite "$f" "$S3_CODE/$(basename "$f")" >/dev/null \
-      || { echo "publish failed: $f"; exit 1; }
-    echo "  + $(basename "$f")"
-  done
+  # SHIP THE WHOLE SOURCE TREE, not individual files. The AMI's repo checkout is from 2026-07-04; the code
+  # that actually ran the fleet is from 07-11. So the AMI is missing BOTH the v6 manifest AND
+  # morgoth_slowing/fleet/ -- someone must have git-pulled on the box by hand before the original run. That
+  # undocumented step is why none of this was reproducible. A version-pinned bundle removes the entire class
+  # of "the AMI is stale" bug: the box runs EXACTLY the commit we tested.
+  echo "bundling source @ $HASH -> $S3_CODE"
+  BUNDLE=/tmp/gate_bundle_$HASH.tgz
+  tar czf "$BUNDLE" \
+      src scripts/32_gate_rerun_worker.py scripts/35_validate_gate_output.py scripts/shims \
+      fleet/gate_worker.py data/manifest/report_manifest_v6.parquet
+  aws s3 cp --profile bdspwrite "$BUNDLE" "$S3_CODE/bundle.tgz" >/dev/null || { echo "publish failed"; exit 1; }
+  echo "  + bundle.tgz  ($(du -h "$BUNDLE" | cut -f1))  commit $HASH"
   echo "published $(date -u +%FT%TZ)"
 fi
 
@@ -73,10 +78,11 @@ echo "STEP venv"; source .venv/bin/activate || { echo "FATAL: venv missing"; exi
 echo "STEP python: $(which python) $(python -V 2>&1)"
 echo "STEP rclone: $(which rclone)"; rclone listremotes || echo "FATAL: no rclone remotes"
 mkdir -p fleet scripts/shims
-rclone copyto $CODE/gate_worker.py fleet/gate_worker.py
-rclone copyto $CODE/32_gate_rerun_worker.py scripts/32_gate_rerun_worker.py
-rclone copyto $CODE/eeg_level_sliding.py scripts/shims/eeg_level_sliding.py
-rclone copyto $CODE/35_validate_gate_output.py scripts/35_validate_gate_output.py
+echo "STEP bundle"
+rclone copyto $CODE/bundle.tgz /tmp/bundle.tgz || { echo "FATAL: bundle fetch failed"; exit 92; }
+tar xzf /tmp/bundle.tgz -C . || { echo "FATAL: bundle extract failed"; exit 93; }
+echo "STEP bundle OK: $(python -c "import sys;sys.path.insert(0,\"src\");from morgoth_slowing.fleet import ingest;print(\"morgoth_slowing.fleet OK\")" 2>&1)"
+echo "STEP manifest: $(du -h data/manifest/report_manifest_v6.parquet 2>/dev/null | cut -f1)"
 export MORGOTH2_DIR=/home/ubuntu/morgoth2
 export PILOT_VENV=\$MORGOTH2_DIR/.venv/bin/python     # Morgoth OWN venv — the only one with torch
 export CKPT_DIR=\$MORGOTH2_DIR/checkpoints
