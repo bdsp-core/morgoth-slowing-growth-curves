@@ -51,18 +51,22 @@ def auc_ci(y, s, n=400):
 def main():
     d = pd.read_parquet("data/derived/channel_stage_features.parquet")
     lu = pd.read_parquet("data/derived/labels_unified.parquet")[
-        ["bdsp_id", "has_focal_slow", "gen_class"]].drop_duplicates("bdsp_id")
+        ["bdsp_id", "has_focal_slow", "gen_class", "clean_pair"]].drop_duplicates("bdsp_id")
+    d = d.drop(columns=[c for c in ("clean_pair",) if c in d.columns])   # take clean_pair from lu only
     w = d[(d.region == REGION) & d.age.between(0, 100)].merge(lu, on="bdsp_id", how="left")
 
     # SENSITIVITY (scripts/88): 17.2% of routine recordings carry a report broadcast from a sibling study of
     # the same patient, so their text-derived label terms may describe a different EEG. CLEAN_PAIR=1 keeps
     # only routine recordings that own the report written about them.
-    if os.environ.get("CLEAN_PAIR") == "1":
-        cp = pd.read_parquet("data/derived/report_pairing.parquet")
-        good = set(cp[cp.clean_pair == True].bdsp_id)
-        before = w.bdsp_id.nunique()
-        w = w[(w.src != "cohort") | (w.bdsp_id.isin(good))]
-        print(f"[CLEAN_PAIR] recordings: {before:,} -> {w.bdsp_id.nunique():,}")
+    # SAP §3.3 PITFALL 1 is NOT optional. This filter used to be gated behind an env var (CLEAN_PAIR=1),
+    # defaulting OFF, and it read the legacy report_pairing.parquet (12,379 of 27k recordings). So the
+    # default run of the PRIMARY detection analysis silently included recordings whose report describes a
+    # DIFFERENT study of the same patient — a report is broadcast onto up to 170 EEGs. It is now mandatory
+    # and sourced from the v6 clean_pair carried on labels_unified.
+    before = w.bdsp_id.nunique()
+    w = w[w.clean_pair == True]                                          # noqa: E712
+    print(f"[SAP §3.3 clean_pair] recordings: {before:,} -> {w.bdsp_id.nunique():,} "
+          f"({before - w.bdsp_id.nunique():,} borrowed-report EEGs dropped)")
 
     # split routine clean-normals into reference-train (70%) and test-negatives (30%)
     rn_ids = w[(w.src == "cohort") & (w.clean_normal == True)].bdsp_id.unique()

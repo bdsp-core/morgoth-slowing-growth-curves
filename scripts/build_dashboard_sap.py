@@ -41,15 +41,33 @@ ITEMS = [
      "added as a covariate: physiologic sleep produces the spectral changes that define pathologic slowing "
      "awake.", [S/"rel_delta__whole_head.png", S/"DAR__whole_head.png"], []),
 
-    ("Figure 4 / Table 2", "Detection — vigilance-matched ROC (SAP §9 Fig 4, §8.1, §10 T2)",
-     "Primary: AUROC for pathologic slowing vs clean-normal, whole-recording, vigilance-matched (per stage "
-     "and stage-pooled), reported by src. Positives are recordings whose report NAMES slowing among the "
-     "abnormalities; recordings abnormal for other reasons (e.g. epileptiform) are a separate stratum, not "
-     "positives. CIs by stratified bootstrap, patient-clustered on patient_id (SAP §3.3).",
-     [G/"vigilance_matched_detection.png", F/"age_auroc.png", F/"age_auroc_by_stage.png",
-      RP/"roc.png", RP/"prc.png", RT/"discrimination_auc.png"],
-     ["results/vigilance_matched_detection.csv", "results/sparse_slowing_score.md",
-      "results/lr_vs_morgoth.md"]),
+    ("Figure 4 / Table 2", "Detection by the NORMATIVE DEVIATION SCORE — vigilance-matched "
+                           "(SAP §9 Fig 4, §8.1, §10 T2)",
+     "WHOSE SCORE THIS IS: our own spectral deviation, NOT Morgoth and NOT the two-stage system. One "
+     "whole-head feature (TAR / DAR / log delta / log theta / rel delta) is z-scored against the "
+     "age-matched AND stage-matched clean-normal curve, then used on its own as a detector. Target: "
+     "pathologic generalized slowing vs held-out routine clean-normals, per sleep stage. Positives are "
+     "recordings whose report NAMES slowing among the abnormalities; recordings abnormal for other reasons "
+     "(e.g. epileptiform) are a separate stratum, not positives. 'Vigilance-matched' refers to WHICH normals "
+     "build the reference curve (routine / overnight / union) — the claim that this matters is WITHDRAWN "
+     "(the three references now differ by ~0.002 AUROC in wake). CIs by stratified bootstrap, "
+     "patient-clustered (SAP §3.3), on the clean_pair set. This is the DESCRIPTION layer measured as if it "
+     "were the detector; the detector is the gate, in the panel below.",
+     [G/"vigilance_matched_detection.png", F/"age_auroc_by_stage.png"],
+     ["results/vigilance_matched_detection.csv", "results/sparse_slowing_score.md"]),
+
+    ("Figure 4b", "Detection by the MORGOTH GATE — and the two head-to-head (SAP §8.1, §8.7)",
+     "WHOSE SCORE THIS IS: the Morgoth foundation-model gate — stage 1 of the two-stage system, the thing "
+     "that actually decides whether and what to report. Shown here so it is not confused with the panel "
+     "above. The gate detects at 0.875 / 0.911 / 0.870 (abnormal / generalized / focal, Table 6) where the "
+     "spectral deviation field reaches ~0.72-0.74 — that gap IS the paper's argument: the foundation model "
+     "DETECTS, the normative field DESCRIBES. age_auroc: gate discrimination by age band (0.769 in children "
+     "rising monotonically to 0.911 in the very elderly). roc/prc + discrimination_auc: the two scores on "
+     "the same task, same recordings. lr_vs_morgoth: our deviation model cross-fitted by patient agrees with "
+     "the gate only moderately (rho 0.44) and is out-ranked by it (0.667 vs 0.836) — an earlier in-sample "
+     "figure of 0.962 was overfitting.",
+     [F/"age_auroc.png", RP/"roc.png", RP/"prc.png", RT/"discrimination_auc.png", RT/"lr_vs_morgoth.png"],
+     ["results/lr_vs_morgoth.md", "results/vanputten_fullcoverage.md"]),
 
     ("Ablation", "Attribution of the detection estimate (audit §1)",
      "Toggling, one at a time, the factors that changed from the legacy pipeline: label definition "
@@ -122,8 +140,7 @@ ITEMS = [
      "the optimism. NOTE: this score is SUPERVISED on report labels, so it may not be used to evidence the "
      "'readers under-report slowing' claim — that claim must rest on the unsupervised z, tested on the "
      "independent expert panels.",
-     [G/"sparse_score.png", RT/"lr_vs_morgoth.png"],
-     ["results/sparse_slowing_score.md", "results/lr_vs_morgoth.md"]),
+     [G/"sparse_score.png"], ["results/sparse_slowing_score.md"]),
 ]
 
 CONFORMANCE = [
