@@ -83,50 +83,43 @@ def guard_would_fire(W: np.ndarray, lo: int, hi: int, class_idx: int) -> bool:
     return bool(W[lo:hi, class_idx].max() < 1.0 / W.shape[1])
 
 
-# --------------------------------------------------------------------------- the EEG-level heads, direct
+# --------------------------------------------------------------------------- the EEG-level heads (SHIM)
 class EEGLevelHeads:
-    """Runs FOC_SLOWING / GEN_SLOWING EEG-level heads directly on a (T x 3) window-probability matrix.
+    """Drives Morgoth's FOC/GEN EEG-level heads over arbitrary slices, via scripts/shims/eeg_level_sliding.py.
 
-    We bypass Morgoth's CLI on purpose: its CSVDataset SHORT-CIRCUITS to probability=0 without a forward
-    pass (EEG_level_head.py:579,677) and PADS sequences under 30 rows with their own column means. Both
-    destroy information. Here the model runs on every slice and we keep the real sigmoid.
+    TWO-VENV RULE (docs/fleet_dependencies.md §4): the worker venv imports NEITHER torch NOR timm — torch
+    lives only in Morgoth's venv. So the checkpoints are touched in a SUBPROCESS under PILOT_VENV, exactly
+    as the window head and eeg_level_wrap.py already are. (An earlier draft of this file called torch
+    directly from the worker; it would have died on the fleet with a bare ImportError.)
+
+    The shim disables Morgoth's low-signal short-circuit, so every slice gets a real forward pass and a real
+    sigmoid. Nothing is thresholded, zeroed, or mean-padded.
     """
-    HEADS = {"focal": ("FOC_SLOWING_EEGlevel.pth", 1), "gen": ("GEN_SLOWING_EEGlevel.pth", 2)}
 
-    def __init__(self, ckpt_dir, device=None):
-        import torch
-        sys.path.insert(0, os.environ.get("MORGOTH2_DIR", "../morgoth2"))
-        from EEG_level_head import CNNTransformerClassifier, load_model_parameters
-        self.torch = torch
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.models, self.class_idx, self.sha = {}, {}, {}
-        for name, (ck, ci) in self.HEADS.items():
-            p = Path(ckpt_dir) / ck
-            m = CNNTransformerClassifier(input_dim=3, output_dim=1, pe_max_length=15000).to(self.device)
-            load_model_parameters(m, str(p), device=self.torch.device(self.device))
-            m.eval()
-            self.models[name], self.class_idx[name] = m, ci
-            self.sha[name] = _sha256(p)
+    def __init__(self, ckpt_dir, scratch):
+        import fleet_io as fi
+        self.ckpt_dir = os.path.abspath(ckpt_dir)
+        self.scratch = Path(scratch); self.scratch.mkdir(parents=True, exist_ok=True)
+        self.venv = fi.VENV                       # PILOT_VENV = Morgoth's python (the one WITH torch)
+        self.shim = os.path.join(os.path.abspath(fi.SHIMS), "eeg_level_sliding.py")
+        self.sha = {n: _sha256(Path(self.ckpt_dir) / c)
+                    for n, c in [("focal", "FOC_SLOWING_EEGlevel.pth"),
+                                 ("gen", "GEN_SLOWING_EEGlevel.pth")]}
 
-    def run(self, seqs, name, batch=512):
-        """seqs: list of (L x 3) float32 arrays (all real rows, no padding). -> raw sigmoid, one per seq."""
-        torch = self.torch
-        out = np.full(len(seqs), np.nan, dtype=np.float32)
-        m = self.models[name]
-        with torch.no_grad():
-            for i in range(0, len(seqs), batch):
-                chunk = seqs[i:i + batch]
-                L = max(len(s) for s in chunk)
-                X = np.zeros((len(chunk), L, 3), dtype=np.float32)
-                lens = np.zeros(len(chunk), dtype=np.int64)
-                for j, s in enumerate(chunk):
-                    X[j, :len(s)] = s
-                    lens[j] = len(s)
-                xb = torch.from_numpy(X).to(self.device)
-                lb = torch.from_numpy(lens).to(self.device)
-                logits = m(xb, lengths=lb)
-                out[i:i + len(chunk)] = torch.sigmoid(logits).view(-1).float().cpu().numpy()
-        return out
+    def run_slices(self, W, slices):
+        """W (T,3) float32; slices [(lo,hi), ...] each >= MIN_ROWS rows. -> (S,2) raw sigmoids [focal, gen]."""
+        if not len(slices):
+            return np.zeros((0, 2), np.float32)
+        np.save(self.scratch / "W.npy", np.ascontiguousarray(W, dtype=np.float32))
+        np.save(self.scratch / "slices.npy", np.asarray(slices, dtype=np.int64))
+        r = subprocess.run(["bash", "-lc",
+            f"KMP_DUPLICATE_LIB_OK=TRUE MORGOTH2_DIR={os.environ.get('MORGOTH2_DIR','')} "
+            f"{self.venv} {self.shim} --scratch {self.scratch} --ckpt-dir {self.ckpt_dir}"],
+            capture_output=True, text=True)
+        if r.returncode != 0:
+            tail = "\n".join(r.stderr.strip().splitlines()[-5:])
+            raise RuntimeError(f"eeg_level_sliding failed:\n{tail}")
+        return np.load(self.scratch / "probs.npy")
 
 
 def _sha256(p, buf=1 << 20):
@@ -245,12 +238,13 @@ def process_one(eid, meta, heads, work):
     for ctx in CONTEXTS:
         slices, idx = [], []
         gf = np.zeros(len(seg), bool); gg = np.zeros(len(seg), bool)
+        ranges = []
         for i, c in enumerate(centers):
             r = context_rows(c, ctx, T)
             if r is None:
                 continue
             lo, hi = r
-            slices.append(W[lo:hi]); idx.append(i)
+            ranges.append((lo, hi)); slices.append(1); idx.append(i)
             gf[i] = guard_would_fire(W, lo, hi, 1)
             gg[i] = guard_would_fire(W, lo, hi, 2)
         pf = np.full(len(seg), np.nan, np.float32); pg = np.full(len(seg), np.nan, np.float32)
@@ -259,7 +253,7 @@ def process_one(eid, meta, heads, work):
                 rng = np.random.default_rng(ctx)
                 vf, vg = rng.random(len(slices)).astype(np.float32), rng.random(len(slices)).astype(np.float32)
             else:
-                vf = heads.run(slices, "focal"); vg = heads.run(slices, "gen")
+                pr = heads.run_slices(W, ranges); vf, vg = pr[:, 0], pr[:, 1]
             pf[idx], pg[idx] = vf, vg
         rows[f"p_focal_{ctx}"], rows[f"p_gen_{ctx}"] = pf, pg
         rows[f"guard_focal_{ctx}"], rows[f"guard_gen_{ctx}"] = gf, gg
@@ -273,7 +267,7 @@ def process_one(eid, meta, heads, work):
         if DRY:
             rf = rg = float(np.random.default_rng(7).random())
         else:
-            rf = float(heads.run([W], "focal")[0]); rg = float(heads.run([W], "gen")[0])
+            pr = heads.run_slices(W, [(0, T)]); rf, rg = float(pr[0, 0]), float(pr[0, 1])
         grec_f, grec_g = guard_would_fire(W, 0, T, 1), guard_would_fire(W, 0, T, 2)
     else:
         rf = rg = np.nan; grec_f = grec_g = False
@@ -321,7 +315,10 @@ def main():
     print(f"gate re-run: {len(ids):,} recordings | step {GATE_STEP}s | contexts {CONTEXTS} | "
           f"guard DISABLED | dry={DRY}", flush=True)
 
-    heads = None if DRY else EEGLevelHeads(os.environ.get("CKPT_DIR", "../morgoth/checkpoints"))
+    heads = None if DRY else EEGLevelHeads(
+        os.environ.get("CKPT_DIR", os.path.join(os.environ.get("MORGOTH2_DIR", "../morgoth2"),
+                                                "checkpoints")),
+        scratch=Path(tempfile.mkdtemp(prefix="eeglvl_")))
     work = Path(tempfile.mkdtemp()); ok = 0
     try:
         for k, eid in enumerate(ids):
