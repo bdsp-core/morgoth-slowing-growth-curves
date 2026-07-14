@@ -19,7 +19,20 @@ cd "$(dirname "$0")/.."
 TARGET=${1:-128}
 PILOT=${2:-0}                       # >0 = acceptance run: stop after N recordings, do NOT shut down
 AMI=$(cat fleet/.ami_id)
-SUBNET=subnet-073fad6d014fa4f63; SG=sg-05daa9abca4b4bacc; KEY=morgoth-pilot-key
+# scale_elastic.sh hardcoded the us-east-1f subnet. g4dn.xlarge SPOT CAPACITY IS EXHAUSTED THERE — AWS
+# replies "you can currently get g4dn.xlarge capacity by ... choosing us-east-1a/b/c/d". So walk the AZs
+# instead of pinning one: a spot fleet that dies on one AZ's capacity is not elastic.
+SUBNETS=(subnet-0d9327335dd39a415 subnet-0092e6aaec4ee7d67 subnet-04d5c16b4cea5e98b subnet-005154d14b49a5b6e subnet-073fad6d014fa4f63)
+# ...and don't pin the instance type either. g4dn.xlarge spot capacity was EXHAUSTED IN EVERY AZ when this
+# was written. All of these are single-GPU and the worker uses exactly one, so they are interchangeable;
+# they differ only in speed and price. Walk them until one places. (All count against the same "All G and
+# VT Spot" quota, in vCPUs: the 4-vCPU types cost 4 of the 512, the 8-vCPU ones cost 8.)
+TYPES=(g4dn.xlarge g5.xlarge g6.xlarge g4dn.2xlarge g5.2xlarge)
+SG=sg-05daa9abca4b4bacc; KEY=morgoth-pilot-key
+# ONDEMAND=1 drops the spot market option. Spot capacity for EVERY GPU type was exhausted in EVERY us-east-1
+# AZ when this was written, and a 100-recording acceptance run on-demand costs about $0.53 — not worth
+# waiting on the spot market for. For the FULL run, spot is ~3x cheaper, so retry spot first.
+if [ "${ONDEMAND:-0}" = "1" ]; then MARKET=(); else MARKET=(--instance-market-options MarketType=spot); fi
 HASH=$(git rev-parse --short HEAD)
 BUCKET="bdsp:bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves"
 SRC_V6="$BUCKET/segmaster_v6"       # READ ONLY — the existing run
@@ -82,16 +95,32 @@ echo "  SRC_V6 (read) : $SRC_V6"
 echo "  S3_OUT (write): $S3OUT"
 launched=0
 for ((i=0; i<NEED; i++)); do
-  OUT=$(aws ec2 run-instances --profile fleet --region us-east-1 \
-    --image-id "$AMI" --instance-type g4dn.xlarge --instance-market-options 'MarketType=spot' \
-    --key-name "$KEY" --security-group-ids "$SG" --subnet-id "$SUBNET" \
-    --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=120,VolumeType=gp3}' \
-    --instance-initiated-shutdown-behavior terminate \
-    --user-data "file://$UD" --count 1 \
-    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=morgoth-gate-rerun},{Key=fleet,Value=morgoth-gate-rerun}]" \
-    --query 'Instances[0].InstanceId' --output text 2>&1)
-  if [[ "$OUT" == i-* ]]; then launched=$((launched+1)); echo "  launched $OUT";
-  elif echo "$OUT" | grep -q MaxSpotInstanceCount; then echo "  SPOT QUOTA CAP reached at $((CUR+launched)) workers"; break;
-  else echo "  stop: $(echo "$OUT" | tail -c 160)"; break; fi
+  placed=0
+  for TYPE in "${TYPES[@]}"; do
+  for SUBNET in "${SUBNETS[@]}"; do        # rotate type x AZ: spot capacity is per (type, AZ) and moves
+    OUT=$(aws ec2 run-instances --profile fleet --region us-east-1 \
+      --image-id "$AMI" --instance-type "$TYPE" ${MARKET[@]+"${MARKET[@]}"} \
+      --key-name "$KEY" --security-group-ids "$SG" --subnet-id "$SUBNET" \
+      --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=120,VolumeType=gp3}' \
+      --instance-initiated-shutdown-behavior terminate \
+      --user-data "file://$UD" --count 1 \
+      --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=morgoth-gate-rerun},{Key=fleet,Value=morgoth-gate-rerun}]" \
+      --query 'Instances[0].InstanceId' --output text 2>&1)
+    if [[ "$OUT" == i-* ]]; then
+      launched=$((launched+1)); placed=1; echo "  launched $OUT  ($TYPE, $SUBNET)"; break
+    elif echo "$OUT" | grep -q MaxSpotInstanceCount; then
+      echo "  SPOT QUOTA CAP reached at $((CUR+launched)) workers"; break 3
+    elif echo "$OUT" | grep -qiE "InsufficientInstanceCapacity|capacity"; then
+      continue                              # this (type, AZ) is dry — try the next
+    else
+      echo "  stop: $(echo "$OUT" | tail -c 160)"; break 3
+    fi
+  done
+  [ "$placed" -eq 1 ] && break
+  done
+  [ "$placed" -eq 0 ] && {
+      echo "  no GPU capacity in any (type x AZ) right now."
+      [ "${ONDEMAND:-0}" = "1" ] || echo "  -> retry later, or re-run with ONDEMAND=1 (~3x price, but available)"
+      break; }
 done
 echo "scaled +$launched -> ~$((CUR+launched)) workers"
