@@ -11,11 +11,12 @@ against the expert majority, and compare with the average expert's balanced accu
 
 Run: PYTHONPATH=src python scripts/table4_predictions_scorecard.py
 """
-import glob, json, os
+import glob, json, os, re
 from pathlib import Path
-import json
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score, balanced_accuracy_score
+
+TARGETS = ["abnormal", "generalized", "focal"]
 
 SCR = os.environ.get("PANEL_SCRATCH",
     "/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
@@ -74,20 +75,40 @@ def main():
         print(f"  {k:12} ours {v['ours_bacc']:.3f} (AUROC {v['ours_auroc']:.3f})  vs ceiling "
               f"{v['ceiling']:.3f}  -> {v['verdict']}")
 
-    # --- van Putten arms, from the full-coverage recompute (P8a / P8b) ---
-    # values sourced from results/vanputten_fullcoverage.md (27,003 recordings)
-    # complete set, from results/vanputten_fullcoverage.md (27,003 recs, patient-clustered CIs)
-    vp = {   # metric: (raw, age-normed) per target
-        # --- SLOWING metrics: age-dependent, so age-norming HELPS ---
-        "Q_SLOWING": {"abnormal": (0.654, 0.692), "generalized": (0.702, 0.751), "focal": (0.630, 0.671)},
-        "DAR":       {"abnormal": (0.667, 0.697), "generalized": (0.731, 0.772), "focal": (0.630, 0.664)},
-        "DTABR":     {"abnormal": (0.684, 0.719), "generalized": (0.743, 0.789), "focal": (0.651, 0.691)},
-        "SEF95":     {"abnormal": (0.637, 0.675), "generalized": (0.665, 0.710), "focal": (0.621, 0.664)},
-        # --- ASYMMETRY metrics: left-right symmetry is age-INVARIANT, so age-norming only adds noise ---
-        "r_sBSI":    {"abnormal": (0.698, 0.686), "generalized": (0.692, 0.675), "focal": (0.726, 0.715)},
-        "Q_ASYM":    {"abnormal": (0.684, 0.680), "generalized": (0.690, 0.684), "focal": (0.697, 0.693)},
-    }
-    ours = {"abnormal": 0.881, "generalized": 0.918, "focal": 0.875}   # Morgoth gate
+    # --- van Putten arms: PARSED from results/vanputten_fullcoverage.md (Table 6) ---
+    # These used to be hardcoded here, transcribed by hand from an earlier run of that table. When Table 6
+    # was recomputed under the SAP 3.3 clean_pair filter, this block silently kept the OLD numbers and the
+    # scorecard drifted out of agreement with the table it claims to summarise. Parse the table instead, so
+    # the two can never disagree again.
+    _vpmd = Path("results/vanputten_fullcoverage.md")
+    _rows = {}
+    for _ln in _vpmd.read_text().splitlines():
+        if not _ln.startswith("|") or _ln.startswith("|:") or "method" in _ln:
+            continue
+        _c = [x.strip() for x in _ln.strip().strip("|").split("|")]
+        if len(_c) < 4:
+            continue
+        _nm = _c[0].replace("*", "").strip()
+        _v = [float(re.match(r"([0-9.]+)", x).group(1)) for x in _c[1:4] if re.match(r"([0-9.]+)", x)]
+        if len(_v) == 3:
+            _rows[_nm] = dict(zip(TARGETS, _v))
+
+    vp = {}
+    for _nm, _val in _rows.items():
+        _m = re.match(r"([A-Za-z0-9_]+) \((raw|age-normed)\)", _nm)
+        if not _m:
+            continue
+        _met, _kind = _m.group(1), _m.group(2)
+        vp.setdefault(_met, {})
+        for _t in TARGETS:
+            _raw, _norm = vp[_met].get(_t, (None, None))
+            vp[_met][_t] = (_val[_t], _norm) if _kind == "raw" else (_raw, _val[_t])
+    vp = {m: t for m, t in vp.items() if all(None not in v for v in t.values())}
+    _gate = next(v for k, v in _rows.items() if "Morgoth" in k)
+    print(f"P8: van Putten arms parsed from {_vpmd} — {len(vp)} metrics x {len(TARGETS)} targets; "
+          f"gate = {_gate['abnormal']}/{_gate['generalized']}/{_gate['focal']}")
+
+    ours = dict(_gate)   # Morgoth gate, straight from Table 6
     p8a = []
     for met, tg in vp.items():
         for t, (raw, normed) in tg.items():
@@ -100,7 +121,13 @@ def main():
 
     # BEST van Putten arm per target across the COMPLETE table (was understated before the
     # segment_master arms were included: DTABR age-normed is the real competitor, not Q_SLOWING)
-    best_vp = {"abnormal": 0.719, "generalized": 0.789, "focal": 0.726}   # DTABR-z, DTABR-z, r_sBSI raw
+    # best van Putten arm per target = max over every metric x {raw, age-normed}, taken from the PARSED
+    # Table 6. Hardcoding it (as before) is exactly how the scorecard drifted from the table.
+    best_vp, best_arm = {}, {}
+    for t in TARGETS:
+        cand = [(v[t][0], f"{m} raw") for m, v in vp.items()] + \
+               [(v[t][1], f"{m} age-normed") for m, v in vp.items()]
+        best_vp[t], best_arm[t] = max(cand)
     p8b = [{"target": t, "ours(Morgoth)": ours[t], "best van Putten": best_vp[t],
             "margin": round(ours[t] - best_vp[t], 3),
             "verdict": "CONFIRMED (no adoption)" if ours[t] - best_vp[t] > -0.02 else "ADOPT THEIRS"}
@@ -122,7 +149,8 @@ def main():
     rows = [
         dict(P="P1", prediction="Detection AUROC >= 0.80 whole-recording, vigilance-matched",
              falsified_if="< 0.75",
-             result="Morgoth gate 0.881 (any slowing); sparse score 0.844; normative deviation 0.806 (N1) / 0.784 (W)",
+             result=f"Morgoth gate {ours['abnormal']:.3f} (any slowing); sparse score 0.844; "
+                    f"normative deviation 0.806 (N1) / 0.784 (W)",
              verdict="CONFIRMED"),
         dict(P="P2", prediction="Sex can be pooled in the norms", falsified_if="dAUROC from adding sex > 0.01",
              result="RE-VERIFIED on v6 across 15 (stage x feature) cells: max |dAUROC| = 0.0043, "
@@ -170,8 +198,12 @@ def main():
              verdict="MIXED — but systematically: helps every age-DEPENDENT metric, hurts every age-INVARIANT one"),
         dict(P="P8b", prediction="Our best score >= best van Putten on each target",
              falsified_if="any van Putten arm beats ours by dAUROC > 0.02 -> adopt it",
-             result="Morgoth 0.881/0.918/0.875 vs best vP 0.719/0.789/0.726 (DTABR-z, DTABR-z, r_sBSI) "
-                    "-> margin +0.162/+0.129/+0.149",
+             result=(f"Morgoth {ours['abnormal']:.3f}/{ours['generalized']:.3f}/{ours['focal']:.3f} vs "
+                     f"best vP {best_vp['abnormal']:.3f}/{best_vp['generalized']:.3f}/{best_vp['focal']:.3f} "
+                     f"({best_arm['abnormal']}, {best_arm['generalized']}, {best_arm['focal']}) — margins "
+                     f"+{ours['abnormal']-best_vp['abnormal']:.3f}/"
+                     f"+{ours['generalized']-best_vp['generalized']:.3f}/"
+                     f"+{ours['focal']-best_vp['focal']:.3f}. All on the SAP §3.3 clean_pair set."),
              verdict="CONFIRMED (no adoption triggered)"),
     ]
     tab = pd.DataFrame(rows)

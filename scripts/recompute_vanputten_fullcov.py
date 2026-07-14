@@ -114,6 +114,14 @@ def main():
     d = vp.join(lab, how="inner")
     print(f"segment_summary partitions read : {len(vp):,}")
     print(f"joined to corrected SAP labels   : {len(d):,}")
+    # SAP 3.3 PITFALL 1 (report-broadcast guard): a single report is stamped onto up to 170 EEGs of the
+    # same patient, so a recording that is not `clean_pair` carries a label describing a DIFFERENT study.
+    # Every label-dependent analysis must filter to clean_pair -- and this table is label-dependent
+    # (slowing-positive / focal / generalized vs clean-normal). It previously did not, which quietly put
+    # ~840 borrowed-label recordings into the headline benchmark.
+    _n0 = len(d)
+    d = d[d.clean_pair == True]                                          # noqa: E712
+    print(f"after SAP 3.3 clean_pair filter  : {len(d):,}   ({_n0 - len(d):,} borrowed-report EEGs dropped)")
     print(f"Q_SLOWING coverage               : {int(d.Q_SLOWING.notna().sum()):,}"
           f"   (was 3,130 in the committed results)")
     print(f"Morgoth p_slowing coverage       : {int(d.p_slowing_p90.notna().sum()):,}\n")
