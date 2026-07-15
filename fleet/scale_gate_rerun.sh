@@ -90,7 +90,16 @@ grep -q "^\[s3\]" ~/.config/rclone/rclone.conf 2>/dev/null || cat fleet/rclone_s
 chmod 600 ~/.config/rclone/rclone.conf
 echo "STEP remotes: $(rclone listremotes | tr "\n" " ")"
 export MORGOTH2_DIR=/home/ubuntu/morgoth2
-export PILOT_VENV=\$MORGOTH2_DIR/.venv/bin/python     # Morgoth OWN venv — the only one with torch
+export PILOT_VENV=\$MORGOTH2_DIR/.venv/bin/python     # configured target (may not exist on this AMI)
+# The AMI (built from the pilot) has torch+timm in the REPO venv, not in morgoth2/.venv. Find whatever
+# python can actually import both, so the model can run regardless of which venv layout the AMI has.
+if ! \$PILOT_VENV -c "import torch, timm" >/dev/null 2>&1; then
+  for _c in "\$(command -v python)" /home/ubuntu/morgoth-slowing-growth-curves/.venv/bin/python \
+            /opt/conda/bin/python /usr/bin/python3; do
+    if [ -x "\$_c" ] && "\$_c" -c "import torch, timm" >/dev/null 2>&1; then export PILOT_VENV="\$_c"; break; fi
+  done
+fi
+echo "STEP torch-venv: PILOT_VENV=\$PILOT_VENV  ->  \$(\$PILOT_VENV -c "import torch,timm;print(\"torch\",torch.__version__,\"timm\",timm.__version__)" 2>&1 | head -1)"
 export CKPT_DIR=\$MORGOTH2_DIR/checkpoints
 export PYTHONPATH=src PYTHONUNBUFFERED=1 MORGOTH_DEVICE=cuda RCLONE_BIN=rclone CODE_COMMIT=$HASH
 export KMP_DUPLICATE_LIB_OK=TRUE
