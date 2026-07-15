@@ -62,6 +62,28 @@ GATE_STEP = 1                       # SECONDS. Matches Morgoth's reference pipel
 # fetch through a remote that DOES exist (bdsp:), which points at the same S3 with the same credentials.
 # The path is otherwise untouched: we still fetch the byte-identical file, and the sha256 is verified.
 EDF_REMOTE = os.environ.get("EDF_REMOTE", "s3:")
+PANEL_ROOT = os.environ.get("PANEL_ROOT")           # where MoE/ON panel sources live (rclone remote / s3://)
+
+
+def fetch_panel(sp, ext, work):
+    """Resolve a relative panel source_path against PANEL_ROOT (verbatim from scripts/31). Local dir -> in
+    place; s3://... via aws; rclone remote via rclone. Returns a local path or None."""
+    from morgoth_slowing.fleet import ingest as fi
+    if not PANEL_ROOT:
+        return Path(sp) if Path(sp).exists() else None
+    full = f"{PANEL_ROOT}/{sp}"
+    if PANEL_ROOT.startswith("s3://"):
+        dst = work / f"panel{ext}"
+        subprocess.run(["aws", "s3", "cp", full, str(dst)], check=True, capture_output=True, timeout=600)
+        return dst
+    if ":" in PANEL_ROOT.split("/")[0]:              # rclone remote, e.g. "bdsp:prefix"
+        dst = work / f"panel{ext}"
+        r = subprocess.run([fi.RC, "copyto", full, str(dst)], capture_output=True, text=True, timeout=600)
+        if r.returncode != 0:
+            raise RuntimeError(f"panel fetch failed {full}: {(r.stderr or '').strip().splitlines()[-1:]}")
+        return dst
+    p = Path(full)
+    return p if p.exists() else None
 CONTEXTS = [30, 60, 120]            # EEG-level window lengths, in seconds (= rows at 1 s step)
 MIN_ROWS = 30                       # the CNN's hard floor: <30 rows -> 0 transformer tokens
 SEG_LEN_S = 15.0
@@ -231,22 +253,36 @@ def process_one(eid, meta, heads, work):
         from morgoth_slowing.io.edf import load_edf_referential
 
         ep = meta["source_edf"]                       # PINNED. No re-resolution: the file that was used.
-        if EDF_REMOTE != "s3:" and ep.startswith("s3:"):
-            ep = EDF_REMOTE + ep[len("s3:"):]         # same object, a remote name the box actually has
-        local = work / "rec.edf"
-        # SURFACE RCLONE'S STDERR. The original worker used check=True + capture_output=True, so a failed
-        # fetch raised a bare CalledProcessError with the error text DISCARDED — which is why the first
-        # fleet failure here was undiagnosable. If rclone knows why it failed, we want to be told.
-        r = subprocess.run([fi.RC, "copyto", ep, str(local)], capture_output=True, text=True, timeout=900)
-        if r.returncode != 0:
-            err = (r.stderr or r.stdout or "").strip().splitlines()
-            raise RuntimeError("rclone fetch failed for " + ep + " :: " +
-                               " | ".join(err[-3:] if err else ["(no stderr)"]))
-        got = _sha256(local)
-        if meta.get("sha256") and got != meta["sha256"]:
-            return f"sha_mismatch:{got[:12]}!={meta['sha256'][:12]}"
-        src_sha = got
-        data, chs, fs = load_edf_referential(str(local))
+        stype = str(meta.get("src_type", "bids") or "bids")
+        if stype in ("edf_direct", "mat_v73"):
+            # PANEL case (OccasionNoise .edf / MoE .mat). source_edf is a path RELATIVE to PANEL_ROOT, not
+            # an s3: object -- the same branch scripts/31 uses. Without this, panels fail "directory not
+            # found" (rclone reads the relative path as a local file). MBW wants ALL cases, panels included.
+            from morgoth_slowing.io import panels
+            local = fetch_panel(ep, ".edf" if stype == "edf_direct" else ".mat", work)
+            if local is None:
+                return "nopanelfile"
+            src_sha = _sha256(local)
+            if stype == "edf_direct":
+                data, chs, fs, _, _ = panels.read_occasion_edf(str(local))
+            else:
+                data, chs, fs = panels.read_moe_mat(str(local))
+        else:
+            if EDF_REMOTE != "s3:" and ep.startswith("s3:"):
+                ep = EDF_REMOTE + ep[len("s3:"):]     # same object, a remote name the box actually has
+            local = work / "rec.edf"
+            # SURFACE RCLONE'S STDERR. The original worker used check=True + capture_output=True, so a failed
+            # fetch raised a bare CalledProcessError with the error DISCARDED — undiagnosable on the fleet.
+            r = subprocess.run([fi.RC, "copyto", ep, str(local)], capture_output=True, text=True, timeout=900)
+            if r.returncode != 0:
+                err = (r.stderr or r.stdout or "").strip().splitlines()
+                raise RuntimeError("rclone fetch failed for " + ep + " :: " +
+                                   " | ".join(err[-3:] if err else ["(no stderr)"]))
+            got = _sha256(local)
+            if meta.get("sha256") and got != meta["sha256"]:
+                return f"sha_mismatch:{got[:12]}!={meta['sha256'][:12]}"
+            src_sha = got
+            data, chs, fs = load_edf_referential(str(local))
         data = ex.cap_to_hours(data.astype(np.float32, copy=False), fs)
         sin, sout = work / "in", work / "out"
         for d in (sin, sout):
