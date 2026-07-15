@@ -36,7 +36,6 @@ p32 = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(p32)
 SRC_V6 = os.environ["SRC_V6"].rstrip("/")        # the existing run — READ ONLY
 S3_OUT = os.environ["S3_OUT"].rstrip("/")        # FRESH prefix — never segmaster_v6
 RC = os.environ.get("RCLONE_BIN", "rclone")
-NCB = ["--no-check-bucket"]      # rclone: skip CreateBucket before writes (bucket exists; AWS flagged the spam)
 MANIFEST = os.environ.get("MANIFEST", "data/manifest/report_manifest_v6.parquet")
 # GATE_PILOT>0: acceptance mode. Process exactly N recordings and stop, so the 100-EEG test can be
 # validated (scripts/35) before the full run is paid for. The box is left up for inspection.
@@ -83,17 +82,17 @@ def upload_success(eid):
     for sub, dst in ((p32.WGATE, "window_gate"), (p32.SGATE, "segment_gate")):
         f = sub / f"eeg_id={eid}" / "part.parquet"
         if f.exists():
-            subprocess.run([RC, *NCB, "copyto", str(f), f"{S3_OUT}/{dst}/eeg_id={eid}/part.parquet"], check=True)
+            subprocess.run([RC, "copyto", str(f), f"{S3_OUT}/{dst}/eeg_id={eid}/part.parquet"], check=True)
     d = p32.GDONE / f"{eid}.done"
     if d.exists():
-        subprocess.run([RC, *NCB, "copyto", str(d), f"{S3_OUT}/_done/{eid}.done"], check=True)
+        subprocess.run([RC, "copyto", str(d), f"{S3_OUT}/_done/{eid}.done"], check=True)
 
 
 def mark_terminal(eid, status):
     """Permanently unprocessable for the GATE re-run (no v6 outputs, sha mismatch, recording < 30 s).
     Marker so peers skip it forever. Transient errors are NOT marked -> they retry next pass."""
-    subprocess.run(["bash", "-lc", f"printf %s {status!r} | {RC} --no-check-bucket rcat {S3_OUT}/_done/{eid}.done"], check=False)
-    subprocess.run(["bash", "-lc", f"printf %s {status!r} | {RC} --no-check-bucket rcat {S3_OUT}/_status/{eid}.status"], check=False)
+    subprocess.run(["bash", "-lc", f"printf %s {status!r} | {RC} rcat {S3_OUT}/_done/{eid}.done"], check=False)
+    subprocess.run(["bash", "-lc", f"printf %s {status!r} | {RC} rcat {S3_OUT}/_status/{eid}.status"], check=False)
 
 
 def cleanup_local(eid):

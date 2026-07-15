@@ -118,7 +118,7 @@ export MORGOTH2_COMMIT=\$(git -C \$MORGOTH2_DIR rev-parse --short HEAD 2>/dev/nu
 # Log shipping: /var/log on a self-terminating spot box is unreadable, so stream the log to S3.
 IID=\$(imds instance-id); [ -z "\$IID" ] && IID=unknown
 LOG=/home/ubuntu/gate_\$IID.log
-( while true; do rclone --no-check-bucket copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null; sleep 20; done ) &
+( while true; do rclone copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null; sleep 20; done ) &
 SHIPPER=\$!
 { echo "=== ENV DUMP ==="; echo "MORGOTH2_DIR=\$MORGOTH2_DIR"; echo "PILOT_VENV=\$PILOT_VENV";
   ls -la \$MORGOTH2_DIR/.venv/bin/python 2>&1 | head -1;
@@ -129,7 +129,7 @@ timeout 216000 python fleet/gate_worker.py >> \$LOG 2>&1
 RC_=\$?
 kill \$SHIPPER 2>/dev/null
 echo "--- worker exited rc=\$RC_ ---" >> \$LOG
-rclone --no-check-bucket copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null    # final flush, ALWAYS
+rclone copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null    # final flush, ALWAYS
 '
 $SHUTDOWN
 EOF
