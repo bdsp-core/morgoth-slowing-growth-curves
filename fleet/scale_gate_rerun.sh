@@ -110,7 +110,12 @@ IID=\$(imds instance-id); [ -z "\$IID" ] && IID=unknown
 LOG=/home/ubuntu/gate_\$IID.log
 ( while true; do rclone copyto \$LOG $S3OUT/_logs/\$IID.log 2>/dev/null; sleep 20; done ) &
 SHIPPER=\$!
-timeout 216000 python fleet/gate_worker.py > \$LOG 2>&1
+{ echo "=== ENV DUMP ==="; echo "MORGOTH2_DIR=\$MORGOTH2_DIR"; echo "PILOT_VENV=\$PILOT_VENV";
+  ls -la \$MORGOTH2_DIR/.venv/bin/python 2>&1 | head -1;
+  ls \$MORGOTH2_DIR/finetune_classification.py 2>&1 | head -1;
+  \$PILOT_VENV -c "import torch;print(\"torch\",torch.__version__,\"cuda\",torch.cuda.is_available())" 2>&1 | head -2;
+  ls \$MORGOTH2_DIR/checkpoints/SLOWING.pth 2>&1 | head -1; echo "=== END ENV ==="; } >> \$LOG 2>&1
+timeout 216000 python fleet/gate_worker.py >> \$LOG 2>&1
 RC_=\$?
 kill \$SHIPPER 2>/dev/null
 echo "--- worker exited rc=\$RC_ ---" >> \$LOG

@@ -168,7 +168,7 @@ def run_window_heads(sin, sout, eid):
     shim = os.path.abspath(fi.SHIMS)
 
     def _win(ckpt, ds, outdir):
-        subprocess.run(["bash", "-lc",
+        _r = subprocess.run(["bash", "-lc",
             f"cd {fi.M2} && PYTHONPATH={shim}:${{PYTHONPATH}} PYTORCH_ENABLE_MPS_FALLBACK=1 "
             f"KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 "
             f"{fi.VENV} finetune_classification.py --abs_pos_emb --model base_patch200_200 --predict "
@@ -176,7 +176,10 @@ def run_window_heads(sin, sout, eid):
             f"--already_format_channel_order no --already_average_montage no --allow_missing_channels yes "
             f"--max_length_hour no --eval_sub_dir {sin} --eval_results_dir {outdir} "
             f"--prediction_slipping_step_second {GATE_STEP} --polarity 1 --rewrite_results no "
-            f"--num_workers 0 --device {fi.DEVICE}"], check=True, capture_output=True)
+            f"--num_workers 0 --device {fi.DEVICE}"], capture_output=True, text=True)
+        if _r.returncode != 0:
+            tail = "\n".join((_r.stderr or _r.stdout or "").strip().splitlines()[-6:])
+            raise RuntimeError(f"window head {ds} rc={_r.returncode} venv={fi.VENV} m2={fi.M2}:\n{tail}")
 
     ps = f"{sout}/pred_SLOWING_1sStep"
     _win("SLOWING.pth", "SLOWING", ps)
