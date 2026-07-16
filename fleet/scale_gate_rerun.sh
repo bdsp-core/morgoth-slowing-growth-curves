@@ -104,7 +104,7 @@ export CKPT_DIR=\$MORGOTH2_DIR/checkpoints
 export PYTHONPATH=src PYTHONUNBUFFERED=1 MORGOTH_DEVICE=cuda RCLONE_BIN=rclone CODE_COMMIT=$HASH
 export KMP_DUPLICATE_LIB_OK=TRUE
 export RCLONE_S3_NO_CHECK_BUCKET=true
-export GATE_MAX_HOURS=12   # cap long recordings: the 1s window head OOMs (rc=-9) on 24h at g4dn 16GB   # stop the CreateBucket spam AWS flagged (bucket already exists)
+export GATE_MAX_HOURS=${GATE_MAX_HOURS:-12}   # cap long recordings (1s head OOMs on 24h); env-overridable for the overnight controller   # stop the CreateBucket spam AWS flagged (bucket already exists)
 export MANIFEST=/home/ubuntu/morgoth-slowing-growth-curves/data/manifest/report_manifest_v6.parquet
 export PANEL_ROOT=bdsp:bdsp-opendata-credentialed/morgoth-slowing/panels
 export OUTPUT_ROOT=/home/ubuntu/gate_out; mkdir -p \$OUTPUT_ROOT
