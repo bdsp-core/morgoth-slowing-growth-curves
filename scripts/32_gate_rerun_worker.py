@@ -88,6 +88,7 @@ CONTEXTS = [30, 60, 120]            # EEG-level window lengths, in seconds (= ro
 MIN_ROWS = 30                       # the CNN's hard floor: <30 rows -> 0 transformer tokens
 SEG_LEN_S = 15.0
 DRY = os.environ.get("RUN_GATE_DRY") == "1"
+GATE_MAX_HOURS = float(os.environ.get("GATE_MAX_HOURS", "12"))  # cap long recordings (1s-step OOM guard)
 SCHEMA_VERSION = "gate-rerun-1"
 
 
@@ -284,6 +285,9 @@ def process_one(eid, meta, heads, work):
             src_sha = got
             data, chs, fs = load_edf_referential(str(local))
         data = ex.cap_to_hours(data.astype(np.float32, copy=False), fs)
+        _cap = int(GATE_MAX_HOURS * 3600 * fs)      # gate-specific cap: the 1s window head OOMs on 24h
+        if data.shape[0] > _cap:
+            data = data[:_cap]
         sin, sout = work / "in", work / "out"
         for d in (sin, sout):
             shutil.rmtree(d, ignore_errors=True); d.mkdir(parents=True)
