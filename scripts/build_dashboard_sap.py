@@ -42,29 +42,29 @@ ITEMS = [
      "awake.", [S/"rel_delta__whole_head.png", S/"DAR__whole_head.png"], []),
 
     ("Figure 3a / THE SYSTEM", "Morgoth is truth; our features describe — HARMONISED, then audited",
-     "The descriptor's own free parameters are TUNED TO AGREE WITH MORGOTH, so the disagreement that "
-     "survives is the best achievable rather than an artefact of an arbitrary threshold. FIRING RULE (two "
-     "level, per feature): a SEGMENT fires for feature f when its abnormality z exceeds X; the RECORDING "
-     "fires when >= Y% of its segments do; the recording has EVIDENCE when ANY feature fires. Severity is "
-     "NOT in the rule — it is the CONDITIONAL severity, the median z among the FIRING segments only, and "
-     "intermittency is a thing to DESCRIBE, never a reason to say nothing is there. (X, Y) chosen by grid "
-     "search maximising Cohen kappa vs Morgoth, FIT ON A PATIENT-SPLIT TRAIN HALF, reported on held-out "
-     "patients: generalized z>1.5 in >=20% of segments (test kappa 0.419); focal asymmetry z>2.5 in >=15% "
-     "(test kappa 0.436). WHICH WAY is it abnormal — features are independent statements, not one average: "
-     "theta/alpha 39.2%, delta/alpha 38.9%, delta excess 37.5%, relative delta 35.6%, theta excess 29.1%, "
-     "paucity of alpha 8.7%; and nearly a third of corroborated recordings fire on only ONE OR TWO features, "
-     "which averaging them destroys. HOW MUCH: prevalence 0.26 (frequent), conditional severity z +1.90, "
-     "longest run 1.6 min, 14 episodes. WHICH SIDE: left 47.5% / right 40.8% / no clear side 11.7% (was 64% "
-     "unclear before — the side is now read from the FIRING segments only). DISCORDANCE at the best "
-     "achievable point: generalized 35.0%, focal 38.9% (was 60.8%/61.7%). THE FINDING: corroboration rises "
-     "MONOTONICALLY with Morgoth's own confidence — 48.7% in his weakest quartile to 82.5% in his "
-     "strongest. The disagreement is not noise; it concentrates exactly where he is least sure, which is "
-     "strong evidence the two are measuring the same thing. The irreducible ~35-39% is most likely "
-     "MORPHOLOGY the gate reads and band power cannot represent.",
+     "Recording-level GATE is the guard-disabled 1 s re-run (gate_eeg_level_rerun): the old 5 s gate let "
+     "Morgoth's low-signal short-circuit zero 20.6% of p_focal, so every recording now carries a real focal "
+     "and generalized probability. The descriptor's own free parameters are TUNED TO AGREE WITH MORGOTH, so "
+     "the disagreement that survives is the best achievable rather than an artefact of an arbitrary "
+     "threshold. FIRING RULE (two level, per feature): a SEGMENT fires for feature f when its abnormality z "
+     "exceeds X; the RECORDING fires when >= Y% of its segments do; the recording has EVIDENCE when ANY "
+     "feature fires. Severity is NOT in the rule — it is the CONDITIONAL severity, the median z among the "
+     "FIRING segments only, and intermittency is a thing to DESCRIBE, never a reason to say nothing is "
+     "there. (X, Y) are chosen by grid search maximising Cohen kappa vs Morgoth, FIT ON A PATIENT-SPLIT "
+     "TRAIN HALF and reported on HELD-OUT patients. The panel below reports, from this run's data: the "
+     "harmonised operating point and test kappa per axis; WHICH WAY the EEG is abnormal (features as "
+     "independent statements, not one average); HOW MUCH (prevalence, conditional severity, persistence); "
+     "WHICH SIDE (read from the firing segments only); the DISCORDANCE at the best achievable point (gate "
+     "fires, no feature fires) for each axis; and THE FINDING — that corroboration rises MONOTONICALLY with "
+     "Morgoth's own confidence, concentrating the residual disagreement exactly where he is least sure. That "
+     "residual is most likely MORPHOLOGY the gate reads and band-power deviation cannot represent. All "
+     "numbers are in the table immediately below, regenerated from this run.",
      [G/"harmonized_two_stage.png"], ["results/harmonized_two_stage.md"]),
 
-    ("Figure 3b (superseded)", "First cut of the two-stage audit — kept only to show what the "
-                               "broken firing rule did",
+    ("Figure 3b (SUPERSEDED — old 5 s gate + broken rule)",
+     "First cut of the two-stage audit, on the OLD 5 s/guard-on gate AND the broken averaging rule. "
+     "Kept only as a record of what both defects did; its 60.8%/61.7% are NOT current — see Figure 3a "
+     "for the corrected numbers on the 1 s guard-disabled gate.",
      "THE SYSTEM AS INTENDED, run on all 25,390 recordings. (1) MORGOTH GATES per recording into four cells "
      "— neither 50.0% / focal only 5.8% / generalized only 10.9% / BOTH 33.2%. The two EEG-level heads are "
      "independent sigmoids, so BOTH is real, not a tie-break. (2) OUR FEATURES DESCRIBE, and only along the "
@@ -84,6 +84,20 @@ ITEMS = [
      "deviation cannot represent — most plausibly for focal slowing, which is a shape judgement, and which "
      "is exactly where the focal branch is weakest (64% of gated-focal have no clear side).",
      [G/"two_stage_pipeline.png"], ["results/two_stage_pipeline.md"]),
+
+    ("Figure 3c / DISCORDANCE EXPLAINED", "Is the residual disagreement intermittency, or a real "
+                                          "morphology gap? (only the 1 s gate re-run can tell)",
+     "The gate re-run kept Morgoth's PER-SEGMENT generalized probability (guard disabled), so the ~41% of "
+     "gated-generalized recordings our band-power features do not corroborate can be split by Morgoth's OWN "
+     "view of HOW MUCH of the recording is slow — the fraction of segments with p_gen_30 > 0.5. INTERMITTENCY: "
+     "Morgoth fires the recording off a MINORITY of segments, which a descriptor needing >=Y% of segments "
+     "above threshold is out-voted by. MORPHOLOGY GAP: Morgoth is generalized-slow across MOST of the "
+     "recording, yet band power is flat — a genuine limit of band-power vocabulary. The panel reports, from "
+     "this run: the split of the discordant recordings into very-sparse / intermittent / predominant, and how "
+     "descriptor corroboration climbs with Morgoth's per-segment prevalence. The headline is that the great "
+     "majority of the discordance is intermittency (sparse real slowing), and the irreducible morphology gap "
+     "is only a few percent of all recordings — the numbers are in the note below, regenerated from data.",
+     [G/"morgoth_intermittency.png"], ["results/morgoth_intermittency.md"]),
 
     ("Figure 4 / Table 2", "How much slowing, in the recordings MORGOTH says have slowing "
                            "(SAP §9 Fig 4, §10 T2)",

@@ -1,20 +1,20 @@
 {
   "generalized": {
-    "X": 1.5,
-    "Y": 0.2,
-    "kappa_test": 0.419,
-    "bal_acc_test": 0.708,
-    "n_gated_test": 5618,
-    "discordance": 0.3498,
-    "converse": 0.2337
+    "X": 1.75,
+    "Y": 0.15,
+    "kappa_test": 0.423,
+    "bal_acc_test": 0.707,
+    "n_gated_test": 5684,
+    "discordance": 0.4108,
+    "converse": 0.1743
   },
   "focal": {
     "X": 2.5,
     "Y": 0.15,
-    "kappa_test": 0.436,
-    "bal_acc_test": 0.714,
-    "n_gated_test": 4940,
-    "discordance": 0.3889,
-    "converse": 0.1831
+    "kappa_test": 0.441,
+    "bal_acc_test": 0.716,
+    "n_gated_test": 5474,
+    "discordance": 0.4014,
+    "converse": 0.1674
   }
 }

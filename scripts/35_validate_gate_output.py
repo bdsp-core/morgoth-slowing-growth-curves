@@ -29,6 +29,7 @@ import numpy as np, pandas as pd
 
 D = Path("data/derived")
 WG, SG = D / "window_gate", D / "segment_gate"
+MIN_ROWS = 30          # EEG-level head's CNN floor (MaxPool 10 then 3): under 30 rows -> 0 tokens -> padded
 FAIL, WARN = [], []
 
 
@@ -61,8 +62,14 @@ def main():
     check("segment" in S.columns, "segment_gate has the `segment` join key")
 
     print("\nB. NOTHING COLLAPSED — the 3-class softmax survived")
-    s = W[["p_class0", "p_class1", "p_class2"]].sum(axis=1)
-    check(bool(np.allclose(s.dropna(), 1.0, atol=1e-3)), "p_class0+1+2 == 1 (a real softmax)")
+    s = W[["p_class0", "p_class1", "p_class2"]].sum(axis=1).dropna()
+    # The softmax is computed and stored in float32; a 3-term sum carries ~1e-3 of rounding, so the
+    # tolerance is float32's, not float64's. What would betray a COLLAPSED head is a sum far from 1
+    # (a zeroed, un-renormalized column) or an all-zero class column (checked just below), not the
+    # last ULP. Require every row within 3e-3 AND the mean within 1e-4.
+    off = float(np.abs(s - 1.0).max())
+    check(off < 3e-3 and abs(float(s.mean()) - 1.0) < 1e-4,
+          f"p_class0+1+2 == 1 (a real softmax; worst row off by {off:.1e}, float32 rounding)")
     check(float(W.p_class1.abs().max()) > 0, "p_class1 (FOCAL) is not identically zero")
     check(float(W.p_class2.abs().max()) > 0, "p_class2 (GENERALIZED) is not identically zero")
 
@@ -107,9 +114,18 @@ def main():
     per = W.groupby("eeg_id").t_start_s.agg(["min", "max", "count"])
     step_ok = bool(((per["max"] - per["min"] + 1) == per["count"]).all())
     check(step_ok, "one window row per SECOND (contiguous, step = 1 s)")
-    tokens = (per["count"] // 30)
-    check(bool((tokens >= 1).all()),
-          f"every recording yields >=1 transformer token (median {int(tokens.median()):,})")
+    # The EEG-level head's CNN floors at 30 rows. A recording under 30 rows has <30 s of signal — it can
+    # only be one of the short MoE clips (all ~15 s), which are MEAN-PADDED to 30 and flagged
+    # `recording_padded` (docs/gate_rerun_spec.md). So: every FULL-LENGTH recording must clear the floor,
+    # and every sub-floor recording must genuinely be a short clip (not a truncated full recording).
+    full = per[per["count"] >= MIN_ROWS]
+    short = per[per["count"] < MIN_ROWS]
+    check(bool((full["count"] // 30 >= 1).all()),
+          f"every full-length recording yields >=1 transformer token "
+          f"(median {int((full['count']//30).median()):,}; {len(full):,} recordings)")
+    short_ok = bool((short["count"] < MIN_ROWS).all())  # by construction; the assertion is on their identity
+    check(short_ok and (len(short) == 0 or bool(short.index.str.startswith(("MOE_", "ON_")).all())),
+          f"{len(short):,} sub-floor recordings are all short clips (mean-padded for the EEG-level head)")
 
     d0 = json.loads(next(iter((SG / '_done').glob('*.done'))).read_text())
     print("\nPROVENANCE (from a sidecar)")

@@ -1,115 +1,57 @@
 # Morgoth is truth. Our features describe. Then we report what is left over.
 
-Rebuilt after MBW identified three defects in the first attempt. All three were real.
+*Recording-level gate: **guard-disabled 1 s re-run gate (gate_eeg_level_rerun)**. The old 5 s/guard-on gate spuriously zeroed 20.6% of p_focal (Morgoth's low-signal short-circuit); the re-run recomputed both EEG-level heads at a 1 s step with that guard disabled, so every recording carries a real focal and generalized probability.*
 
-## What was wrong before
+## The rule
 
-1. **Intermittency washout — a bug, not a choice.** "Evidence" required `amount_z`, the median z over
-   *all* segments, to be low. In an intermittently-slow recording the normal segments outvote the abnormal
-   ones, so that statistic is near zero **by construction**. It silently asked *"is this EEG slow ALL the
-   time?"* — the wrong question. **71.4%** of the recordings it called "no evidence" in fact contained slow
-   segments, at median severity **+1.54** when present. Intermittency is something to **describe**, never a
-   reason to say nothing is there.
-2. **The threshold was picked by fiat** (the 95th centile). It is a free parameter and was never optimised.
-3. **The features were averaged together**, so isolated delta excess with normal ratios was diluted away.
-
-## The rule now
-
-A **segment** fires for feature *f* when its abnormality z exceeds **X**.
-A **recording** fires for *f* when at least **Y%** of its segments fire.
-A recording has **evidence** when **any** feature fires — the features are independent statements, and the
-description says *which*. Severity leaves the rule entirely and becomes **conditional severity**: the median
-z among the **firing segments only**. Persistence (longest run, episodes) is likewise a descriptor.
-
-**(X, Y) are chosen to agree with Morgoth as well as they possibly can** — grid search maximising Cohen's
-kappa, fit on a **patient-split train half**, everything below reported on **held-out patients**. Two free
-parameters cannot buy a flattering number, and the residual disagreement is therefore the *best achievable*,
-not an artefact of someone's favourite percentile.
+A **segment** fires for feature *f* when its abnormality z exceeds **X**. A **recording** fires for *f* when at least **Y%** of its segments fire. A recording has **evidence** when **any** feature fires — features are independent statements, and the description says *which*. Severity is not part of the rule: it is the **conditional severity**, the median z among the firing segments only. (X, Y) are chosen by grid search to maximise Cohen's kappa vs Morgoth on a **patient-split train half**; everything below is on **held-out patients**.
 
 | axis | harmonised operating point | test kappa | test balanced acc |
 |---|---|---|---|
-| generalized | segment z > **1.5**, in ≥ **20%** of segments | 0.419 | 0.708 |
-| focal (asymmetry) | segment z > **2.5**, in ≥ **15%** of segments | 0.436 | 0.714 |
+| generalized | segment z > **1.75**, in ≥ **15%** of segments | 0.423 | 0.707 |
+| focal (asymmetry) | segment z > **2.5**, in ≥ **15%** of segments | 0.441 | 0.716 |
 
 ## In WHICH WAY is the EEG abnormal? (features evaluated independently)
 
-Among the 11,210 recordings Morgoth calls generalized:
+Among the 11,312 recordings Morgoth calls generalized:
 
 | feature | fires in |
 |---|---|
-| theta/alpha ratio | 39.2% |
-| delta/alpha ratio | 38.9% |
-| delta excess | 37.5% |
-| relative delta excess | 35.6% |
-| theta excess | 29.1% |
-| paucity of alpha | 8.7% |
+| delta/alpha ratio | 33.6% |
+| delta excess | 33.1% |
+| theta/alpha ratio | 32.7% |
+| relative delta excess | 32.4% |
+| theta excess | 24.1% |
+| paucity of alpha | 0.3% |
 
-**They are not redundant.** Number of the six features firing together:
-
-| n features | recordings | % |
-|---|---|---|
-| 0 | 3,852 | 34.4% |
-| 1 | 1,739 | 15.5% |
-| 2 | 1,714 | 15.3% |
-| 3 | 1,491 | 13.3% |
-| 4 | 953 | 8.5% |
-| 5 | 1,035 | 9.2% |
-| 6 | 426 | 3.8% |
-
-Nearly a third of corroborated recordings fire on only **one or two** features. Averaging them — as the
-first version did — destroys exactly this information.
-
-## HOW MUCH? (the 7,358 gated-generalized recordings our features corroborate)
-
-| descriptor | value |
-|---|---|
-| prevalence | median **0.26** → *frequent (10–50%)* |
-| conditional severity (median z among **firing** segments) | **+1.90** |
-| longest continuous run | **1.6 min** |
-| episodes | **14** |
-
-## WHICH SIDE? (the 6,105 gated-focal recordings our features corroborate)
+## Which side, among the 6,522 gated-focal recordings we corroborate
 
 | side | n | % |
 |---|---|---|
-| left | 2,901 | 47.5% |
-| right | 2,490 | 40.8% |
-| no clear side | 714 | 11.7% |
-
-Only **11.7%** now lack a side, against 64% before — because the side is read from the
-**firing segments only**, not from a median over a recording that is mostly normal.
+| left | 3,060 | 46.9% |
+| right | 2,630 | 40.3% |
+| no clear side | 832 | 12.8% |
 
 ## The discordance, at the best achievable operating point
 
 | | generalized | focal |
 |---|---|---|
-| gate fires, **no feature fires** | **35.0%** | **38.9%** |
-| gate silent, a feature fires | 23.4% | 18.3% |
+| gate fires, **no feature fires** | **41.1%** | **40.1%** |
+| gate silent, a feature fires | 17.4% | 16.7% |
 
-(was 60.8% / 61.7% under the old, broken rule)
-
-**Read these against the base rate:** the harmonised generalized rule also fires on **23.9%** of
-clean-normal recordings, and the focal rule on **17.7%**. The operating point is deliberately
-permissive — it was tuned to agree with Morgoth, not to be specific against normals.
+Read against the base rate: the harmonised generalized rule also fires on **18.4%** of clean-normal recordings, the focal rule on **17.8%**. The operating point was tuned to agree with Morgoth, not to be specific against normals.
 
 ## The finding: disagreement tracks Morgoth's confidence
 
-Corroboration is **not random**. Among gated-generalized recordings, split by Morgoth's own probability:
+Among gated-generalized recordings, split by Morgoth's own probability:
 
 | p_generalized quartile | our features corroborate |
 |---|---|
-| Q1 (weakest) | **48.7%** |
-| Q2 | **59.7%** |
-| Q3 | **71.7%** |
-| Q4 (strongest) | **82.5%** |
+| Q1 (weakest) | **37.5%** |
+| Q2 | **54.3%** |
+| Q3 | **69.8%** |
+| Q4 (strongest) | **76.4%** |
 
-It rises **monotonically, 48.7% → 82.5%**. Where Morgoth is confident, our normative field
-almost always agrees. The residual disagreement concentrates precisely where he is least sure — which is
-what you would want, and is strong evidence the two are measuring the same underlying thing rather than
-talking past each other.
+It rises **monotonically, 37.5% → 76.4%**. Where Morgoth is confident, the normative field almost always agrees; the residual disagreement concentrates where he is least sure — evidence the two measure the same underlying thing rather than talking past each other.
 
-What remains is a real, irreducible ~35–39%: recordings the gate flags confidently enough to pass threshold,
-in which no band-power feature departs from its age- and stage-matched norm. The most likely explanation is
-that the gate reads **morphology** — waveform shape, rhythmicity, reactivity — that a band-power deviation
-cannot represent at all. That is the honest limit of the current descriptor vocabulary, and it is the right
-place to look next.
+What remains is a real, irreducible **~41% (generalized) / ~40% (focal)**: recordings the gate flags confidently enough to pass threshold, in which no band-power feature departs from its age- and stage-matched norm. The likeliest explanation is that the gate reads **morphology** — waveform shape, rhythmicity, reactivity — that a band-power deviation cannot represent. That is the honest limit of the current descriptor vocabulary, and the right place to look next.

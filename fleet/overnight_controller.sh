@@ -8,7 +8,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 export AWS_PROFILE=fleet AWS_DEFAULT_REGION=us-east-1
 P=s3://bdsp-opendata-credentialed/morgoth2/data/internal_dataset/Growth_curves/gate_rerun_v1
-TARGET=40                 # worker count to maintain
+TARGET=110                 # worker count to maintain (long-recording tail needs a big fleet)
 DONE_AT=27470             # ~all 27,478 re-gateable (a handful may stay unprocessable even capped)
 STATE=results/.gate_controller_state
 CAPS=(12 8 6 4); ci=0     # cap ladder; start at index of the CURRENTLY running cap
@@ -67,7 +67,7 @@ while true; do
   last=$d
 
   # ---- workers died: relaunch (unless we just cycled) ----
-  if [ "${N:-0}" -lt 25 ]; then
+  if [ "${N:-0}" -lt 90 ]; then
     echo "$(date -u +%FT%TZ) topping up workers ($N < $TARGET)"; relaunch $CAP
   fi
 
