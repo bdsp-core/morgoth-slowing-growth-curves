@@ -91,6 +91,14 @@ SECTIONS = [
              "The full stage-resolved normal curves for each feature (whole head). The complete feature × "
              "region bank lives in figures/curves/.",
              [S / "rel_delta__whole_head.png", S / "TAR__whole_head.png", S / "DAR__whole_head.png"], []),
+            ("2d. The per-segment deviation field (materialized)",
+             "Every segment now carries a deviation z per feature × region (7 regions × 6 features), scored "
+             "against ITS OWN (sleep-stage, age) normal — data/derived/segment_deviation/, joinable 1:1 to "
+             "segment_gate on (eeg_id, segment). Panel: whole-head median segment-z by sleep stage, "
+             "clean-normal (sits ~0, confirming per-stage calibration) vs abnormal (shifted positive). This is "
+             "the measurement substrate for the description layer. (scripts/43 materialize, scripts/44 "
+             "summary)",
+             [STY / "s2_segment_deviation.png"], [RES / "s2_segment_deviation.md"]),
         ],
     ),
 ]
