@@ -9,7 +9,7 @@ ratio features; see memory: cohort/expansion harmonization). Sexes pooled (sex a
 Run: PYTHONPATH=src python scripts/76_keystone_growth_grid.py [feat1,feat2,...]
 """
 from __future__ import annotations
-import sys, subprocess, tempfile
+import os, sys, subprocess, tempfile
 from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
@@ -52,10 +52,15 @@ def fit_feature(df, feat):
     lo, hi = c.val.quantile([0.002, 0.998])            # trim extreme ratio outliers (BCT needs positive)
     c = c[(c.val > max(lo, 1e-6)) & (c.val < hi)]
     c["t"] = A2T(c.age)
+    # mu df: "smooth" (=5) was too stiff for the now-exact fractional ages, which resolve a sharp early-life
+    # peak (1 mo-1 yr) that a 5-df spline over the whole log-age span cannot bend through. gamlss_fit.R takes
+    # a numeric df; ~9 gives the infant region enough local flexibility while the log-age axis + lower-df
+    # sigma keep the data-dense adult range stable. Override with KEYSTONE_MU_DF.
+    mu_df = os.environ.get("KEYSTONE_MU_DF", "9")
     with tempfile.TemporaryDirectory() as td:
         inp, outp = f"{td}/in.csv", f"{td}/out.csv"
         c[["stage", "t", "val"]].to_csv(inp, index=False)
-        subprocess.run(["Rscript", "scripts/gamlss_fit.R", inp, outp, "smooth"], capture_output=True, text=True)
+        subprocess.run(["Rscript", "scripts/gamlss_fit.R", inp, outp, mu_df], capture_output=True, text=True)
         curves = pd.read_csv(outp)
     return c, curves
 

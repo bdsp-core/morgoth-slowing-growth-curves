@@ -1,12 +1,12 @@
 {
   "generalized": {
-    "X": 1.75,
-    "Y": 0.15,
-    "kappa_test": 0.423,
-    "bal_acc_test": 0.707,
+    "X": 1.5,
+    "Y": 0.3,
+    "kappa_test": 0.413,
+    "bal_acc_test": 0.704,
     "n_gated_test": 5684,
-    "discordance": 0.4108,
-    "converse": 0.1743
+    "discordance": 0.3839,
+    "converse": 0.2081
   },
   "focal": {
     "X": 2.5,

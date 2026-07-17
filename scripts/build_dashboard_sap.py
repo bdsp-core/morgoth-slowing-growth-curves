@@ -33,7 +33,10 @@ ITEMS = [
     ("Figure 2", "Normative growth curves — slowing vs age, per stage (SAP §9 Fig 2, §6.1)",
      "GAMLSS/BCT (Box-Cox-t) centile fans per (stage × region × feature): μ, σ, ν (skew), τ (kurtosis) as "
      "smooth functions of age, fit on clean_normal recordings ONLY. Skew is modelled because these features "
-     "are strongly right-skewed in children; a symmetric model would bias the normative median high there.",
+     "are strongly right-skewed in children; a symmetric model would bias the normative median high there. "
+     "The μ spline df was raised (5→9) so the fitted median tracks the sharp early-life peak that the "
+     "now-exact fractional ages resolve — solid median vs the model-free rolling median (dashed) agree "
+     "across the lifespan, including 1 mo–1 yr where a stiffer spline undershot.",
      [G/"keystone_growth_grid.png", C/"log_delta__whole_head.png"], []),
 
     ("Figure 3", "Stage dependence at fixed age (SAP §9 Fig 3)",

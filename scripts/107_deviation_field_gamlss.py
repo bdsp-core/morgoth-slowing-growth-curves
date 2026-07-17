@@ -20,7 +20,9 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 import numpy as np, pandas as pd
 
-RSCRIPT = os.environ.get("RSCRIPT", os.path.expanduser("~/micromamba/envs/r/bin/Rscript"))
+import shutil
+RSCRIPT = os.environ.get("RSCRIPT") or shutil.which("Rscript") \
+    or os.path.expanduser("~/micromamba/envs/r/bin/Rscript")
 RZ = "scripts/gamlss_zscore.R"
 OUT = Path("data/derived/deviation_field.parquet")
 # SAP's discriminating slowing features; regions = the 6 clinical units (channels handled by lateralisation)

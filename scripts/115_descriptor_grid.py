@@ -86,26 +86,77 @@ def seg_regions(f):
     return out, d.groupby("segment", observed=True).stage.first()
 
 
-def fit_norm(age, val, bw=8.0, grid=np.arange(0, 91, 1.0)):
-    ok = np.isfinite(age) & np.isfinite(val)
-    a, v = np.asarray(age)[ok], np.asarray(val)[ok]
-    if len(a) < 50:
+from scipy.stats import t as _tdist, norm as _norm
+
+A0 = 1.0 / 12.0                       # 1 month, so log10(age + A0) is finite at birth
+
+
+def a2t(age):
+    return np.log10(np.asarray(age, float) + A0)
+
+
+def bct_z(y, mu, sigma, nu, tau):
+    """Box-Cox-t z-score (gamlss BCT), validated to match centiles.pred to 3e-4. Params may be scalars
+    (one age) or arrays (broadcast against y)."""
+    y = np.asarray(y, float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z = np.where(np.abs(nu) > 1e-8, ((y / mu) ** nu - 1.0) / (nu * sigma), np.log(y / mu) / sigma)
+    F = _tdist.cdf(z, df=tau)
+    F0 = np.where(nu > 0, _tdist.cdf(-1.0 / (sigma * np.abs(nu)), df=tau), 0.0)   # y>0 truncation
+    Ft = np.where(nu < 0, _tdist.cdf(1.0 / (sigma * np.abs(nu)), df=tau), 1.0)
+    cdf = np.clip((F - F0) / (Ft - F0), 1e-12, 1 - 1e-12)
+    return _norm.ppf(cdf)
+
+
+# The log-ratio / log-power features live on the REAL LINE (log_theta 37% <=0, log_delta 25%, log_TAR 15%,
+# log_DAR 6%), so a positive-support BCT cannot model them. They get an age-varying NORMAL in log-age
+# (GAMLSS family NO: z=(y-mu)/sigma) instead. Only the strictly-positive rel_* features go to BCT.
+POSITIVE_FEATS = {"rel_delta", "rel_theta", "rel_alpha"}
+
+
+def fit_gaussian_logage(age, val, bw=0.08, trim=(0.002, 0.998)):
+    """Age-varying ROBUST location/scale in LOG-age for a REAL-LINE feature. Uses the kernel-weighted
+    MEDIAN (so z(median)=0 exactly and the estimate is not pulled by the skew of these log features) and a
+    robust scale from the weighted IQR (/1.349), which the extreme floor values (log of ~0 power) cannot
+    inflate. Bandwidth is in log10 units so the window is narrow in infancy. Returned in the norm 6-tuple
+    with fam='NO' -> z_of uses (y-mu)/sigma. The z is thus a robust, well-centred standardised deviation."""
+    t = a2t(age); v = np.asarray(val, float)
+    ok = np.isfinite(t) & np.isfinite(v)
+    t, v = t[ok], v[ok]
+    if len(t) < 50:
         return None
+    lo, hi = np.quantile(v, trim)
+    keep = (v >= lo) & (v <= hi)
+    t, v = t[keep], v[keep]
+    order = np.argsort(v); vs, ts = v[order], t[order]           # sort by value for weighted quantiles
+    grid = np.linspace(t.min(), t.max(), 120)
     mu = np.full(len(grid), np.nan); sd = np.full(len(grid), np.nan)
     for j, g in enumerate(grid):
-        w = np.exp(-0.5 * ((a - g) / bw) ** 2); sw = w.sum()
+        w = np.exp(-0.5 * ((ts - g) / bw) ** 2); sw = w.sum()
         if sw < 20:
             continue
-        m = (w * v).sum() / sw
-        mu[j] = m
-        sd[j] = np.sqrt(max((w * (v - m) ** 2).sum() / sw, 1e-9))
+        cw = (np.cumsum(w) - 0.5 * w) / sw                       # midpoint cumulative weights
+        med = np.interp(0.5, cw, vs)
+        q1, q3 = np.interp(0.25, cw, vs), np.interp(0.75, cw, vs)
+        mu[j] = med
+        sd[j] = max((q3 - q1) / 1.349, 1e-6)                     # robust sigma from the IQR
     good = np.isfinite(mu)
-    return (grid[good], mu[good], sd[good]) if good.sum() >= 10 else None
+    if good.sum() < 10:
+        return None
+    g2 = grid[good]
+    return (g2, mu[good], sd[good], np.zeros(good.sum()), np.full(good.sum(), 1e6), "NO")
 
 
 def z_of(n, age, val):
-    g, mu, sd = n
-    return (np.asarray(val, float) - np.interp(age, g, mu)) / np.interp(age, g, sd)
+    """Per-segment z. n = (t_grid, mu, sigma, nu, tau, fam); age is the recording's scalar age.
+    fam='NO' -> real-line normal z=(y-mu)/sigma; 'BCT'/'BCCG' -> Box-Cox-t z."""
+    tg, mu, sg, nu, ta, fam = n
+    t = a2t(age)
+    mu_i, sg_i = np.interp(t, tg, mu), np.interp(t, tg, sg)
+    val = np.asarray(val, float)
+    if fam == "NO":
+        return (val - mu_i) / sg_i
+    return bct_z(val, mu_i, sg_i, np.interp(t, tg, nu), np.interp(t, tg, ta))
 
 
 # ------------------------------------------------------------------ PASS A
@@ -155,13 +206,78 @@ def build_norms(ref_ids, ages):
                 (accR if kind == "R" else accA).setdefault((st, key, ft), []).append((age, v))
             if (k + 1) % 750 == 0:
                 print(f"   {k+1:,}/{len(files):,}", flush=True)
+    # Support-aware norms (SAP §6.1), all age-smooth in LOG-age:
+    #   positive rel_* features      -> GAMLSS/BCT in R (skew + kurtosis on positive support)
+    #   real-line log_* features     -> age-varying NORMAL in log-age (Python; z=(y-mu)/sigma)
+    import subprocess, tempfile, shutil
+    mu_df = os.environ.get("NORM_MU_DF", "8")
     norm = {}
+    pos, real = {}, {}
     for key, lst in accR.items():
+        feat = key[2]
         a = np.concatenate([np.full(len(v), ag) for ag, v in lst])
         v = np.concatenate([x for _, x in lst])
-        n = fit_norm(a, v)
-        if n is not None:
-            norm[key] = n
+        fin = np.isfinite(a) & np.isfinite(v)
+        a, v = a[fin], v[fin]
+        if feat in POSITIVE_FEATS:
+            keep = v > 0
+            if keep.sum() >= 200:
+                pos[key] = (a[keep], v[keep])
+        elif len(v) >= 200:
+            real[key] = (a, v)
+
+    # --- real-line features: age-varying normal in log-age (pure Python) ---
+    for key, (a, v) in real.items():
+        g = fit_gaussian_logage(a, v)
+        if g is not None:
+            norm[key] = g
+
+    # --- positive features: BCT in R, sharded across processes ---
+    nbct = nbccg = n_fb = 0
+    if pos:
+        frames = []
+        for key, (a, v) in pos.items():
+            t = a2t(a)
+            if len(t) > 40000:
+                idx = np.random.default_rng(0).choice(len(t), 40000, replace=False)
+                t, v = t[idx], v[idx]
+            frames.append(pd.DataFrame({"cell": "|".join(key), "t": t, "val": v}))
+        big = pd.concat(frames, ignore_index=True)
+        RS = os.environ.get("RSCRIPT") or shutil.which("Rscript") or "Rscript"
+        cells = list(big.cell.unique())
+        nshard = max(1, min(int(os.environ.get("NORM_JOBS", max(1, (os.cpu_count() or 4) - 1))), len(cells)))
+        shards = {c: i % nshard for i, c in enumerate(cells)}
+        print(f"   fitting BCT for {len(cells)} positive-feature cells in R (mu df={mu_df}) "
+              f"across {nshard} procs; {len(real)} real-line cells via log-age normal ...", flush=True)
+        with tempfile.TemporaryDirectory() as td:
+            procs, outs = [], []
+            for s in range(nshard):
+                cs = [c for c in cells if shards[c] == s]
+                if not cs:
+                    continue
+                inp, outp = f"{td}/in_{s}.csv", f"{td}/out_{s}.csv"
+                big[big.cell.isin(cs)].to_csv(inp, index=False)
+                procs.append(subprocess.Popen([RS, "scripts/gamlss_norm_grid.R", inp, outp, str(mu_df)],
+                                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+                outs.append(outp)
+            for p in procs:
+                p.wait()
+            got = [pd.read_csv(o) for o in outs if os.path.exists(o) and os.path.getsize(o) > 0]
+            params = pd.concat(got, ignore_index=True) if got else pd.DataFrame()
+        for cid, g in params.groupby("cell"):
+            g = g.sort_values("t")
+            norm[tuple(cid.split("|"))] = (g.t.values, g.mu.values, g.sigma.values,
+                                           g.nu.values, g.tau.values, g.fam.iloc[0])
+            nbct += g.fam.iloc[0] == "BCT"; nbccg += g.fam.iloc[0] == "BCCG"
+        # any positive cell R could not fit -> log-age normal fallback
+        for key, (a, v) in pos.items():
+            if key in norm:
+                continue
+            fb = fit_gaussian_logage(a, v)
+            if fb is not None:
+                norm[key] = fb; n_fb += 1
+    print(f"   norms: BCT {nbct}, BCCG {nbccg}, real-line normal {len(real)}, "
+          f"positive-fallback {n_fb}", flush=True)
     anorm = {}
     for key, lst in accA.items():
         v = np.concatenate([x for _, x in lst])
@@ -175,7 +291,9 @@ def build_norms(ref_ids, ages):
 def _init(np_, ap_):
     global NORM, ANORM
     raw = json.load(open(np_))
-    NORM = {tuple(k.split("|")): (np.array(v[0]), np.array(v[1]), np.array(v[2])) for k, v in raw.items()}
+    # (t,mu,sigma,nu,tau, fam) -- first 5 are arrays, fam is a string ('NO'/'BCT'/'BCCG')
+    NORM = {tuple(k.split("|")): tuple(np.array(a) if i < 5 else a for i, a in enumerate(v))
+            for k, v in raw.items()}
     ra = json.load(open(ap_))
     ANORM = {tuple(k.split("~")): tuple(v) for k, v in ra.items()}
 
@@ -269,9 +387,10 @@ def main():
         ref_ids = list(pd.Series(ref_ids).sample(3000, random_state=0))
 
     NP_, AP_ = "data/derived/grid_norm.json", "data/derived/grid_anorm.json"
-    if not (os.path.exists(NP_) and os.path.exists(AP_)):
+    if os.environ.get("REBUILD_NORMS") or not (os.path.exists(NP_) and os.path.exists(AP_)):
         norm, anorm = build_norms(ref_ids, ages)
-        json.dump({"|".join(k): [v[0].tolist(), v[1].tolist(), v[2].tolist()] for k, v in norm.items()},
+        json.dump({"|".join(k): [v[0].tolist(), v[1].tolist(), v[2].tolist(),        # (t,mu,sigma,nu,tau,fam)
+                                 v[3].tolist(), v[4].tolist(), v[5]] for k, v in norm.items()},
                   open(NP_, "w"))
         json.dump({"~".join(k): list(v) for k, v in anorm.items()}, open(AP_, "w"))
     _init(NP_, AP_)
