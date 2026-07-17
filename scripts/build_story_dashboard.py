@@ -39,11 +39,15 @@ SECTIONS = [
              "votes excluded, so no self-inclusion advantage). Headline: the % of experts whose point lies "
              "UNDER Morgoth's curve — how much of the human panel Morgoth dominates on each metric.",
              [STY / "s0_occasion_focal.png", STY / "s0_occasion_generalized.png"], [RES / "s0_occasion.md"]),
-            ("0b. MoE panel — the larger, band-resolved panel (~18–21 experts)",
-             "Same analysis on the MoE panel (~2,761 events, band-resolved focal/generalized). TO BUILD: the "
-             "MoE per-rater labels are not committed (they live only in ephemeral scratchpad CSVs) — re-supply "
-             "them and this panel gets the same ROC/PRC-vs-experts treatment.",
-             [], []),
+            ("0b. MoE panel — the larger, band-resolved panel (21 experts)",
+             "Same analysis on the MoE panel (1,761 events Morgoth scored, of 2,761), band-resolved slowing "
+             "collapsed to EEG-level per axis (any band/round). `bwestove` (author) excluded; experts scored "
+             "vs leave-one-out consensus, plotted on ROC and PRC. FINDING: focal detection is excellent "
+             "(AUROC 0.935 — Morgoth dominates 81% of experts on ROC, 90% on PR); generalized is weaker "
+             "(AUROC 0.734) on this 72%-generalized-positive, high-prevalence set, where most experts sit "
+             "above Morgoth's ROC (10% under) though 38% on PR. Contrast with OccasionNoise (§0a), where "
+             "generalized was stronger (0.867). (scripts/45)",
+             [STY / "s0_moe_focal.png", STY / "s0_moe_generalized.png"], [RES / "s0_moe.md"]),
         ],
     ),
     (
