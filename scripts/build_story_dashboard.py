@@ -48,6 +48,17 @@ SECTIONS = [
              "above Morgoth's ROC (10% under) though 38% on PR. Contrast with OccasionNoise (§0a), where "
              "generalized was stronger (0.867). (scripts/45)",
              [STY / "s0_moe_focal.png", STY / "s0_moe_generalized.png"], [RES / "s0_moe.md"]),
+            ("0c. Can a Morgoth-FREE classifier beat the experts? (OccasionNoise)",
+             "Two detectors built ONLY from spectral/deviation features, no Morgoth, leave-one-out CV, same "
+             "expert-operating-point framing. FOCAL is a SPATIAL problem — amount can't separate focal from "
+             "generalized, so we LOCALIZE (per-segment region z → peak region, focality = peak−median region, "
+             "asymmetry z, spatial stability) over all stages, stage-matched. Result: focal puts **53% of "
+             "experts under ROC / 65% under PR — beating most of the panel AND Morgoth (41%)**, with no "
+             "Morgoth. GENERALIZED reaches AUROC 0.913 (> Morgoth's 0.867) and more experts under than Morgoth "
+             "(39% at W+N1 vs 17%) but not a majority — it's diffuse (no spatial trick) and near the human "
+             "ceiling. Left = focal (all-stage, localized); right = generalized (W+N1). (scripts/46-49)",
+             [STY / "s0_occasion_ours_v4_focal.png", STY / "s0_occasion_ours_v3_generalized.png"],
+             [RES / "s0c_morgoth_free.md"]),
         ],
     ),
     (
