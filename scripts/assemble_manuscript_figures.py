@@ -33,7 +33,8 @@ FIGS = [
     ("Figure4_D5_by_sleep_stage.png",      "figures/story/s4_d5.png",                           "57_description_panels.py"),
     ("Figure4_D6_generated_words.png",     "figures/story/s4_d6.png",                           "58_description_words.py"),
     ("Figure5_sleep_underreporting.png",   "figures/growth_v2/v4a_wake_sleep.png",              "95_v4a_wake_sleep.py"),
-    ("Figure_example_reports.png",          "figures/story/s4_examples_panel.png",               "62_example_reports_panel.py"),
+    ("Figure4_example_eeg_reports.png",     "figures/story/s4_examples_eeg_panel.png",           "63_example_eeg_traces.py"),
+    ("FigureS_example_reports_text.png",    "figures/story/s4_examples_panel.png",               "62_example_reports_panel.py"),
     # external validation (Sandor_100; present once the SB pipeline has run)
     ("Figure6_sandor_external.png",        "figures/story/sandor100_slowing.png",               "sandor100_external_validation.py"),
     # supplementary

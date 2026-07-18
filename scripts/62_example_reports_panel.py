@@ -94,8 +94,12 @@ def main():
           "SD/centile, no severity adjective) beside the clinical report's STRUCTURED descriptors (raw report "
           "text withheld as PHI). Regional strip = per-region delta-excess deviation z (focal = one region "
           "high; diffuse = broadly elevated).\n"]
+    recs = []
     for i, r in ex.iterrows():
         finding, paragraph, isfoc = m58.build(r, stage_map.get(r.eeg_id, {}))
+        recs.append(dict(eeg_id=r.eeg_id, isfoc=bool(isfoc), domstage=str(r.domstage), peakz=float(r.peakz),
+                         age=float(r.age) if np.isfinite(r.age) else np.nan, sex=str(r.sex),
+                         finding=finding, paragraph=paragraph, report_struct=report_structured(r)))
         kind = "Focal" if isfoc else "Generalized"
         age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper() if isinstance(r.sex, str) else "?"
         cent = m58.centile_word(r.peakz)
@@ -129,6 +133,7 @@ def main():
     fig.suptitle("Example automated slowing reports vs the clinical report — focal & generalized, varying degree & sleep stage",
                  fontsize=12, y=0.995)
     fig.savefig(FIG / "s4_examples_panel.png", dpi=150, bbox_inches="tight"); plt.close(fig)
+    pd.DataFrame(recs).to_parquet(RES / "s4_examples.parquet", index=False)   # for scripts/63 (EEG traces)
     (RES / "s4_examples.md").write_text("\n".join(md))
     print(f"chose {n} examples:", [f"{r.eeg_id}({'F' if r.isfoc else 'G'},{r.domstage},{r.peakz:.1f})" for _, r in ex.iterrows()])
     print("wrote figures/story/s4_examples_panel.png + results/story/s4_examples.md")

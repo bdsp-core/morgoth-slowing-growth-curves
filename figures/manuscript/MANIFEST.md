@@ -22,6 +22,7 @@ Gathered by `scripts/assemble_manuscript_figures.py` from the producing director
 | `Figure4_D5_by_sleep_stage.png` | `figures/story/s4_d5.png` | `scripts/57_description_panels.py` |
 | `Figure4_D6_generated_words.png` | `figures/story/s4_d6.png` | `scripts/58_description_words.py` |
 | `Figure5_sleep_underreporting.png` | `figures/growth_v2/v4a_wake_sleep.png` | `scripts/95_v4a_wake_sleep.py` |
-| `Figure_example_reports.png` | `figures/story/s4_examples_panel.png` | `scripts/62_example_reports_panel.py` |
-| `Figure6_sandor_external.png` | *(missing: figures/story/sandor100_slowing.png)* | `scripts/sandor100_external_validation.py` |
+| `Figure4_example_eeg_reports.png` | `figures/story/s4_examples_eeg_panel.png` | `scripts/63_example_eeg_traces.py` |
+| `FigureS_example_reports_text.png` | `figures/story/s4_examples_panel.png` | `scripts/62_example_reports_panel.py` |
+| `Figure6_sandor_external.png` | `figures/story/sandor100_slowing.png` | `scripts/sandor100_external_validation.py` |
 | `FigureS1_severity_null.png` | *(missing: figures/growth_v2/severity_recalibrated.png)* | `scripts/109_severity_null_v6.py` |

@@ -159,14 +159,15 @@ SECTIONS = [
              "review set (structured labels only) shows the generated report beside the report's descriptors, "
              "✓/✗ per component.",
              [STY / "s4_d6.png"], [RES / "s4_d6.md"]),
-            ("D7. Example automated reports vs the clinical report (main-text figure)",
+            ("D7. Example EEG segments with automated reports vs the clinical report (main-text figure)",
              "Six example recordings — focal and generalized slowing of varying degree (peak 1.3–3.7 SD) in "
-             "different sleep stages — each with our BRIEF finding line, our FULL report paragraph, and the "
-             "clinical report's STRUCTURED descriptors for comparison (raw report text withheld as PHI). The "
-             "regional strip shows per-region delta-excess deviation (focal = one region high; diffuse = "
-             "broadly elevated). This is the candidate main-text figure for automated slowing reporting. "
-             "(scripts/62_example_reports_panel.py)",
-             [STY / "s4_examples_panel.png"], [RES / "s4_examples.md"]),
+             "different sleep stages — each shown as the ACTUAL 15 s EEG (longitudinal bipolar double-banana, "
+             "1–30 Hz + 60 Hz notch, house style from NeuroTech-Wrangling) beside our BRIEF finding line, our "
+             "FULL report paragraph, and the clinical report's STRUCTURED descriptors (raw text withheld as "
+             "PHI). The EEG is the strongest-slowing 15 s in the dominant stage; EDFs pulled from S3. "
+             "(scripts/62 + 63). A compact text-only regional-strip version is also produced "
+             "(s4_examples_panel.png) for supplementary use.",
+             [STY / "s4_examples_eeg_panel.png"], [RES / "s4_examples.md"]),
         ],
     ),
 ]
