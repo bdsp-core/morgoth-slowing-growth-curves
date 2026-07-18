@@ -142,12 +142,21 @@ SECTIONS = [
              "consistent with the established V4a finding that readers under-report sleep slowing.",
              [STY / "s4_d5.png", G / "v4a_wake_sleep.png"], []),
             ("D6. From descriptors to WORDS",
-             "The descriptors are assembled into a templated clinical sentence (e.g. “Frequent left temporal "
-             "theta-delta slowing, most prominent in N2.”). Discrete components with a clean report word are "
-             "concordant well above chance — side 56%, region 46% (chance 33%); band is modest (39%) because "
-             "the slow bands co-occur (its honest test is the continuous D1 contrast). Focal-vs-diffuse is the "
-             "detection head's call (§2), not re-derived here. A reasonableness review set (structured labels only; "
-             "raw report text withheld as PHI) shows the generated sentence beside the report, ✓/✗ per component.",
+             "The descriptors are assembled into a compact finding line AND a full report-style paragraph, "
+             "governed clause-by-clause by docs/claims_table.md: magnitude as SD + centile (never a severity "
+             "adjective), prevalence as a percentage with the ACNS word (occasional/frequent/abundant/"
+             "continuous) only as an internal gloss, band a low-confidence δ/θ/mixed call asserted on clear "
+             "dominance, side asserted with the maximum-deviation lobe flagged provisional, anterior/posterior "
+             "predominance only when it clears the normal centile, stage accentuation and ‘present only during "
+             "sleep’, and an abstain path when no regional excess clears the normal centile "
+             "(e.g. “Frequent right posterior theta slowing, maximal over the posterior region. Peak deviation "
+             "1.9 SD above the age- and stage-matched normal (97th centile), abnormal in 48% of segments; "
+             "present in wakefulness and sleep, activated in drowsiness.”). Discrete components with a clean "
+             "report word are concordant well above chance — side 56%, region 46% (chance 33%); band is modest "
+             "(39%) because the slow bands co-occur (its honest test is the continuous D1 contrast). "
+             "Focal-vs-diffuse is the detection head's call (§2), not re-derived here. A PHI-free reasonableness "
+             "review set (structured labels only) shows the generated report beside the report's descriptors, "
+             "✓/✗ per component.",
              [STY / "s4_d6.png"], [RES / "s4_d6.md"]),
         ],
     ),

@@ -1,6 +1,6 @@
 # van Putten benchmark (SAP §8.7, Table 6) — FULL fleet coverage
 
-All arms recomputed on the complete run: **23,872** recordings for the segment_master metrics (DAR/DTABR/SEF95/median_freq) and **23,872** for the whole-head metrics + the Morgoth gate (Q_*/p_slowing).
+All arms recomputed on the SAP §3.3 **clean_pair** set (feature coverage 23,872 recordings for the segment_master metrics [DAR/DTABR/SEF95/median_freq] and 23,872 for the whole-head metrics + the Morgoth gate [Q_*/p_slowing]). Each AUROC is scored on its own contrast — clean-normal vs the relevant positive class — so the benchmark denominator is the **n_scored** column (**21,146** for the any-abnormal contrast: 10,189 clean-normal vs 10,957 slowing-positive), NOT the raw feature-coverage count.
 
 > The previously committed `vanputten_comparison.md` used only **3,130** recordings for the whole-head/gate arms and **14,450** for the rest — an incomplete `segment_summary` DOWNLOAD on the analysis box, not a fleet gap (S3 holds all 27,478; segment_master and segment_summary partition counts match exactly). This table supersedes it.
 
