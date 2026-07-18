@@ -33,6 +33,10 @@ Steps needing R (`115_descriptor_grid`, `76_keystone_growth_grid`) are marked `[
 ### Outputs
 
 - `results/story_dashboard.html` — the narrative dashboard (Table 1 + Figures 1–5), self-contained.
+- `figures/manuscript/` — the **submission figure set**, named by figure number (Figure1a…Figure6, FigureS*),
+  assembled from the producing dirs by `scripts/assemble_manuscript_figures.py` with a `MANIFEST.md`
+  (source + producing script per figure). The PNG copies are git-ignored (regenerable); the canonical
+  figures live in `figures/growth_v2`, `figures/story`, `figures/stage_curves`, `results/figs`.
 - `results/table1.md`, `results/vanputten_fullcoverage.md`, `results/severity_null_v6.md`,
   `results/table5_human_ceiling.md`, `results/p6_sleep_underreporting.md`, `results/story/s0*.md`,
   `results/story/s4_*.md` — the manuscript tables/results (panel AUROCs carry recording-level bootstrap CIs).

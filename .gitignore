@@ -77,3 +77,6 @@ references/*.pdf
 
 # rclone remote with live BDSP keys — SHIPPED IN THE BUNDLE (private S3), NEVER COMMITTED
 fleet/rclone_s3.conf
+
+# assembled manuscript figure copies (regenerable via scripts/assemble_manuscript_figures.py; canonical figs live in their producing dirs)
+figures/manuscript/*.png
