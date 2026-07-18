@@ -31,23 +31,24 @@ SECTIONS = [
         "co-occur (report 25% of focal cases are also generalized; occasion raters mark both on 29/100 EEGs), "
         "matching Morgoth's two independent EEG-level sigmoids.",
         [
-            ("0a. OccasionNoise panel — ROC/PRC vs 18 experts, per axis",
-             "Ground truth = panel majority. Morgoth's gate probability gives an ROC (AUROC) and PRC (average "
-             "precision) for FOCAL and for GENERALIZED slowing separately. Each of the 18 experts is one "
-             "operating point — plotted on BOTH the ROC (sensitivity vs 1−specificity) and the PRC (precision "
-             "vs recall) — scored against the LEAVE-ONE-OUT consensus of the other raters (that rater's own "
-             "votes excluded, so no self-inclusion advantage). Headline: the % of experts whose point lies "
-             "UNDER Morgoth's curve — how much of the human panel Morgoth dominates on each metric.",
-             [STY / "s0_occasion_focal.png", STY / "s0_occasion_generalized.png"], [RES / "s0_occasion.md"]),
-            ("0b. MoE panel — the larger, band-resolved panel (21 experts)",
-             "Same analysis on the MoE panel (1,761 events Morgoth scored, of 2,761), band-resolved slowing "
-             "collapsed to EEG-level per axis (any band/round). `bwestove` (author) excluded; experts scored "
-             "vs leave-one-out consensus, plotted on ROC and PRC. FINDING: focal detection is excellent "
-             "(AUROC 0.935 — Morgoth dominates 81% of experts on ROC, 90% on PR); generalized is weaker "
-             "(AUROC 0.734) on this 72%-generalized-positive, high-prevalence set, where most experts sit "
-             "above Morgoth's ROC (10% under) though 38% on PR. Contrast with OccasionNoise (§0a), where "
-             "generalized was stronger (0.867). (scripts/45)",
-             [STY / "s0_moe_focal.png", STY / "s0_moe_generalized.png"], [RES / "s0_moe.md"]),
+            ("0a. OccasionNoise — Morgoth vs a Morgoth-FREE classifier vs 18 experts",
+             "One ROC+PRC per axis overlaying THREE things: Morgoth's gate probability (purple), our "
+             "Morgoth-free spectral+localization classifier (orange, LOO-CV), and the 18 experts as operating "
+             "points (grey) scored vs the leave-one-out consensus of the others. Headline = % of experts "
+             "under each curve. On these MULTI-SEGMENT recordings the Morgoth-free classifier — which "
+             "aggregates intermittency across sleep stages — actually puts MORE experts under than Morgoth "
+             "(focal 53% vs 41%, generalized 39% vs 17%). See §0c for how it is built.",
+             [STY / "s0_occasion_combined_focal.png", STY / "s0_occasion_combined_generalized.png"],
+             [RES / "s0_occasion_combined.md"]),
+            ("0b. MoE — Morgoth vs a Morgoth-FREE classifier vs 21 experts (single 15 s clips)",
+             "Same three-way overlay on the MoE panel (1,761 clips; `bwestove` excluded). Crucially each MoE "
+             "event is a SINGLE 15 s clip — no intermittency or multi-stage aggregation to exploit — so this "
+             "is a fair head-to-head on exactly what Morgoth's clip head sees. FINDING: here Morgoth "
+             "DOMINATES the single-clip spectral classifier (focal 86% of experts under vs our 24%; "
+             "generalized 14% vs 0%). The Morgoth-free edge in §0a came entirely from AGGREGATING across a "
+             "full recording; on one clip, the foundation model's per-clip waveform understanding wins. "
+             "(scripts/45, 52)",
+             [STY / "s0_moe_combined_focal.png", STY / "s0_moe_combined_generalized.png"], [RES / "s0_moe_combined.md"]),
             ("0c. Can a Morgoth-FREE classifier beat the experts? (OccasionNoise)",
              "Two detectors built ONLY from spectral/deviation features, no Morgoth, leave-one-out CV, same "
              "expert-operating-point framing. FOCAL is a SPATIAL problem — amount can't separate focal from "
