@@ -93,8 +93,17 @@ run 4 figures/stage_curves/rel_delta__whole_head.png "Fig 1d curve bank (111)"  
 run 4 figures/story/s0d_single_occasion_generalized.png "Fig 2a generalized head (54)"            -- py scripts/54_single_model_train_eval.py
 run 4 figures/story/s0e_occasion_focal.png     "Fig 2a focal head (55)"                           -- py scripts/55_recording_model.py
 run 4 figures/story/s0_occasion_ours_v4_focal.png "Fig 2b localized focal (49)"                   -- py scripts/49_occasion_allstage_localized.py
-# -- Figure 3 / Table 2: van Putten benchmark
-run 4 results/vanputten_fullcoverage.md        "Fig 3 / Table 2 van Putten benchmark (recompute)" -- py scripts/recompute_vanputten_fullcov.py
+# -- Figure S7 / Table S1: van Putten benchmark
+run 4 results/vanputten_fullcoverage.md        "Fig S7 / Table S1 van Putten benchmark (recompute)" -- py scripts/recompute_vanputten_fullcov.py
+# -- Figure 3: external validation (Sandor_100). Needs the Box dataset + Morgoth staging (like the panel step);
+#    SKIP_SANDOR=1 to skip, or set SANDOR_DIR. Regenerates Figure 3 + results/sandor/sandor100_external.md.
+SANDOR_DIR="${SANDOR_DIR:-/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/Morgoth1/Datasets/Sandor_100}"
+if [ "${SKIP_SANDOR:-0}" = "1" ]; then echo "  [skip] SKIP_SANDOR=1 (Sandor external validation, Figure 3)"
+elif [ ! -d "$SANDOR_DIR" ]; then echo "  [skip] Sandor_100 not found at SANDOR_DIR (needs Box/rclone + Morgoth) -> Figure 3 not regenerated"
+else
+  run 4 data/derived/segment_master/eeg_id=SB_001 "Sandor Morgoth staging + feature extraction (sandor100_stage_extract)" -- py scripts/sandor100_stage_extract.py
+  run 4 figures/story/sandor100_slowing.png    "Fig 3 Sandor external validation (sandor100_external_validation)" -- py scripts/sandor100_external_validation.py
+fi
 # -- Figure 4: description (D1-D6)
 run 4 figures/story/s4_d1.png                  "Fig 4 D1-D5 description panels (57)"              -- py scripts/57_description_panels.py
 run 4 figures/story/s4_d6.png                  "Fig 4 D6 words + concordance (58)"               -- py scripts/58_description_words.py

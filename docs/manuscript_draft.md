@@ -239,7 +239,7 @@ We present, to our knowledge, the first large-scale, lifespan- and sleep-stage-r
 *Supplementary tables:*
 
 - **Table S1 — van Putten qEEG benchmark** (full family × 3 arms; `results/vanputten_fullcoverage.md`). Summarised in one Results sentence (Morgoth 0.875/0.911/0.870 vs best van Putten 0.707/0.773/0.723; +0.14–0.17).
-- **Table S2 — Human ceiling** (Fleiss κ, self-consistency, conspicuity ρ; `results/table5_human_ceiling.md`, `kappa_algorithm_vs_experts_v6.md`).
+- **Table S2 — Human ceiling** (Fleiss κ, self-consistency, conspicuity ρ; `results/table5_human_ceiling.md`).
 - **Table S3 — Band calibration.** Delta/theta/mixed agreement is at the expert-vs-expert floor (κ≈0.09), marginal-matched to the report distribution (`results/story/band_calibration.md`; `scripts/band_calibration.py`).
 
 ## Declarations

@@ -1,6 +1,6 @@
 """Focal detection v2 — FINER-than-lobe localization + de-confounded focal-specific target.
 
-Diagnosis (scripts/sandor100_focal_diagnostic): the current focal head is amount-confounded (tracks
+Diagnosis: the current focal head is amount-confounded (tracks
 generalized), its 6-region focal-specific features are weak/domain-sensitive, and it catches only ~36% of
 focal at the experts' operating point. This experiment tries:
   - PER-CHANNEL (18 bipolar / 8 homologous pairs) localization instead of 6 lobes — within-recording

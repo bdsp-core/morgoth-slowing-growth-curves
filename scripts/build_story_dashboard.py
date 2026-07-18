@@ -116,7 +116,7 @@ SECTIONS = [
              "+0.05) while age-conditioning the ASYMMETRY indices does not (symmetry is age-invariant) — a "
              "clean positive control for the normative framework; (ii) even age-conditioned, the classical "
              "indices trail the learned representation, and our Morgoth-free deviation model (§2a) sits well "
-             "above this ceiling too. (scripts/producer_vanputten_sap.py, recompute_vanputten_fullcov.py)",
+             "above this ceiling too. (scripts/recompute_vanputten_fullcov.py)",
              [Path("results/figs/vanputten_comparison.png")], []),
             ("2d. External validation — Sandor_100 vs SCORE-AI, Morgoth, and experts (main-text figure)",
              "The whole pipeline run UNCHANGED on a fully independent 100-EEG benchmark (EMU scalp EEG; no "
