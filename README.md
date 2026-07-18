@@ -6,9 +6,17 @@ Lifespan **× sleep-stage normative "growth curves"** for quantitative EEG **slo
 governed, clinician-style **description**, validated against clinical EEG reports and the human inter-rater
 ceiling. Part of the [bdsp-core](https://github.com/bdsp-core) automated-EEG effort.
 
-> **Reproduce everything → `bash scripts/reproduce_story.sh`** (see
-> [docs/REPRODUCE.md](docs/REPRODUCE.md)). The narrative write-up is the **story dashboard**
-> (`results/story_dashboard.html`) and the manuscript ([docs/manuscript_draft.md](docs/manuscript_draft.md)).
+> **Reproduce — three named tiers** (`bash scripts/reproduce_story.sh <tier>`; see
+> [docs/REPRODUCE.md](docs/REPRODUCE.md)):
+> - **`results`** (default, fast, minutes) — regenerate all figures/tables + the dashboard from the computed
+>   derived tables. The iterate-on-publication-figures loop.
+> - **`features`** (~1 h) — from the extracted features (`segment_master/`): rebuild the GAMLSS norms +
+>   deviation field + descriptors, train the detectors, then produce all results. Needs R + `gamlss`.
+> - **`scratch`** (~24 h) — from the raw source EDFs: run the fleet (Morgoth sleep staging + feature
+>   extraction on S3), assemble the tables, then `features`. Needs BDSP S3 + the Morgoth env.
+>
+> The narrative write-up is the **story dashboard** (`results/story_dashboard.html`) and the manuscript
+> ([docs/manuscript_draft.md](docs/manuscript_draft.md)).
 >
 > **Analysis plan → [docs/analysis_plan.md](docs/analysis_plan.md)** — the pre-registered SAP, the source of
 > truth for how data is prepared, analyzed, and reported.

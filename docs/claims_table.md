@@ -27,7 +27,7 @@ Violating this makes the paper circular. It is not a stylistic preference.
 
 | # | clause the sentence would say | metric | evidence | status |
 |---|---|---|---|---|
-| 1 | *"There is slowing."* | Morgoth gate | AUROC **0.900** vs 18-expert majority (generalized); **0.923** (focal) | **ALLOWED** — the gate's claim |
+| 1 | *"There is slowing."* | Morgoth gate | AUROC **0.853** vs 18-expert majority (generalized); **0.908** (focal) — canonical Figure-2 panel eval (our Morgoth-free detector reaches 0.946 / 0.923) | **ALLOWED** — the gate's claim |
 | 2 | *"…focal"* / *"…generalized"* | Morgoth gate | as above | **ALLOWED** — the gate's claim |
 | 2b | focal-vs-generalized **from our spectral features** | `S(focal)` | **0.477 (chance)** for exclusively-focal vs generalized; global amount runs *backwards* for focality (AUROC 0.183) | **FORBIDDEN** — detector retired |
 | 3 | *"2.1 SD above age- and stage-matched normal (94th centile)"* | `S = w·(δ excess, θ excess, α attenuation)`, wake-fit, α-attenuation in wake only; re-standardised against normals of that age & stage. Flat/suppressed segments excluded up front | **split-half ρ/ICC 0.97** (scripts/108); calibration normals −0.09 SD; dose-response ρ 0.447 (−0.08→+0.31→+0.81); conspicuity ρ **0.549** vs the 18-expert consensus proportion (amount), 0.652 (sparse score) | **ALLOWED** — validated as a reliable measurement |

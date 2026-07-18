@@ -86,9 +86,9 @@ def main():
         md.append(f"| report-test | {tag} | ours | {roc_auc_score(y, rt[f'score_{tag}']):.3f} | "
                   f"{average_precision_score(y, rt[f'score_{tag}']):.3f} | – | – |")
 
-    # occasion (expert votes) + MoE (Experts-sheet consensus + BS-excluded variant)
+    # occasion (expert votes); MoE cut from the story
     V = pd.read_parquet("data/derived/occasion_expert_votes.parquet")
-    for ds in ["occasion", "moe", "moe_noBS"]:
+    for ds in ["occasion"]:
         sub = R[R.dataset == ("moe" if ds.startswith("moe") else ds)]
         for tag, mx, hc, ecol in [("focal", "FN", "p_focal", "foc_slowing"), ("generalized", "GN", "p_generalized", "gen_slowing")]:
             if ds == "occasion":
@@ -107,6 +107,7 @@ def main():
             s_ours = sub.loc[idx, f"score_{tag}"]
             ok = np.isfinite(s_ours.values) & np.isfinite(y.values)
             au = roc_auc_score(y.values[ok], s_ours.values[ok]); ap = average_precision_score(y.values[ok], s_ours.values[ok])
+            lo, hi = m54.boot_ci(y.values[ok], s_ours.values[ok])       # recording-level bootstrap 95% CI
             ur = up = np.nan
             if pts:
                 fpr, tpr, _ = roc_curve(y.values[ok], s_ours.values[ok]); prec, rec, _ = precision_recall_curve(y.values[ok], s_ours.values[ok])
@@ -117,7 +118,8 @@ def main():
                 cm = m54.panel_curve(None, y.values[ok], mm.reindex(idx).values[ok], pts, C_MORG, "Morgoth")
                 fig, (a0, a1) = plt.subplots(1, 2, figsize=(11.5, 4.8)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
                 for cur2, lab, cc in [(cm, "Morgoth", C_MORG), (cur, "ours", C_OURS)]:
-                    a0.plot(cur2["fpr"], cur2["tpr"], color=cc, lw=2.4, label=f"{lab} (AUROC {cur2['auc']:.2f}, {cur2['ur']:.0f}% under)")
+                    ci = f" [{lo:.2f}–{hi:.2f}]" if lab == "ours" else ""
+                    a0.plot(cur2["fpr"], cur2["tpr"], color=cc, lw=2.4, label=f"{lab} (AUROC {cur2['auc']:.2f}{ci}, {cur2['ur']:.0f}% under)")
                     a1.plot(cur2["rec"], cur2["prec"], color=cc, lw=2.4, label=f"{lab} (AP {cur2['ap']:.2f}, {cur2['up']:.0f}% under)")
                 for r, p in pts.items():
                     a0.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
@@ -133,7 +135,7 @@ def main():
             else:
                 aum = roc_auc_score(y.values[ok], morg.reindex(idx).values[ok]) if morg is not None else np.nan
                 md.append(f"| {ds} | {tag} | Morgoth | {aum:.3f} | – | – | – |")
-            md.append(f"| {ds} | {tag} | ours | {au:.3f} | {ap:.3f} | {ur if np.isnan(ur) else f'{ur:.0f}%'} | {up if np.isnan(up) else f'{up:.0f}%'} |")
+            md.append(f"| {ds} | {tag} | ours | {au:.3f} [{lo:.3f}, {hi:.3f}] | {ap:.3f} | {ur if np.isnan(ur) else f'{ur:.0f}%'} | {up if np.isnan(up) else f'{up:.0f}%'} |")
     (RES / "s0e_recording_model.md").write_text("\n".join(str(x) for x in md))
     print("\n".join(str(x) for x in md)); print("\nwrote results/story/s0e_recording_model.md + figures/story/s0e_*.png")
 

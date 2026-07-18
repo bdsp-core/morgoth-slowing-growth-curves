@@ -5,6 +5,12 @@ description) and the manuscript revised to match, the superseded scaffolding was
 subdirectories (via `git mv`, so history and recoverability are preserved). **Nothing was deleted.** This
 file records what moved and the rule used, so anything can be restored with `git mv … ..`.
 
+**Correction (2026-07-18b).** Four scripts first archived here were found to be runtime **dependencies** of
+kept scripts (imported via `spec_from_file_location`) and were **restored** to `scripts/`:
+`45_moe_section0.py`, `46_occasion_wake_classifier.py` (`expert_points`, used by 49/54/55),
+`61_build_gen_labeling_set.py`, and `producer_vanputten_sap.py`. The keep-rule below now also covers
+"imported by a kept script."
+
 ## Rule
 
 **Keep** exactly what the revised manuscript (`docs/manuscript_draft.md`), the story dashboard

@@ -1,36 +1,54 @@
 #!/usr/bin/env bash
 # =============================================================================
-# reproduce_story.sh — ONE script to regenerate every result in the paper
-# (models, figures, tables, dashboard) from the derived feature tables.
+# reproduce_story.sh — regenerate the paper's results in one of THREE named tiers.
 #
-# The heavy upstream steps — fleet/S3 feature extraction (segment_master/,
-# segment_summary/), the Morgoth gate rerun (gate_rerun_done/), and the raw
-# human panel votes (occasion_expert_votes.parquet) — are ASSUMED DONE and
-# present under data/derived/. This script rebuilds everything downstream of
-# them, in dependency order, on a local CPU.
+#   bash scripts/reproduce_story.sh results     # (default) FAST — figures/tables/dashboard only
+#   bash scripts/reproduce_story.sh features    # MEDIUM (~1 h) — rebuild norms/deviation/descriptors +
+#                                               #   train the models, then all results, from the features
+#   bash scripts/reproduce_story.sh scratch     # FULL (~24 h) — the fleet: raw EDF -> staging + feature
+#                                               #   extraction on S3, then everything (needs S3 + Morgoth)
 #
-# PREREQUISITES
-#   - Python analysis env active; run from the repo root.
-#   - R with the `gamlss` package (for the two GAMLSS steps, marked [R]).
-#   - data/derived/ populated with the fleet/Morgoth outputs listed above.
+# The three tiers, and where each STARTS:
+#   scratch  — from the raw source EDFs. Runs "the fleet" (Morgoth sleep staging + per-segment feature
+#              extraction over ~27k recordings on S3; scripts/31,32,120-130 + gate rerun), assembles the
+#              canonical tables, THEN falls through to `features`. Needs BDSP S3 creds + the Morgoth env
+#              (MORGOTH2_DIR, PILOT_VENV) — see docs/fleet_launch.md, docs/fleet_dependencies.md. This is a
+#              sharded multi-host job, not a laptop run; this script only PRINTS the fleet command and then
+#              (if segment_master/ is present) continues from `features`.
+#   features — from data/derived/segment_master + segment_summary + gate_rerun_done + raw panel votes.
+#              Rebuilds the GAMLSS norms, the per-segment deviation field, panel inputs, descriptors and
+#              single-model features, TRAINS the detectors, and produces every figure/table + the dashboard.
+#   results  — from the computed derived tables (grid_norm, segment_deviation, description_*,
+#              single_model_segfeats, occasion_*). Reruns the (fast) figure/model/table scripts + dashboard.
+#              This is the iterate-on-publication-figures loop.
 #
-# USAGE
-#   bash scripts/reproduce_story.sh              # run all stages, skipping any
-#                                                # whose outputs already exist
-#   FORCE=1 bash scripts/reproduce_story.sh      # rebuild everything
-#   FROM=4  bash scripts/reproduce_story.sh      # start at stage 4 (figures)
-#   SKIP_PANEL=1 bash scripts/reproduce_story.sh # skip stage 2 (needs Morgoth)
-#
-# Each step prints a header; a step is skipped (unless FORCE=1) when its
-# sentinel output is already present. Stages: 0 canonical tables, 1 norms +
-# deviation field, 2 panel inputs (Morgoth), 3 description + model substrates,
-# 4 figures/tables/models, 5 dashboard.
+# PREREQUISITES: Python analysis env, run from repo root. `features`/`scratch` also need R + `gamlss`
+# (steps marked [R]) and, for the panel-inputs step, the Morgoth model. Env knobs: FORCE=1 rebuild even if
+# an output exists; SKIP_PANEL=1 skip the Morgoth-dependent panel-inputs step.
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONPATH="${PYTHONPATH:-src}"
-export MPLBACKEND=Agg
-FORCE="${FORCE:-0}"; FROM="${FROM:-0}"; SKIP_PANEL="${SKIP_PANEL:-0}"
+export MPLBACKEND=Agg KMP_DUPLICATE_LIB_OK=TRUE
+MODE="${1:-results}"
+FORCE="${FORCE:-0}"; SKIP_PANEL="${SKIP_PANEL:-0}"
+case "$MODE" in
+  results)  FROM=4 ;;                                   # figures/tables/dashboard from derived tables
+  features) FROM=0 ;;                                   # rebuild derived tables from segment_master, then results
+  scratch)  FROM=0
+            printf '\n\033[1;33m== SCRATCH (full fleet) ==\033[0m\n'
+            echo "  The from-raw-EDF tier is the sharded S3 fleet (Morgoth staging + feature extraction,"
+            echo "  ~24 h). It is not run by this laptop script. Launch it per docs/fleet_launch.md:"
+            echo "    MORGOTH2_DIR=\$HOME/GithubRepos/morgoth2 PILOT_VENV=\$MORGOTH2_DIR/.venv/bin/python \\"
+            echo "    MORGOTH_DEVICE=mps RUN_GATE=1 SHARD=i/N PYTHONPATH=src python scripts/31_segment_master_worker.py"
+            echo "  then scripts/{32,33,120-130} to assemble the manifest + canonical tables."
+            if [ ! -d data/derived/segment_master ]; then
+              echo "  segment_master/ not present -> stopping. Run the fleet, then: reproduce_story.sh features"; exit 0
+            fi
+            echo "  segment_master/ present -> continuing as 'features' from here."; MODE=features ;;
+  *) echo "usage: reproduce_story.sh [results|features|scratch]"; exit 1 ;;
+esac
+echo "MODE=$MODE  (FROM stage $FROM)"
 
 hdr() { printf '\n\033[1;36m== %s ==\033[0m\n' "$*"; }
 # run <stage_no> <sentinel_path> <description> -- <command...>

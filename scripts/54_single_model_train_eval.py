@@ -96,6 +96,17 @@ def panel_curve(ax, y, s, pts, color, label):
                 ur=100*np.mean(list(ur.values())) if ur else np.nan, up=100*np.mean(list(up.values())) if up else np.nan)
 
 
+def boot_ci(y, s, n=2000, seed=0):
+    """Recording-level bootstrap 95% CI for AUROC — the panel recordings (one expert-majority label each)
+    are the resampling unit. Resamples with replacement; skips draws with a single class."""
+    y = np.asarray(y); s = np.asarray(s); rng = np.random.default_rng(seed); N = len(y); a = []
+    for _ in range(n):
+        idx = rng.integers(0, N, N)
+        if np.unique(y[idx]).size >= 2:
+            a.append(roc_auc_score(y[idx], s[idx]))
+    return (float(np.percentile(a, 2.5)), float(np.percentile(a, 97.5))) if a else (np.nan, np.nan)
+
+
 def main():
     FIG.mkdir(parents=True, exist_ok=True); RES.mkdir(parents=True, exist_ok=True)
     S = pd.read_parquet("data/derived/single_model_segfeats.parquet")
@@ -128,8 +139,8 @@ def main():
             md.append(f"| report-test | {tag} | {ver} | {roc_auc_score(y, es):.3f} | "
                       f"{average_precision_score(y, es):.3f} | – | – |")
 
-    # ---- external panels: our model vs Morgoth vs experts ----
-    for ds in ["occasion", "moe"]:
+    # ---- external panel: our model vs Morgoth vs experts (MoE cut from the story) ----
+    for ds in ["occasion"]:
         em = expert_and_morgoth(ds)
         for tag in ["focal", "generalized"]:
             wide, morg = em[tag]
@@ -147,9 +158,10 @@ def main():
                     es = eeg_scores(sub, f"{col}_{tag}").reindex(keep_eeg); s = es.values
                 ok = np.isfinite(s) & np.isfinite(y.values)
                 cur = panel_curve(a0, y.values[ok], s[ok], pts, cc, ver)
-                a0.plot(cur["fpr"], cur["tpr"], color=cc, lw=2.4, label=f"{ver} (AUROC {cur['auc']:.2f}, {cur['ur']:.0f}% under)")
+                lo, hi = boot_ci(y.values[ok], s[ok])
+                a0.plot(cur["fpr"], cur["tpr"], color=cc, lw=2.4, label=f"{ver} (AUROC {cur['auc']:.2f} [{lo:.2f}–{hi:.2f}], {cur['ur']:.0f}% under)")
                 a1.plot(cur["rec"], cur["prec"], color=cc, lw=2.4, label=f"{ver} (AP {cur['ap']:.2f}, {cur['up']:.0f}% under)")
-                md.append(f"| {ds} | {tag} | {ver} | {cur['auc']:.3f} | {cur['ap']:.3f} | "
+                md.append(f"| {ds} | {tag} | {ver} | {cur['auc']:.3f} [{lo:.3f}, {hi:.3f}] | {cur['ap']:.3f} | "
                           f"{cur['ur']:.0f}% | {cur['up']:.0f}% |")
             for r, p in pts.items():
                 a0.plot(p["fpr"], p["tpr"], "o", ms=4.5, mfc="#999", mec="k", mew=.3, alpha=.7)

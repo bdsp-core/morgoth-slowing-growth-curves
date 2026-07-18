@@ -1,49 +1,46 @@
 # Reproducing the analysis
 
-Everything in the paper — models, figures, tables, and the story dashboard — regenerates from the
-derived feature tables with a single command:
+Everything in the paper regenerates through one runner, in **three named tiers** that differ only in where
+they *start*:
 
 ```bash
-bash scripts/reproduce_story.sh
+bash scripts/reproduce_story.sh results     # FAST (minutes) — default
+bash scripts/reproduce_story.sh features    # MEDIUM (~1 h)
+bash scripts/reproduce_story.sh scratch     # FULL (~24 h)
 ```
 
-The runner is self-documenting (see its header). It rebuilds, in dependency order, from
-`data/derived/*`:
+| Tier | Starts from | Does | Time | Needs |
+|---|---|---|---|---|
+| **`results`** | the computed derived tables (`grid_norm.json`, `segment_deviation/`, `description_*`, `single_model_segfeats`, `occasion_*`) | reruns the (fast) figure / model / table scripts + rebuilds the dashboard | minutes | Python env |
+| **`features`** | the extracted features (`segment_master/`, `segment_summary/`, `gate_rerun_done/`, raw panel votes) | rebuilds GAMLSS norms + per-segment deviation field + panel inputs + descriptors + single-model features, **trains the detectors**, then all `results` | ~1 h | Python + **R/`gamlss`** (+ Morgoth for the panel-inputs step) |
+| **`scratch`** | the raw source EDFs on S3 | runs **the fleet** — Morgoth sleep staging + per-segment feature extraction over ~27k recordings — assembles the canonical tables, then falls through to `features` | ~24 h | BDSP **S3** creds + the **Morgoth** env (`MORGOTH2_DIR`, `PILOT_VENV`); see [fleet_launch.md](fleet_launch.md), [fleet_dependencies.md](fleet_dependencies.md) |
 
-| Stage | What | Notes |
-|---|---|---|
-| 0 | canonical tables + corrected SAP labels | scans `segment_master/`; local |
-| 1 | GAMLSS normative curves + per-segment deviation field | **needs R + `gamlss`** for the norm grid; deviation field is CPU |
-| 2 | expert-panel inputs (features + Morgoth predictions) | **needs the Morgoth model + fleet panel partitions**; `SKIP_PANEL=1` to skip |
-| 3 | description descriptors + single-model segment features | local |
-| 4 | figures, tables, trained models (Fig 1–5, Table 1–2, S1–S2) | local; two steps need R |
-| 5 | assemble `results/story_dashboard.html` | local |
+**Which to use.** Iterating on figures/wording for submission → `results`. Changed a norm, a feature, or a
+model → `features`. Re-deriving from raw signal (new data, or a full audit) → `scratch`.
 
-Each step is skipped when its output already exists; `FORCE=1` rebuilds everything, `FROM=<n>` starts at
-stage *n*, `SKIP_PANEL=1` skips the Morgoth-dependent stage.
+### How it runs
 
-### Prerequisites
+The runner executes numbered stages (0 canonical tables · 1 norms + deviation field · 2 panel inputs
+[Morgoth] · 3 descriptors + model features · 4 figures/tables/models · 5 dashboard); the tier just sets the
+starting stage (`results`→4, `features`→0, `scratch`→fleet then 0). Each step is **skipped when its output
+already exists** — `FORCE=1` rebuilds regardless, `SKIP_PANEL=1` skips the Morgoth-dependent panel step.
+Steps needing R (`115_descriptor_grid`, `76_keystone_growth_grid`) are marked `[R]` in the output.
 
-- **Python analysis environment** (see `requirements.txt` / `pyproject.toml`); run from the repo root.
-- **R with the `gamlss` package** for the two GAMLSS steps (`scripts/gamlss_*.R`, called by `115` and `76`).
-- **Upstream fleet/Morgoth outputs already present** under `data/derived/`: `segment_master/`,
-  `segment_summary/`, the Morgoth gate rerun (`gate_rerun_done/` → `gate_eeg_level_rerun.parquet`), and the
-  raw human panel votes (`occasion_expert_votes.parquet`). These are produced by the cloud fleet
-  (`fleet/`, `scripts/31`, `scripts/32*`, `scripts/120`–`130`) and are **assumed done** — the runner does
-  not rebuild them.
-- **Sleep staging** runs in a separate virtual environment (the stager pins `pandas<2`); it is part of the
-  fleet feature-extraction step, upstream of this runner.
+`scratch` is a **sharded, multi-host S3 job**, not a laptop run; the runner prints the fleet command
+(`scripts/31_segment_master_worker.py` with `SHARD=i/N`, then `scripts/{32,33,120–130}`) and, if
+`segment_master/` is already present locally, continues from `features`.
 
 ### Outputs
 
 - `results/story_dashboard.html` — the narrative dashboard (Table 1 + Figures 1–5), self-contained.
 - `results/table1.md`, `results/vanputten_fullcoverage.md`, `results/severity_null_v6.md`,
-  `results/table5_human_ceiling.md`, `results/p6_sleep_underreporting.md` — the manuscript tables/results.
+  `results/table5_human_ceiling.md`, `results/p6_sleep_underreporting.md`, `results/story/s0*.md`,
+  `results/story/s4_*.md` — the manuscript tables/results (panel AUROCs carry recording-level bootstrap CIs).
 - `figures/growth_v2/`, `figures/story/`, `figures/stage_curves/`, `figures/curves/` — the figures.
-- `docs/manuscript_draft.md` — the manuscript; its figure/table paths match the above.
+- `docs/manuscript_draft.md` — the manuscript; figure/table paths match the above.
 
 ### Known reproducibility note
 
-`results/story/s0c_morgoth_free.md` (the in-domain focal/generalized detector trajectory shown in dashboard
-block 2b) is a hand-authored summary table with no producing script; it is documentation of the design
-search, not a regenerated artifact. Everything else in the dashboard is script-produced by the stages above.
+`results/story/s0c_morgoth_free.md` (the in-domain focal/generalized trajectory in dashboard block 2b) is a
+hand-authored summary of the design search, not a script-generated artifact. Everything else is produced by
+the stages above.

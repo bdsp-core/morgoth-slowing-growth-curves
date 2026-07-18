@@ -69,14 +69,15 @@ SECTIONS = [
             ("2a. One report-trained model vs 18 experts vs Morgoth (OccasionNoise)",
              "A single segment-level model (two heads) trained ONLY on report data — patient-stratified split "
              "balanced over lifespan × focal/gen/both/control, ~16k recordings — applied UNCHANGED to the "
-             "panel. GENERALIZED (pooled segment amount z): AUROC 0.946, 78% of experts under ROC — beats most "
-             "of the panel AND Morgoth (0.85 / 11%). FOCAL (localized deviation, recording-aggregated): AUROC "
-             "0.923, about half the panel under — beats Morgoth (0.91 / 41%). Both axes beat Morgoth from a "
-             "model that never saw the panel. Trained on NOISY report labels, it generalizes to the CLEAN "
-             "expert consensus far better (0.92–0.95) than its own report-test number (~0.73) implies. "
-             "Left = generalized, right = focal. (scripts/53, 54, 55)",
+             "panel (recording-level bootstrap 95% CIs). GENERALIZED (pooled segment amount z, s0d): AUROC "
+             "0.946 [0.887–0.990], 78% of experts under ROC — clearly beating Morgoth (0.853 [0.750–0.934], "
+             "11% under). FOCAL (localized deviation, recording-aggregated, s0e): AUROC 0.923 [0.861–0.971], "
+             "about half the panel under — statistically level with Morgoth (0.908 [0.828–0.974], 41%; the "
+             "CIs overlap heavily, so the clean win is generalized). Trained on NOISY report labels, it "
+             "generalizes to the CLEAN expert consensus far better than its own report-test number (~0.73) "
+             "implies. Left = generalized, right = focal. (scripts/53, 54, 55)",
              [STY / "s0d_single_occasion_generalized.png", STY / "s0e_occasion_focal.png"],
-             [RES / "s0d_single_model.md"]),
+             [RES / "s0d_single_model.md", RES / "s0e_recording_model.md"]),
             ("2b. Why the two axes need different read-outs",
              "Focal slowing is a SPATIAL problem — amount of slowing cannot separate focal from generalized, "
              "so the focal head LOCALIZES: per-region deviation z → peak-region z, focality (peak − median "

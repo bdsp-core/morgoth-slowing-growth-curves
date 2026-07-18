@@ -13,7 +13,7 @@ drifting.
 
 | stage | question | who answers it | why |
 |---|---|---|---|
-| **Gate** | Is there slowing? Is it focal or generalized? | **Morgoth** | Topography and morphology. Morgoth reaches AUROC 0.923 focal / 0.900 generalized against an 18-expert majority. Our spectral features reach 0.848 / 0.909 — and *cannot* separate exclusively-focal from generalized at all (0.477, chance), because global slowing amount runs backwards for focality (AUROC 0.183). |
+| **Gate** | Is there slowing? Is it focal or generalized? | **Morgoth** | Topography and morphology. On the 18-expert OccasionNoise panel (canonical Figure-2 eval) Morgoth reaches AUROC 0.908 focal / 0.853 generalized against the expert majority; our Morgoth-free deviation detector reaches 0.923 focal / 0.946 generalized — but *cannot* separate exclusively-focal from generalized (0.477, chance), because global slowing amount runs backwards for focality (AUROC 0.183). |
 | **Describe** | Where, how much, in which band, how often, how persistent, in which stage? | **the deviation field** | These are *measurements*, not classifications. None of them needs a label. |
 
 **The rule (already in Methods §2.7b):** a quantity trained to predict the expert's call may never be used to
