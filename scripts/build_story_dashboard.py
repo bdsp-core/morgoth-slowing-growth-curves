@@ -60,6 +60,21 @@ SECTIONS = [
              "ceiling. Left = focal (all-stage, localized); right = generalized (W+N1). (scripts/46-49)",
              [STY / "s0_occasion_ours_v4_focal.png", STY / "s0_occasion_ours_v3_generalized.png"],
              [RES / "s0c_morgoth_free.md"]),
+            ("0d. ONE report-trained Morgoth-free model, externally validated on both panels",
+             "The honest single-model design: a segment-level classifier (two heads) trained ONLY on the "
+             "single-scored REPORT data (patient-stratified split, balanced across lifespan × focal/gen/both/"
+             "control), then applied UNCHANGED to OccasionNoise and MoE — never seen in training. EEG answer = "
+             "top-5 mean of segment scores; a single clip = its segment. HEADLINE: on OccasionNoise "
+             "GENERALIZED slowing it reaches AUROC 0.94 and puts 61–67% of experts under ROC (up to 78% under "
+             "PR) — beating most of the panel AND crushing Morgoth (11% under). This CORRECTS §0c's 'at the "
+             "ceiling' read: that was a small-training-data artifact (100 recordings); with 6,000 report "
+             "recordings generalized is the win. Focal and single-clip MoE stay Morgoth's (focal needs "
+             "recording-level aggregation; single clips need waveform reading). v1 broadcast ≈ v2 MIL (MIL "
+             "added nothing). Note: trained on noisy report labels, it generalizes to the clean expert "
+             "consensus far better (0.94) than the report-test number (0.71) suggests. (scripts/53, 54)",
+             [STY / "s0d_single_occasion_generalized.png", STY / "s0d_single_occasion_focal.png",
+              STY / "s0d_single_moe_focal.png", STY / "s0d_single_moe_generalized.png"],
+             [RES / "s0d_single_model.md"]),
         ],
     ),
     (
