@@ -25,114 +25,59 @@ C = Path("figures/curves"); S = Path("figures/stage_curves"); RES = Path("result
 # A section = (number, title, lede). Each block = (subtitle, method-caption, [fig paths], [table paths]).
 SECTIONS = [
     (
-        "0", "Can Morgoth detect focal &amp; generalized slowing?",
-        "Validate the EEG-level detector against MULTI-RATER expert panels, where the truth is a panel vote, "
-        "not one clinician's report. Focal and generalized slowing are scored as SEPARATE binary axes — they "
-        "co-occur (report 25% of focal cases are also generalized; occasion raters mark both on 29/100 EEGs), "
-        "matching Morgoth's two independent EEG-level sigmoids.",
+        "1", "The normative deviation model",
+        "Every feature is expressed as a DEVIATION from its age- and sleep-stage-matched normal. Growth curves "
+        "are fit on clean-normal recordings, then every 15 s segment is scored against its OWN (stage, age) "
+        "normal — so 'abnormal' always means abnormal FOR THIS AGE AND THIS SLEEP STAGE. This per-segment "
+        "deviation field is the substrate the detector runs on (and, next, the description).",
         [
-            ("0a. OccasionNoise — Morgoth vs a Morgoth-FREE classifier vs 18 experts",
-             "One ROC+PRC per axis overlaying THREE things: Morgoth's gate probability (purple), our "
-             "Morgoth-free spectral+localization classifier (orange, LOO-CV), and the 18 experts as operating "
-             "points (grey) scored vs the leave-one-out consensus of the others. Headline = % of experts "
-             "under each curve. On these MULTI-SEGMENT recordings the Morgoth-free classifier — which "
-             "aggregates intermittency across sleep stages — actually puts MORE experts under than Morgoth "
-             "(focal 53% vs 41%, generalized 39% vs 17%). See §0c for how it is built.",
-             [STY / "s0_occasion_combined_focal.png", STY / "s0_occasion_combined_generalized.png"],
-             [RES / "s0_occasion_combined.md"]),
-            ("0b. MoE — Morgoth vs a Morgoth-FREE classifier vs 21 experts (single 15 s clips)",
-             "Same three-way overlay on the MoE panel (1,761 clips; `bwestove` excluded). Crucially each MoE "
-             "event is a SINGLE 15 s clip — no intermittency or multi-stage aggregation to exploit — so this "
-             "is a fair head-to-head on exactly what Morgoth's clip head sees. FINDING: here Morgoth "
-             "DOMINATES the single-clip spectral classifier (focal 86% of experts under vs our 24%; "
-             "generalized 14% vs 0%). The Morgoth-free edge in §0a came entirely from AGGREGATING across a "
-             "full recording; on one clip, the foundation model's per-clip waveform understanding wins. "
-             "CAVEATS (see §0d): MoE is a curated MULTI-CATEGORY set, so its slowing 'controls' are other "
-             "abnormalities (26% burst suppression), not normals — a harder slowing-vs-other-abnormal task; "
-             "and these figures use a band-union label that over-counts generalized. With the canonical "
-             "Experts-sheet consensus Morgoth generalized is 0.837 (not 0.734); focal (0.95) is unaffected. "
-             "(scripts/45, 52)",
-             [STY / "s0_moe_combined_focal.png", STY / "s0_moe_combined_generalized.png"], [RES / "s0_moe_combined.md"]),
-            ("0c. Can a Morgoth-FREE classifier beat the experts? (OccasionNoise)",
-             "Two detectors built ONLY from spectral/deviation features, no Morgoth, leave-one-out CV, same "
-             "expert-operating-point framing. FOCAL is a SPATIAL problem — amount can't separate focal from "
-             "generalized, so we LOCALIZE (per-segment region z → peak region, focality = peak−median region, "
-             "asymmetry z, spatial stability) over all stages, stage-matched. Result: focal puts **53% of "
-             "experts under ROC / 65% under PR — beating most of the panel AND Morgoth (41%)**, with no "
-             "Morgoth. GENERALIZED reaches AUROC 0.913 (> Morgoth's 0.867) and more experts under than Morgoth "
-             "(39% at W+N1 vs 17%) but not a majority — it's diffuse (no spatial trick) and near the human "
-             "ceiling. Left = focal (all-stage, localized); right = generalized (W+N1). (scripts/46-49)",
-             [STY / "s0_occasion_ours_v4_focal.png", STY / "s0_occasion_ours_v3_generalized.png"],
-             [RES / "s0c_morgoth_free.md"]),
-            ("0d. ONE report-trained Morgoth-free model, externally validated on both panels",
-             "The honest single-model design: a segment-level model (two heads) trained ONLY on the "
-             "single-scored REPORT data (patient-stratified split balanced over lifespan × focal/gen/both/"
-             "control, ~16k training recordings), then applied UNCHANGED to OccasionNoise and MoE. Works on a "
-             "lone clip (segment output) and aggregates for recordings; the axis-appropriate aggregation is "
-             "used (generalized ← segment-score pooling; focal ← recording-level feature aggregation). "
-             "HEADLINE on OccasionNoise: our model BEATS MORGOTH on both axes — generalized AUROC 0.946, 78% "
-             "of experts under ROC (Morgoth 0.85/11%); focal 0.923, ~half the panel under (Morgoth 0.91/41%). "
-             "This CORRECTS §0c's 'at the ceiling' read — that was a 100-recording artifact; with thousands of "
-             "report recordings generalized is the win. MoE (corrected Experts-sheet consensus, a harder "
-             "slowing-vs-other-abnormal task) stays Morgoth's on the single 15 s clips. Left = generalized, "
-             "right = focal. (scripts/53, 54, 55)",
-             [STY / "s0d_single_occasion_generalized.png", STY / "s0e_occasion_focal.png"],
-             [RES / "s0d_single_model.md"]),
-        ],
-    ),
-    (
-        "1", "Detector performance on the report dataset, and segment → EEG recovery",
-        "The big single-scorer set (report-derived focal/generalized labels, clean_pair). First the EEG-level "
-        "ROC/PRC; then the core question — how to turn Morgoth's per-segment (30 s-context) focal/gen "
-        "probabilities into (a) an EEG-level probability p_eeg′ and (b) a SELECTION of which segments carry "
-        "focal and/or generalized slowing — done SEPARATELY BY SLEEP STAGE.",
-        [
-            ("1a. EEG-level ROC / PRC (report labels)",
-             "ONLY Morgoth's EEG-level heads (p_focal, p_generalized, and their max = 'any slowing') vs the "
-             "report flags (slowing_focal, slowing_gen_pathologic, slowing_positive) on clean_pair "
-             "recordings — the single-scorer analogue of §0. No band-power comparator here (the deviation "
-             "field is §2).",
-             [STY / "s1a_eeg_roc_prc.png"], [RES / "s1a_eeg.md"]),
-            ("1b. Recover p_eeg′ from the 30 s-context segment probabilities — by sleep stage",
-             "Pool the per-segment probabilities into an EEG-level p_eeg′ by several rules — MAX, p90, "
-             "top-5 mean, noisy-OR, MEAN of segments above X, FRACTION above X (X swept) — and score each two "
-             "ways: Spearman ρ vs Morgoth's own EEG-level head ('recover'), and AUROC vs the report label "
-             "('predict'), stratified by W/N1/N2/N3/REM. FINDING: the top-5 mean best recovers the head and "
-             "predicts the report for focal (ρ up to 0.85, AUROC 0.81); generalized favours mean-of-segments-"
-             ">-0.25, giving a natural segment-SELECTION threshold X≈0.25. N1/N2 recover best, N3 weakest. "
-             "Left panel: AUROC vs report by stage for each rule; right: the selection threshold X. "
-             "(scripts/41)",
-             [STY / "s1_seg2eeg_focal.png", STY / "s1_seg2eeg_generalized.png"], [RES / "s1_seg2eeg.md"]),
-        ],
-    ),
-    (
-        "2", "Growth curves: the stage-wise normative deviation field",
-        "Every feature is expressed as a DEVIATION from its age- and stage-matched normal. Each 30 s segment "
-        "gets stage-appropriate deviation values, so 'abnormal' always means abnormal FOR THIS AGE AND THIS "
-        "SLEEP STAGE. This is the measurement layer the description is built on.",
-        [
-            ("2a. Normative growth curves per sleep stage (keystone)",
-             "GAMLSS/BCT centile fans per (stage × region × feature), μ/σ/skew/kurtosis smooth in log-age, fit "
-             "on clean-normal only. μ df raised to 9 so the fitted median tracks the sharp early-life peak the "
-             "exact fractional ages resolve. Solid = fitted median, dashed = model-free rolling median.",
+            ("1a. Normative growth curves per sleep stage (keystone)",
+             "GAMLSS/BCT centile fans per (stage × region × feature): μ, σ, skew, kurtosis smooth in log-age, "
+             "fit on clean-normal only. The μ spline df was raised so the fitted median tracks the sharp "
+             "early-life peak the exact fractional ages resolve. Solid = fitted median; dashed = model-free "
+             "rolling median — they agree across the lifespan.",
              [G / "keystone_growth_grid.png"], []),
-            ("2b. Per-segment deviation, by Morgoth's call × stage",
-             "Whole-head deviation z (log_delta / TAR / DAR vs the segment's own age+stage normal) grouped by "
-             "Morgoth's 4-way EEG-level call (neither / focal-only / gen-only / both) and sleep stage — the "
-             "dose-response check that the deviation field tracks what the gate flags.",
-             [G / "gated_deviation_by_stage.png"], []),
-            ("2c. Supplementary curve bank (per feature, per stage)",
-             "The full stage-resolved normal curves for each feature (whole head). The complete feature × "
+            ("1b. The per-segment deviation field — calibrated &amp; discriminative",
+             "Every segment carries a deviation z for each feature × region, scored against its own (stage, "
+             "age) normal (data/derived/segment_deviation, joinable 1:1 to the segment tables). Panel: "
+             "whole-head median segment-z by sleep stage — clean-normal sits ~0 (confirming per-stage "
+             "calibration) while abnormal recordings are shifted up (discriminative). This is the measurement "
+             "layer the rest of the story stands on.",
+             [STY / "s2_segment_deviation.png"], [RES / "s2_segment_deviation.md"]),
+            ("1c. Supplementary curve bank (per feature, per stage)",
+             "The full stage-resolved normal curves for each feature (whole head); the complete feature × "
              "region bank lives in figures/curves/.",
              [S / "rel_delta__whole_head.png", S / "TAR__whole_head.png", S / "DAR__whole_head.png"], []),
-            ("2d. The per-segment deviation field (materialized)",
-             "Every segment now carries a deviation z per feature × region (7 regions × 6 features), scored "
-             "against ITS OWN (sleep-stage, age) normal — data/derived/segment_deviation/, joinable 1:1 to "
-             "segment_gate on (eeg_id, segment). Panel: whole-head median segment-z by sleep stage, "
-             "clean-normal (sits ~0, confirming per-stage calibration) vs abnormal (shifted positive). This is "
-             "the measurement substrate for the description layer. (scripts/43 materialize, scripts/44 "
-             "summary)",
-             [STY / "s2_segment_deviation.png"], [RES / "s2_segment_deviation.md"]),
+        ],
+    ),
+    (
+        "2", "Detection — a normative-deviation model vs experts vs Morgoth",
+        "Does the deviation field DETECT slowing? We build a Morgoth-FREE classifier on it, train it ONLY on "
+        "the single-scored REPORT data (never the panel), and test on the OccasionNoise expert panel — a clean "
+        "slowing-vs-normal set. Focal and generalized are two independent axes, scored against the panel "
+        "majority with each of the 18 experts as an operating point vs the leave-one-out consensus of the "
+        "others. Headline = % of experts under our curve.",
+        [
+            ("2a. One report-trained model vs 18 experts vs Morgoth (OccasionNoise)",
+             "A single segment-level model (two heads) trained ONLY on report data — patient-stratified split "
+             "balanced over lifespan × focal/gen/both/control, ~16k recordings — applied UNCHANGED to the "
+             "panel. GENERALIZED (pooled segment amount z): AUROC 0.946, 78% of experts under ROC — beats most "
+             "of the panel AND Morgoth (0.85 / 11%). FOCAL (localized deviation, recording-aggregated): AUROC "
+             "0.923, about half the panel under — beats Morgoth (0.91 / 41%). Both axes beat Morgoth from a "
+             "model that never saw the panel. Trained on NOISY report labels, it generalizes to the CLEAN "
+             "expert consensus far better (0.92–0.95) than its own report-test number (~0.73) implies. "
+             "Left = generalized, right = focal. (scripts/53, 54, 55)",
+             [STY / "s0d_single_occasion_generalized.png", STY / "s0e_occasion_focal.png"],
+             [RES / "s0d_single_model.md"]),
+            ("2b. Why the two axes need different read-outs",
+             "Focal slowing is a SPATIAL problem — amount of slowing cannot separate focal from generalized, "
+             "so the focal head LOCALIZES: per-region deviation z → peak-region z, focality (peak − median "
+             "region), asymmetry z, spatial stability, aggregated over the recording. Generalized slowing is "
+             "DIFFUSE — a pooled segment amount score captures it. The table traces the design search that "
+             "established this (stage-matching unlocks the sleep stages; localization is what cracks focal). "
+             "Those are IN-DOMAIN cross-validated numbers on the panel itself — an optimistic upper bound "
+             "(focal up to 53%, generalized up to 78% of experts under); the honest external number is §2a.",
+             [STY / "s0_occasion_ours_v4_focal.png"], [RES / "s0c_morgoth_free.md"]),
         ],
     ),
 ]
@@ -224,8 +169,10 @@ th,td{{border:1px solid #2a2f34;padding:3px 8px;text-align:left}} th{{background
 h4{{margin:6px 0}} pre{{background:#0b0d0f;padding:10px;border-radius:6px}}
 </style>
 <div class="wrap">
-<h1>EEG slowing — the story, in build order</h1>
-<p class="sub">A living scaffold: detect → recover per-segment → describe against growth curves.
+<h1>EEG slowing — a normative-deviation model, benchmarked against experts and Morgoth</h1>
+<p class="sub">Foundation → detection (description next): growth curves give every segment a stage/age-matched
+deviation z; a Morgoth-free model on that field, trained only on report data, beats the expert panel and
+Morgoth on OccasionNoise.
 Commit {commit} · {n_seg:,} recordings · generated {time.strftime('%Y-%m-%d %H:%M')}</p>
 {''.join(parts)}
 </div>"""
