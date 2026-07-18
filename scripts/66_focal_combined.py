@@ -55,6 +55,34 @@ def under(y, s, wide):
     return cur["auc"], cur["ur"]
 
 
+# ---- PRODUCTION focal head: de-confounded (focal vs clean-normal + generalized-only) target on the
+#      COMBINED region-deviation + finer-per-channel features. Imported by scripts/55 + sandor100_*.  ----
+_CACHE = {}
+def train_production_focal(sample=3000):
+    if "head" in _CACHE:
+        return _CACHE["head"], _CACHE["cols"], _CACHE["med"]
+    lab = pd.read_parquet("data/derived/recording_labels_sap.parquet").drop_duplicates("eeg_id")
+    d = lab[(lab.clean_pair == True) & lab.age.notna()].copy()                                    # noqa: E712
+    foc = d.slowing_focal.fillna(False); gen = d.slowing_gen_pathologic.fillna(False); cn = d.clean_normal.fillna(False)
+    d = d[(foc | cn | (gen & ~foc)) & (~d.eeg_id.astype(str).str.startswith(("MOE_", "ON_")))].copy()
+    d["y"] = foc[d.index].astype(int).values
+    d = d[[os.path.exists(f"{SM}/eeg_id={i}") for i in d.eeg_id]]
+    tr = pd.concat([d[d.y == 1].sample(min(sample, int((d.y == 1).sum())), random_state=0),
+                    d[d.y == 0].sample(min(sample, int((d.y == 0).sum())), random_state=0)])
+    Rtr = combined(list(zip(tr.eeg_id, tr.age))).join(tr.set_index("eeg_id").y).dropna(subset=["y"])
+    cols = [c for c in Rtr.columns if c != "y"]; med = Rtr[cols].median()
+    head = m54.Head().fit(Rtr[cols].fillna(med).values, Rtr.y.astype(int).values)
+    _CACHE.update(head=head, cols=cols, med=med)
+    return head, cols, med
+
+
+def focal_score(ids_ages):
+    """per-recording production focal score (index = eeg_id). Trains the head once (cached)."""
+    head, cols, med = train_production_focal()
+    R = combined(ids_ages).reindex(columns=cols)
+    return pd.Series(head.score(R.fillna(med).values), index=R.index)
+
+
 def main():
     lab = pd.read_parquet("data/derived/recording_labels_sap.parquet").drop_duplicates("eeg_id")
     d = lab[(lab.clean_pair == True) & lab.age.notna()].copy()                                   # noqa: E712

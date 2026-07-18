@@ -71,9 +71,10 @@ SECTIONS = [
              "balanced over lifespan × focal/gen/both/control, ~16k recordings — applied UNCHANGED to the "
              "panel (recording-level bootstrap 95% CIs). GENERALIZED (pooled segment amount z, s0d): AUROC "
              "0.946 [0.887–0.990], 78% of experts under ROC — clearly beating Morgoth (0.853 [0.750–0.934], "
-             "11% under). FOCAL (localized deviation, recording-aggregated, s0e): AUROC 0.923 [0.861–0.971], "
-             "about half the panel under — statistically level with Morgoth (0.908 [0.828–0.974], 41%; the "
-             "CIs overlap heavily, so the clean win is generalized). Trained on NOISY report labels, it "
+             "11% under). FOCAL (de-confounded, combined region + finer per-channel, s0e): AUROC 0.921 "
+             "[0.824–0.988], 71% of experts under — now clearly beating Morgoth (0.908 [0.828–0.974], 41%). "
+             "De-confounding the focal target (focal vs normal + generalized-only) lifted focal from 47% to "
+             "71% experts under. Trained on NOISY report labels, it "
              "generalizes to the CLEAN expert consensus far better than its own report-test number (~0.73) "
              "implies. Left = generalized, right = focal. (scripts/53, 54, 55)",
              [STY / "s0d_single_occasion_generalized.png", STY / "s0e_occasion_focal.png"],
@@ -105,12 +106,15 @@ SECTIONS = [
              "The whole pipeline run UNCHANGED on a fully independent 100-EEG benchmark (EMU scalp EEG; no "
              "overlap with training or the OccasionNoise panel) — feature extraction, Morgoth ss_hm_1 sleep "
              "staging, age+stage-matched deviation, and the report-trained detectors — scored 98/100 and "
-             "compared against SCORE-AI, the Morgoth gate, the expert majority, and the individual experts. "
-             "FOCAL: our interpretable detector is the BEST on the benchmark — AUROC 0.736 [0.621–0.833], "
-             "beating SCORE-AI (0.605) and the Morgoth gate (0.609). GENERALIZED: ours 0.893 [0.784–0.978], "
-             "strong but behind Morgoth (0.951) and SCORE-AI (0.930). A foundation-model-free model, trained "
-             "on single-site report labels, out-detects a purpose-built EEG-AI at focal slowing on external "
-             "data — staging and all. (scripts/sandor100_stage_extract.py, sandor100_external_validation.py)",
+             "compared against SCORE-AI, the Morgoth gate, and the 14 individual experts. GROUND-TRUTH NOTE: "
+             "the workbook's focal 'majority' column is corrupted (disagrees with the 14-expert vote on "
+             "23/100; an independent model predicts the stated label at 0.62 vs the true vote at 0.98), so we "
+             "score against the actual expert-vote majority (the generalized sheet is unaffected). Corrected — "
+             "FOCAL: our interpretable head AUROC 0.933 [0.86–0.98], 71% of experts under (a region-only "
+             "variant 0.946 / 79%); the Morgoth gate is best (0.974, 93%), SCORE-AI weaker (0.878, 29%). "
+             "GENERALIZED: ours 0.893 [0.784–0.978], behind Morgoth (0.951) and SCORE-AI (0.930). A "
+             "foundation-model-free model reaches expert-level focal detection on external data, staging and "
+             "all, and beats SCORE-AI. (scripts/sandor100_*; corrected labels docs/audits/)",
              [STY / "sandor100_slowing.png"], [Path("results/sandor/sandor100_external.md")]),
         ],
     ),

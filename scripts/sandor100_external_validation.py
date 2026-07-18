@@ -26,6 +26,8 @@ m54 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m5
 importlib.util.spec_from_file_location("m54", "scripts/54_single_model_train_eval.py").loader.exec_module(m54)
 m55 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m55", "scripts/55_recording_model.py"))
 importlib.util.spec_from_file_location("m55", "scripts/55_recording_model.py").loader.exec_module(m55)
+m66 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m66", "scripts/66_focal_combined.py"))
+importlib.util.spec_from_file_location("m66", "scripts/66_focal_combined.py").loader.exec_module(m66)
 m46 = m54.m49.m46
 m53.SEG_CAP = 10**9                                              # use ALL segments when scoring the 100 EDFs
 
@@ -65,7 +67,11 @@ def score_sandor(gen, foc, foc_med, amt_med):
         R = m55.aggregate(sf)
         foc_eeg = float(foc.score(R[FOC_R].fillna(foc_med).values)[0])
         rows.append({"eid": eid, "key": key, "ours_generalized": gen_eeg, "ours_focal": foc_eeg})
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    # FOCAL: use the production de-confounded combined head (scripts/66) instead of the amount-confounded one
+    fs = m66.focal_score(list(zip(df.eid, [age_of.get(k, np.nan) for k in df.key])))
+    df["ours_focal"] = df.eid.map(fs).fillna(df.ours_focal)
+    return df
 
 
 def eval_axis(scores, axis, mr_file, ax):
@@ -73,9 +79,12 @@ def eval_axis(scores, axis, mr_file, ax):
     d = pd.read_excel(MR / mr_file)
     d["key"] = d.file_name.astype(str).str.strip()
     m = scores.merge(d, on="key", how="inner")
-    y = m["majority"].astype(int).values
     expert_cols = [c for c in d.columns if c.startswith("expert_")]
     wide = m.set_index("key")[expert_cols].apply(pd.to_numeric, errors="coerce")
+    # GROUND TRUTH = the actual expert-vote majority. The workbook's `majority` column is CORRUPTED for the
+    # focal sheet (disagrees with the 14-expert vote on 23/100; an independent model predicts the vote at
+    # 0.976 vs the stated column at 0.62). Verified 2026-07-18; the generalized sheet is unaffected.
+    y = (wide.mean(axis=1).values >= 0.5).astype(int)
     pts = m46.expert_points(wide)
     models = [("ours", m[f"ours_{axis}"].values, C_OURS), ("Morgoth", m["M_pred"].values, C_MORG),
               ("SCORE-AI", m["S_pred"].values, C_SAI)]

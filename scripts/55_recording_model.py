@@ -71,6 +71,12 @@ def main():
         Xtr = tr[cols].fillna(tr[cols].median()); ytr = tr[ylab].astype(int)
         heads[tag] = m54.Head().fit(Xtr.values, ytr.values)
         R[f"score_{tag}"] = heads[tag].score(R[cols].fillna(tr[cols].median()).values)
+    # FOCAL: override with the production de-confounded combined head (scripts/66) for the panel recordings
+    on = [(e, R.loc[e, "age"]) for e in R.index if str(e).startswith("ON_")]
+    if on:
+        _s = importlib.util.spec_from_file_location("m66", "scripts/66_focal_combined.py")   # lazy: avoid import cycle
+        m66 = importlib.util.module_from_spec(_s); _s.loader.exec_module(m66)
+        fs = m66.focal_score(on); R.loc[fs.index, "score_focal"] = fs.values
 
     head = pd.read_parquet("data/derived/gate_eeg_level_rerun.parquet").drop_duplicates("eeg_id").set_index("eeg_id")
     E = moe_expert_consensus()
