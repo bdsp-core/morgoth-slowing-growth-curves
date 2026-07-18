@@ -86,7 +86,9 @@ def per_fid(args):
                     z[m] = m43.z_of(NORM[key], age, s.values[m])
             Z[r] = z
         M = np.vstack([Z[r] for r in LOC_REGIONS])                    # region x segment
-        pk = np.nanmax(M, axis=0); med = np.nanmedian(M, axis=0)
+        with np.errstate(all="ignore"):
+            pk = np.nanmax(M, axis=0); med = np.nanmedian(M, axis=0); mn = np.nanmin(M, axis=0)
+            ext = np.nanmean(M > 1.0, axis=0)                          # spatial extent: frac of regions z>1
         ok = np.isfinite(pk)
         peakZ[ft] = pk[ok]; focal[ft] = (pk - med)[ok]
         if ft == "rel_delta":
@@ -96,6 +98,12 @@ def per_fid(args):
         if len(v):
             out[f"peak_{ft}_mean"] = v.mean(); out[f"peak_{ft}_p90"] = np.quantile(v, .9); out[f"peak_{ft}_max"] = v.max()
             out[f"foc_{ft}_mean"] = fv.mean(); out[f"foc_{ft}_p90"] = np.quantile(fv, .9); out[f"foc_{ft}_max"] = fv.max()
+            # GENERALIZED spatial signal (diffuse vs focal): is even the least-affected region slow, and how
+            # WIDESPREAD is the slowing (extent). High only when slowing is everywhere, not in one focus.
+            mm = med[ok]; nn = mn[ok]; ee = ext[ok]
+            out[f"gmed_{ft}_mean"] = mm.mean(); out[f"gmed_{ft}_p90"] = np.quantile(mm, .9)
+            out[f"gmin_{ft}_mean"] = nn.mean(); out[f"gmin_{ft}_p90"] = np.quantile(nn, .9)
+            out[f"gext_{ft}_mean"] = ee.mean(); out[f"gext_{ft}_p90"] = np.quantile(ee, .9)
     # asymmetry z (max over region pairs)
     for ft in FOC_F:
         allz = []
@@ -150,6 +158,9 @@ def main():
     with ThreadPoolExecutor(max_workers=12) as ex:
         rows = [r for r in ex.map(per_fid, [(i, float(age.get(i, np.nan))) for i in fids]) if r is not None]
     T = pd.DataFrame(rows).set_index("fid"); T["age"] = age.reindex(T.index)
+    # generalized: whole-head amount z + age. (Spatial extent/uniformity features gmed_/gmin_/gext_ were
+    # tried and HURT — focal & generalized co-occur, so amount is not focal-contaminated, and the extra
+    # features only overfit N=100. Amount-only is the honest best.)
     amt = [c for c in T.columns if c.startswith("amt_")] + ["age"]
     foc = [c for c in T.columns if c.startswith(("peak_", "foc_", "asym_", "peak_region"))] + ["age"]
     V = pd.read_parquet("data/derived/occasion_expert_votes.parquet")
