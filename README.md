@@ -1,12 +1,17 @@
 # morgoth-slowing-growth-curves
 
-Lifespan **× sleep-stage normative "growth curves"** for quantitative EEG **slowing**, with a two-stage
-system that **detects** pathological slowing (focal vs generalized) and produces a governed, clinician-style
-**description** — validated against clinical EEG reports and the human inter-rater ceiling. Part of the
-[bdsp-core](https://github.com/bdsp-core) automated-EEG effort.
+Lifespan **× sleep-stage normative "growth curves"** for quantitative EEG **slowing**. A single per-segment
+**deviation-from-normal field** both **detects** pathological slowing (focal vs generalized) — beating an
+18-expert panel, a foundation-model gate, and the published van Putten qEEG lineage — and reads OUT a
+governed, clinician-style **description**, validated against clinical EEG reports and the human inter-rater
+ceiling. Part of the [bdsp-core](https://github.com/bdsp-core) automated-EEG effort.
 
-> **Start here → [docs/analysis_plan.md](docs/analysis_plan.md)** — the pre-registered Statistical Analysis
-> Plan (the SAP). It is the single source of truth for how data is prepared, analyzed, and reported.
+> **Reproduce everything → `bash scripts/reproduce_story.sh`** (see
+> [docs/REPRODUCE.md](docs/REPRODUCE.md)). The narrative write-up is the **story dashboard**
+> (`results/story_dashboard.html`) and the manuscript ([docs/manuscript_draft.md](docs/manuscript_draft.md)).
+>
+> **Analysis plan → [docs/analysis_plan.md](docs/analysis_plan.md)** — the pre-registered SAP, the source of
+> truth for how data is prepared, analyzed, and reported.
 
 ## The system
 
@@ -45,7 +50,8 @@ for provenance, never an input to the run).
 text + S3 routing. Built by `scripts/{120,88,121,124,125,126,127}`, then **pre-flight resolved**
 (`scripts/129`) so every BIDS row provably maps to one real EDF, with unresolvable rows drop-and-replaced
 (`scripts/130`, N held). Earlier drafts: v3 (14,957, cohort+backfill), v5 (27,524, +panels). Coverage:
-[docs/coverage_report.md](docs/coverage_report.md). Go/no-go: [docs/RUN_READINESS.md](docs/RUN_READINESS.md).
+[docs/coverage_report.md](docs/coverage_report.md). The analysis cohort after inclusion is **25,536
+recordings / 21,757 patients** ([results/table1.md](results/table1.md)).
 
 ## Layout
 
@@ -57,9 +63,11 @@ src/morgoth_slowing/
   fleet/         ingest.py — shared fleet-ingest helpers
   report/        parse.py — report NLP; phrase generation
   norms/ scoring/ viz/
-scripts/         fleet path: worker (31) + ledger (33) + verify (32) + pre-flight (129,130) +
-                 manifest builders (120–128); analysis (47,85–116, gamlss_fit.R) = post-fleet rebuild;
-                 scripts/archive/ = legacy (incl. old worker 30)
+scripts/         reproduce_story.sh = one-command rebuild; build_story_dashboard.py = dashboard;
+                 fleet path: worker (31) + ledger (33) + verify (32) + pre-flight (129,130) + manifest
+                 builders (120–128); analysis: norms/deviation (43,76,111,115,gamlss_*.R), detection
+                 (49,53–55), description (56–58), benchmarks (recompute_vanputten_fullcov,
+                 recompute_human_ceiling_v6); scripts/archive/ = superseded (see docs/archive/ARCHIVE_MANIFEST.md)
 data/manifest/   frozen run + report manifests
 references/      van Putten qEEG sources (README + .bib; PDFs gitignored)
 tests/

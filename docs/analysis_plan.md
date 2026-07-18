@@ -1,6 +1,6 @@
 # Statistical Analysis Plan — Lifespan × sleep-stage normative growth curves for EEG slowing
 
-**Status:** DRAFT for colleague review, to be finalized *before* the fleet re-run.
+**Status:** DRAFT.
 **Version:** 1.0 (2026-07-10). **Owner:** MBW.
 **Companion docs:** `docs/DATA_INVENTORY.md` (data tables), `docs/data_dictionary.md` (canonical column
 definitions), `docs/run_manifest_schema.md` (frozen EEG list), `docs/claims_table.md` (clause governance),
@@ -16,8 +16,8 @@ definitions), `docs/run_manifest_schema.md` (frozen EEG list), `docs/claims_tabl
 
 ## 1. Background and rationale
 
-Clinical EEG reports grade "slowing" (excess low-frequency power / paucity of faster activity) with
-poor reliability — expert agreement for slowing is the *worst* of the major EEG findings (Fleiss
+Clinical EEG reports grade "slowing" (excess low-frequency power or paucity of faster activity or both) with
+poor reliability. Expert agreement for slowing is the *worst* of the major EEG findings (Fleiss
 κ ≈ 0.37 focal, 0.45 generalized; within-rater 0.56–0.64; band-word κ 0.09–0.38). Slowing is also
 strongly age- and vigilance-dependent: physiologic drowsiness and sleep produce exactly the spectral
 changes that define pathologic slowing awake. No widely used tool separates "abnormal for this
@@ -27,7 +27,10 @@ We build **lifespan × sleep-stage normative growth curves** for quantitative EE
 conditioned on age, sleep stage, and scalp region, and a **two-stage system** on top:
 
 - **GATE (Morgoth foundation model): whether and what.** Presence of pathologic slowing; focal vs
-  generalized (or both - they are not mutually exclusive). This is the only module allowed to make the categorical call. Morgoth can make these determinations at the level of individual 15 second segments, or at the whole EEG level. Here we rely on the 15-second segment level, and make any whole level EEG determination by pooling over the 15 second segment determinations (e.g. taking the maximum, or median, or mean). 
+  generalized (or both - they are not mutually exclusive). This is the only module allowed to make the categorical call. Morgoth can make these determinations at the level of individual 30 second segments, or at the whole EEG level. Here we rely on the 30-second segment level, and make any whole level EEG determination by pooling over the 30 second segment determinations (e.g. taking the maximum, or median, or mean). 
+
+>> i have corrected the "15 second" statement to "30 secone" - the standard window of analysis should be 30 seconds, not 15. in cases where only 15 seconds is available, we use 0 padding to extend it to 30 so that morgoth can still function. 
+
 - **DESCRIBE (normative deviation field): how much, where, which band, how prevalent, how persistent,
   in which stage(s).** A measurement layer that never makes the categorical call.
 
@@ -35,6 +38,9 @@ conditioned on age, sleep stage, and scalp region, and a **two-stage system** on
 - `z` / `S` — the **unsupervised** normative deviation and the amount score. Because they are fit only
   to clinician-labeled normals and never see the report label of abnormal cases, they may support the
   claim *"we measure slowing readers under-report."*
+
+>> need to describe here what is z and what is S (this is the first usage)
+
 - **Morgoth gate** and any **supervised** score — may **never** support that claim (they are trained
   toward the report and would be circular).
 
@@ -62,12 +68,12 @@ inter-rater ceiling.
 
 **Secondary aims.**
 - S1. Detection AUROC for abnormal vs clean-normal, whole-recording, vigilance-matched.
-- S2. Focal vs generalized discrimination and, within each, localization (side / lobe; anterior–posterior
+- S2. Focal vs generalized discrimination and, within each, localization (side and lobe(s) for focal; anterior–posterior
   predominance for generalized).
-- S3. Reliability of each quantitative descriptor (amount, prevalence, band, persistence).
+- S3. Characteristics of each quantitative descriptor (amount, prevalence, band, persistence).
 - S4. Convergent validity vs report band/side/topography; divergent behavior where reports are known
   unreliable (the "we see what readers miss" analysis — **unsupervised path only**).
-- S5. Position system performance relative to the human ceiling — the honest bar.
+- S5. Position system performance relative to the human ceiling.
 - S6. **Inter-rater reliability (IRR).** On the EEGs scored by multiple experts (§3.6), measure
   between-rater and within-rater agreement for slowing (presence, focal/generalized, band, side/topography)
   — this *is* the human ceiling — and evaluate our system against those same EEGs, run through the

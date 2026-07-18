@@ -44,7 +44,15 @@ SECTIONS = [
              "calibration) while abnormal recordings are shifted up (discriminative). This is the measurement "
              "layer the rest of the story stands on.",
              [STY / "s2_segment_deviation.png"], [RES / "s2_segment_deviation.md"]),
-            ("1c. Supplementary curve bank (per feature, per stage)",
+            ("1c. The spatial view — regional development by age &amp; sleep stage (topoplots)",
+             "The same normal population, rendered across the scalp: each of the 18 bipolar channels "
+             "monopolarized onto a standard 10-20 layout (median over patients), rows = sleep stage, "
+             "columns = age bin. What the whole-head curves compress into one line, the head shows in space — "
+             "frontal-predominant relative delta, highest in infancy across every stage, declining "
+             "monotonically toward adulthood, and deepest in N3. This is the regional substrate the "
+             "localization descriptors (§3) read against. (scripts/77_topoplots_by_age.py)",
+             [G / "topo_rel_delta_by_age_stage.png", G / "topo_TAR_by_age_stage.png"], []),
+            ("1d. Supplementary curve bank (per feature, per stage)",
              "The full stage-resolved normal curves for each feature (whole head); the complete feature × "
              "region bank lives in figures/curves/.",
              [S / "rel_delta__whole_head.png", S / "TAR__whole_head.png", S / "DAR__whole_head.png"], []),
@@ -78,6 +86,69 @@ SECTIONS = [
              "Those are IN-DOMAIN cross-validated numbers on the panel itself — an optimistic upper bound "
              "(focal up to 53%, generalized up to 78% of experts under); the honest external number is §2a.",
              [STY / "s0_occasion_ours_v4_focal.png"], [RES / "s0c_morgoth_free.md"]),
+            ("2c. Benchmark against the published qEEG literature (van Putten lineage)",
+             "How far does the learned / normative approach exceed the established quantitative-EEG indices? "
+             "We recomputed the van Putten family — Brain Symmetry Index and its revised pairwise form, the "
+             "diffuse-slowing index Q_SLOWING, DAR, DTABR = (δ+θ)/(α+β), asymmetry Q_ASYM, SEF95 — faithfully "
+             "on the same signals, in three arms: raw as published, age-conditioned against our clean-normal "
+             "curves, and against the Morgoth gate. Morgoth p_slowing reaches AUROC 0.875 / 0.911 / 0.870 "
+             "(abnormal / generalized / focal) versus the best van Putten arm at 0.707 / 0.773 / 0.723 — a "
+             "+0.14 to +0.17 margin, intervals non-overlapping. Two lessons: (i) age-conditioning the SLOWING "
+             "ratios on our normative curves genuinely improves them (Q_SLOWING/DAR/DTABR/SEF95 +0.03 to "
+             "+0.05) while age-conditioning the ASYMMETRY indices does not (symmetry is age-invariant) — a "
+             "clean positive control for the normative framework; (ii) even age-conditioned, the classical "
+             "indices trail the learned representation, and our Morgoth-free deviation model (§2a) sits well "
+             "above this ceiling too. (scripts/producer_vanputten_sap.py, recompute_vanputten_fullcov.py)",
+             [Path("results/figs/vanputten_comparison.png")], []),
+        ],
+    ),
+    (
+        "3", "Description — reading OUT the slowing, validated by contrast",
+        "Detection says slowing is present; DESCRIPTION says what kind, where, and how persistent. Every "
+        "descriptor is read off the SAME per-segment deviation field (type/amount, laterality, region, "
+        "anterior–posterior gradient, persistence, sleep stage). Each is validated the way the SAP requires — "
+        "by CONTRAST (dose-response): the descriptor is HIGHER when the report mentions that finding than when "
+        "it does not — never as a binary classification. Panel-trained (home-field) numbers are cut entirely. "
+        "(scripts/56 descriptors, 57 panels, 58 words; N=23,869 report recordings.)",
+        [
+            ("D1. Type &amp; amount (delta / theta)",
+             "Whole-head delta-excess and theta-excess deviation z per segment → recording aggregates. Left: the "
+             "delta-z vs theta-z plane (report-slowing shifts up-and-right of clean-normal). Right: dose-response "
+             "— our THETA measure is higher when the report says theta (1.39 vs 1.08, p&lt;1e-40) and our DELTA "
+             "measure is higher when the report says delta (1.63 vs 1.32, p≈0). The measure tracks the band word.",
+             [STY / "s4_d1.png"], [RES / "s4_description.md"]),
+            ("D2. Laterality &amp; region (focal)",
+             "Left: signed left-minus-right asymmetry z by the report's side — left reports sit at +0.36, "
+             "bilateral ~0, right at −0.44 (clean monotonic separation). Right: a lobe's relative prominence "
+             "(focality = that lobe vs the rest of the head) rises when the report names that lobe — temporal, "
+             "frontal and posterior all show the dose-response (all p&lt;1e-3). Absolute temporal magnitude runs "
+             "high everywhere (a temporal-delta attractor), so relative prominence is the specific descriptor.",
+             [STY / "s4_d2.png"], []),
+            ("D3. Anterior–posterior predominance (generalized)",
+             "Anterior-minus-posterior delta z by the report's generalized topography. Report-anterior cases carry "
+             "a less posterior-predominant gradient than report-posterior cases (−0.07 vs −0.22, p≈9e-6). A real "
+             "but modest gradient — most generalized slowing is diffuse/unspecified, as the report topography is.",
+             [STY / "s4_d3.png"], []),
+            ("D4. Persistence vs intermittence",
+             "Prevalence (fraction of abnormal segments) and longest continuous run per recording, on the ACNS-style "
+             "occasional→continuous scale. Report-slowing carries a fat continuous-prevalence tail while clean-normal "
+             "piles at ~0 (median 0.19 vs 0.05). There is no structured report continuous/intermittent field, so this "
+             "is shown as internal reasonableness (the distribution shape + run length), not a report contrast.",
+             [STY / "s4_d4.png"], []),
+            ("D5. By sleep stage — slowing is carried into sleep",
+             "Descriptors resolved by sleep stage. Left: mean slowing prevalence sits above clean-normal at EVERY "
+             "stage — wake AND sleep (e.g. N2 0.32 vs 0.12). Right: band deviation by stage. Among recordings the "
+             "report does NOT call slowing, N2 deviation is still elevated over clean-normal N2 (0.225 vs 0.117) — "
+             "consistent with the established V4a finding that readers under-report sleep slowing.",
+             [STY / "s4_d5.png", G / "v4a_wake_sleep.png"], []),
+            ("D6. From descriptors to WORDS",
+             "The descriptors are assembled into a templated clinical sentence (e.g. “Frequent left temporal "
+             "theta-delta slowing, most prominent in N2.”). Discrete components with a clean report word are "
+             "concordant well above chance — side 56%, region 46% (chance 33%); band is modest (39%) because "
+             "the slow bands co-occur (its honest test is the continuous D1 contrast). Focal-vs-diffuse is the "
+             "detection head's call (§2), not re-derived here. A reasonableness review set (structured labels only; "
+             "raw report text withheld as PHI) shows the generated sentence beside the report, ✓/✗ per component.",
+             [STY / "s4_d6.png"], [RES / "s4_d6.md"]),
         ],
     ),
 ]
@@ -147,6 +218,15 @@ def main():
             parts.append("</div>")
         parts.append("</section>")
 
+    # Table 1 — cohort description, rendered at the very top (before the story sections)
+    t1 = Path("results/table1.md")
+    t1_html = (f'<section id="cohort"><h2><span class="n">T1</span>Cohort</h2>'
+               f'<p class="lede">The analysis cohort — routine + overnight clinical EEG across the lifespan, '
+               f'with the clean-normal reference and the abnormal (focal / generalized slowing) strata that '
+               f'every downstream analysis is defined on.</p>'
+               f'<div class="block"><h3>Table 1 — Cohort characteristics (SAP §10)</h3>'
+               f'{table(t1)}</div></section>') if t1.exists() else ""
+
     html = f"""<meta charset="utf-8"><title>Slowing — story dashboard</title>
 <style>
 :root{{color-scheme:dark}} body{{background:#0f1113;color:#dfe3e6;font:15px/1.55 -apple-system,system-ui,sans-serif;margin:0}}
@@ -170,10 +250,11 @@ h4{{margin:6px 0}} pre{{background:#0b0d0f;padding:10px;border-radius:6px}}
 </style>
 <div class="wrap">
 <h1>EEG slowing — a normative-deviation model, benchmarked against experts and Morgoth</h1>
-<p class="sub">Foundation → detection (description next): growth curves give every segment a stage/age-matched
+<p class="sub">Foundation → detection → description: growth curves give every segment a stage/age-matched
 deviation z; a Morgoth-free model on that field, trained only on report data, beats the expert panel and
-Morgoth on OccasionNoise.
+Morgoth on OccasionNoise; and the same field is read OUT into a validated clinical description.
 Commit {commit} · {n_seg:,} recordings · generated {time.strftime('%Y-%m-%d %H:%M')}</p>
+{t1_html}
 {''.join(parts)}
 </div>"""
     OUT.write_text(html)
