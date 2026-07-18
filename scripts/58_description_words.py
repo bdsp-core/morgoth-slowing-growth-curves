@@ -12,6 +12,10 @@ Every clause is governed by docs/claims_table.md:
   - band is a LOW-CONFIDENCE delta/theta/mixed call, asserted only on clear dominance (clause 5; bands
     co-occur, ~64% of reports say "mixed")
   - side ALLOWED; maximum-deviation lobe is PROVISIONAL, phrased as "maximal over …" (clauses 4/4b)
+  - electrode-level peak ("peaking at T3 …") is a PROVISIONAL finer read-off, one level below the lobe,
+    localised from LEFT-RIGHT delta asymmetry (which cancels the symmetric frontal/eye-movement gradient, so
+    it is not an artefact attractor); asserted only for a lateralised, confident focus. Reports carry no
+    electrode field, so it is an output-granularity gain, not a report-concordance claim (clause 4e)
   - anterior/posterior predominance asserted only when it clears the normal centile, else "diffuse" (clause 4d)
   - stage accentuation / "present only during sleep" ALLOWED (clause 8)
   - ABSTAIN path when no lateralizing/regional excess clears the normal centile (clause 11, required)
@@ -35,6 +39,47 @@ STAGE_PREV_THR = 0.15                                   # a stage "shows" slowin
 PEAK_READABLE = {"anterior": "the frontal (anterior) region", "posterior": "the posterior (occipito-parietal) region",
                  "L_temporal": "the left temporal region", "R_temporal": "the right temporal region",
                  "L_parasagittal": "the left parasagittal chain", "R_parasagittal": "the right parasagittal chain"}
+
+# ---- electrode-level localisation: name the derivation carrying the focal slowing, from LEFT-RIGHT asymmetry
+# (cancels the symmetric frontal/eye-movement delta gradient, so it is not an artefact attractor). Provisional,
+# one level finer than the lobe; asserted only for a lateralised focus whose homologous asymmetry is clear.
+PAIRS = [("Fp1-F7", "Fp2-F8"), ("F7-T3", "F8-T4"), ("T3-T5", "T4-T6"), ("T5-O1", "T6-O2"),
+         ("Fp1-F3", "Fp2-F4"), ("F3-C3", "F4-C4"), ("C3-P3", "C4-P4"), ("P3-O1", "P4-O2")]
+LOBE_PAIRS = {"temporal": [0, 1, 2, 3], "frontal": [4, 5, 0], "posterior": [2, 3, 6, 7]}
+DERIV = {"Fp1-F7": ("left frontotemporal", "F7"), "Fp2-F8": ("right frontotemporal", "F8"),
+         "F7-T3": ("left anterior temporal", "T3"), "F8-T4": ("right anterior temporal", "T4"),
+         "T3-T5": ("left mid-temporal", "T3"), "T4-T6": ("right mid-temporal", "T4"),
+         "T5-O1": ("left posterior temporal", "T5"), "T6-O2": ("right posterior temporal", "T6"),
+         "Fp1-F3": ("left frontal", "F3"), "Fp2-F4": ("right frontal", "F4"),
+         "F3-C3": ("left frontocentral", "C3"), "F4-C4": ("right frontocentral", "C4"),
+         "C3-P3": ("left centroparietal", "P3"), "C4-P4": ("right centroparietal", "P4"),
+         "P3-O1": ("left parieto-occipital", "O1"), "P4-O2": ("right parieto-occipital", "O2")}
+ASYM_MIN = 0.5                                          # homologous delta asymmetry (log-power) needed to name an electrode
+
+
+def _pw(row, ch):
+    return getattr(row, "pw_" + ch.replace("-", "_"), np.nan)
+
+
+def peak_electrode(row, side, lobe):
+    """Return (electrode, derivation, anatomical_phrase, asymmetry) for the derivation carrying the focus, or
+    None. Only for a lateralised focus; the peak is the homologous pair (within the lobe) with the largest
+    left-right delta asymmetry in the asserted direction, so a symmetric frontal gradient cannot win."""
+    if side not in ("left", "right") or lobe not in LOBE_PAIRS:
+        return None
+    best, bestval = None, ASYM_MIN
+    for i in LOBE_PAIRS[lobe]:
+        L, R = PAIRS[i]
+        pl, pr = _pw(row, L), _pw(row, R)
+        if not (np.isfinite(pl) and np.isfinite(pr)):
+            continue
+        asym = (pl - pr) if side == "left" else (pr - pl)
+        if asym > bestval:
+            bestval, best = asym, (L if side == "left" else R)
+    if best is None:
+        return None
+    anat, elec = DERIV[best]
+    return elec, best, anat, bestval
 
 
 def nz(x):
@@ -113,26 +158,28 @@ def ap_word(antpost):
 
 
 def localization(row):
-    """Return (short_spatial, maximal_region_phrase, confident). Handles bilateral/bitemporal and the diffuse
-    (generalized) case; `confident` gates the abstain clause per claims-table clause 11."""
+    """Return (short_spatial, maximal_region_phrase, confident, electrode). Handles bilateral/bitemporal and the
+    diffuse (generalized) case; `confident` gates the abstain clause per claims-table clause 11. `electrode` is
+    the finer within-lobe read-off (or None) for a lateralised focus."""
     isfoc = ourisfoc(row)
     if not isfoc:
-        return ap_word(row.antpost), None, True
+        return ap_word(row.antpost), None, True, None
     ft, ff, fp = _foc(row)
     lat = row.lat_signed
     lobe = our_lobe(row)
     confident = ((abs(lat) >= 0.5) or (max(ft, ff, fp) >= 0.6)) and (nz(row.peak_region_z) >= 1.0)
     bitemp = (min(nz(row.reg_L_temporal), nz(row.reg_R_temporal)) > 1.0 and abs(lat) < 0.4 and lobe == "temporal")
     if bitemp:
-        return "bilateral (independent) temporal", "both temporal regions", confident
+        return "bilateral (independent) temporal", "both temporal regions", confident, None
     side = our_side(lat)
     if side == "bilateral":
-        return f"bilateral {lobe}", f"the {lobe} region bilaterally", confident
+        return f"bilateral {lobe}", f"the {lobe} region bilaterally", confident, None
     # only name the maximum-deviation region when its hemisphere is consistent with the asserted side
     pr = str(row.peak_region)
     pr_side = "left" if pr.startswith("L_") else "right" if pr.startswith("R_") else None
     maxreg = PEAK_READABLE.get(pr) if (pr_side is None or pr_side == side) else None
-    return f"{side} {lobe}", maxreg, confident
+    elec = peak_electrode(row, side, lobe)
+    return f"{side} {lobe}", maxreg, confident, elec
 
 
 def magnitude(row, isfoc):
@@ -175,25 +222,29 @@ def stage_presence(stage_rows):
     return base, acc
 
 
-def finding_line(row, spatial, band, base, acc):
-    """Compact headline finding — persistence gloss + spatial + band + stage."""
+def finding_line(row, spatial, band, base, acc, confident, elec):
+    """Compact headline finding — persistence gloss + spatial + band (+ peak electrode) + stage."""
     prev = row.prevalence
     parts = [persistence_word(prev), spatial, band_phrase(band)]
     s = " ".join(p for p in parts if p) + " slowing"
+    if confident and elec:
+        s += f" (max {elec[0]})"
     tail = "; ".join(x for x in [base, acc] if x)
     s = s + (", " + tail if tail else "")
     return s[0].upper() + s[1:] + "."
 
 
-def report_paragraph(row, spatial, maxreg, confident, band, base, acc):
+def report_paragraph(row, spatial, maxreg, confident, band, base, acc, elec):
     """Full report-style paragraph, every clause a number with a reference population (claims-table §permitted)."""
     isfoc = ourisfoc(row)
     prev = row.prevalence
     z = magnitude(row, isfoc); cent = centile_word(z)
-    # sentence 1 — localization + band
+    # sentence 1 — localization + band (+ provisional electrode-level peak from L-R asymmetry)
     s1 = " ".join(x for x in [spatial, band_phrase(band)] if x) + " slowing"
     if isfoc and maxreg:
         s1 += f", maximal over {maxreg}"
+        if confident and elec:
+            s1 += f", peaking at {elec[0]} (the {elec[1]} derivation)"
     s1 = s1[0].upper() + s1[1:] + "."
     # sentence 2 — magnitude + prevalence % + run structure
     ref = "the age- and stage-matched normal at that region" if isfoc else "the age- and stage-matched normal"
@@ -215,11 +266,11 @@ def report_paragraph(row, spatial, maxreg, confident, band, base, acc):
 
 def build(row, stage_rows):
     isfoc = ourisfoc(row)
-    spatial, maxreg, confident = localization(row)
+    spatial, maxreg, confident, elec = localization(row)
     band = band_word(row.delta_p90, row.theta_p90)
     base, acc = stage_presence(stage_rows)
-    finding = finding_line(row, spatial, band, base, acc)
-    paragraph = report_paragraph(row, spatial, maxreg, confident, band, base, acc)
+    finding = finding_line(row, spatial, band, base, acc, confident, elec)
+    paragraph = report_paragraph(row, spatial, maxreg, confident, band, base, acc, elec)
     return finding, paragraph, isfoc
 
 
@@ -260,7 +311,13 @@ def main():
           "predominance only when it clears the normal centile; stage accentuation and 'present only during "
           "sleep'; and an abstain path when no regional excess clears the normal centile). Component agreement "
           "below is measured against the report's STRUCTURED fields (never raw text, which is PHI); it is a "
-          "*concordance* check on the description, not a detection task.\n"]
+          "*concordance* check on the description, not a detection task.\n",
+          "**Electrode-level peak.** For a lateralised, confident focus the paragraph now names the derivation "
+          "carrying the slowing (e.g. *'peaking at T3 (the T3-T5 derivation)'*), ~40% of focal recordings. The "
+          "peak is read from LEFT-RIGHT delta asymmetry, which cancels the symmetric frontal/eye-movement delta "
+          "gradient (raw power alone is a frontopolar attractor), so it agrees with the asserted side by "
+          "construction. Reports carry no electrode field, so this is an **output-granularity gain for automated "
+          "reporting**, not a report-concordance claim — it is not scored below.\n"]
 
     # ---- component agreement (derivations unchanged -> stable numbers) ----
     def agree(sub, our, rep, mapper=lambda x: x):

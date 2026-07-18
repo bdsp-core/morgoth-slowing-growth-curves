@@ -3,8 +3,8 @@
 Our BRIEF finding line and FULL report paragraph (governed by docs/claims_table.md — magnitude in SD/centile, no severity adjective) beside the clinical report's STRUCTURED descriptors (raw report text withheld as PHI). Regional strip = per-region delta-excess deviation z (focal = one region high; diffuse = broadly elevated).
 
 **Case 1 — Focal slowing · peak 3.1 SD (>99.9th centile) · prominent in REM · 52M**  
-- Ours (brief): Frequent right temporal delta slowing, present in wakefulness and sleep; most prominent in REM sleep.  
-- Ours (full): Right temporal delta slowing, maximal over the right parasagittal chain. Peak deviation 3.1 SD above the age- and stage-matched normal at that region (>99.9th centile), abnormal in 44% of analysed segments (frequent); longest continuous run ≈32.4 min over 702 episodes. Present in wakefulness and sleep; most prominent in REM sleep.  
+- Ours (brief): Frequent right temporal delta slowing (max T4), present in wakefulness and sleep; most prominent in REM sleep.  
+- Ours (full): Right temporal delta slowing, maximal over the right parasagittal chain, peaking at T4 (the T4-T6 derivation). Peak deviation 3.1 SD above the age- and stage-matched normal at that region (>99.9th centile), abnormal in 44% of analysed segments (frequent); longest continuous run ≈32.4 min over 702 episodes. Present in wakefulness and sleep; most prominent in REM sleep.  
 - Report (structured): focal slowing, right (mixed)
 
 **Case 2 — Focal slowing · peak 2.7 SD (99th centile) · prominent in N2 · 66M**  
@@ -13,8 +13,8 @@ Our BRIEF finding line and FULL report paragraph (governed by docs/claims_table.
 - Report (structured): focal slowing, left frontal (mixed)
 
 **Case 3 — Focal slowing · peak 1.8 SD (96th centile) · prominent in N1 · 33F**  
-- Ours (brief): Occasional left temporal theta slowing, present in wakefulness and sleep; activated in drowsiness.  
-- Ours (full): Left temporal theta slowing, maximal over the left temporal region. Peak deviation 1.8 SD above the age- and stage-matched normal at that region (96th centile), abnormal in 4% of analysed segments (occasional); longest continuous run ≈2.8 min over 131 episodes. Present in wakefulness and sleep; activated in drowsiness.  
+- Ours (brief): Occasional left temporal theta slowing (max T5), present in wakefulness and sleep; activated in drowsiness.  
+- Ours (full): Left temporal theta slowing, maximal over the left temporal region, peaking at T5 (the T5-O1 derivation). Peak deviation 1.8 SD above the age- and stage-matched normal at that region (96th centile), abnormal in 4% of analysed segments (occasional); longest continuous run ≈2.8 min over 131 episodes. Present in wakefulness and sleep; activated in drowsiness.  
 - Report (structured): focal slowing, left temporal (mixed)
 
 **Case 4 — Generalized slowing · peak 3.1 SD (99th centile) · prominent in W · 16M**  

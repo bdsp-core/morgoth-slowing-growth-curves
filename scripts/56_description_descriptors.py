@@ -20,9 +20,46 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np, pandas as pd
 
 DEV = "data/derived/segment_deviation"
+SM = "data/derived/segment_master"                     # per-channel band power (for within-region electrode read-off)
 REGIONS = ["anterior", "posterior", "L_temporal", "R_temporal", "L_parasagittal", "R_parasagittal"]
 SEG_MIN = 14.0 / 60.0                                   # 15 s epoch, 14 s step -> minutes per segment
 THR = 1.5                                               # a segment is "abnormal" for a band when its z exceeds this
+
+# double-banana derivations per region (same montage as scripts/43); used to localise the peak WITHIN a region
+CHANMAP = {"L_temporal": ["Fp1-F7", "F7-T3", "T3-T5", "T5-O1"], "R_temporal": ["Fp2-F8", "F8-T4", "T4-T6", "T6-O2"],
+           "L_parasagittal": ["Fp1-F3", "F3-C3", "C3-P3", "P3-O1"], "R_parasagittal": ["Fp2-F4", "F4-C4", "C4-P4", "P4-O2"],
+           "anterior": ["Fp1-F7", "F7-T3", "Fp1-F3", "F3-C3", "Fp2-F8", "F8-T4", "Fp2-F4", "F4-C4", "Fz-Cz"],
+           "posterior": ["T3-T5", "T5-O1", "C3-P3", "P3-O1", "T4-T6", "T6-O2", "C4-P4", "P4-O2", "Cz-Pz"]}
+
+
+DERIVS = sorted({c for cs in CHANMAP.values() for c in cs})
+
+
+def peak_channels(eid):
+    """Store per-derivation delta slow-power (p90 over segments) so the verbaliser can localise the focus one
+    level finer than the lobe. Electrode naming is done from LEFT-RIGHT asymmetry (in scripts/58), which cancels
+    the symmetric frontal/eye-movement delta gradient that dominates raw power; here we just carry the powers.
+    Returns {} if unavailable."""
+    f = f"{SM}/eeg_id={eid}/part.parquet"
+    if not os.path.exists(f):
+        return {}
+    try:
+        d = pd.read_parquet(f, columns=["segment", "channel", "artifact_flag", "log_delta"])
+    except Exception:
+        return {}
+    d = d[~d.artifact_flag.astype(bool)]
+    if d.empty:
+        return {}
+    w = d.pivot_table(index="segment", columns="channel", values="log_delta", aggfunc="mean")
+    if w.shape[1] < 2:
+        return {}
+    p90 = w.quantile(.9)                                # per-derivation slow-power (p90 over segments)
+    out = {f"pw_{c.replace('-', '_')}": float(p90[c]) for c in DERIVS if c in p90.index and np.isfinite(p90[c])}
+    pk = w.idxmax(axis=1)                               # per-segment argmax derivation -> spatial stability
+    if len(pk):
+        vc = pk.value_counts(normalize=True)
+        out["peak_channel"] = str(vc.index[0]); out["focus_persist"] = float(vc.iloc[0])
+    return out
 
 
 def wh(d, feat):
@@ -57,6 +94,7 @@ def one(eid):
     d = d.sort_values("t_start_s")
     rec = {"eeg_id": eid, "n_seg": len(d)}
     rec.update(descz(d))
+    rec.update(peak_channels(eid))                      # within-region peak derivation (electrode-level read-off)
     # laterality & ant-post on delta excess (left - right; anterior - posterior), averaged over segments
     def diff(a, b, feat):
         x = (d[f"z__{a}__{feat}"] - d[f"z__{b}__{feat}"]).to_numpy(); x = x[np.isfinite(x)]

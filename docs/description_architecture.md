@@ -158,7 +158,7 @@ Each is reported **per sleep stage** (the reader's expectation is stage-dependen
 | # | descriptor | definition | reported as |
 |---|---|---|---|
 | 1 | **Amount / excess** | median and p90 of `S` over that stage's segments | SD above age- and stage-matched normal, plus its centile in the clinician-normal distribution |
-| 2 | **Location** | `E(r) = S(r) − mean S over the *other* lobes`; take argmax | region + side, with the excess in SD |
+| 2 | **Location** | `E(r) = S(r) − mean S over the *other* lobes`; take argmax. **Electrode-level peak**: within the asserted lobe, the homologous derivation pair with the largest LEFT−RIGHT delta asymmetry (raw power is a frontopolar attractor; the asymmetry cancels the symmetric frontal/eye gradient) | region + side, with the excess in SD; plus a provisional "peaking at T3 (T3–T5 derivation)" one level finer than the lobe (clause 4e, no report field to score) |
 | 3 | **Band** | **primary principle (MBW): pick the feature(s) most correlated with the report's band word.** Redefine as the share of EXCESS power `ΔP_θ/(ΔP_δ+ΔP_θ)` in linear units vs the age/stage normal mean, AFTER the 7–8 Hz fix. The old z-difference index is deprecated. | continuous index; δ-predominant / mixed / θ-predominant, only if it clears the ceiling-referenced bar |
 | 4 | **Prevalence** | fraction of that stage's segments with `S` above the 95th centile of normals at that age and stage | % of segments; ACNS-style word only as a gloss |
 | 5 | **Persistence** | run-length structure of supra-threshold segments | longest run (min), number of episodes, median episode length |
