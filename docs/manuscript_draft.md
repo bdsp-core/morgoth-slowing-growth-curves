@@ -21,7 +21,7 @@ Jin Jing<sup>1,\*</sup>, Chenxi Sun<sup>2,\*</sup>, Wolfgang Ganglberger<sup>1</
 
 `[TBD before submission: academic degrees (MD/PhD), ORCIDs, and any additional/secondary affiliations for each author; confirm A. F. Struck affiliation (Washington University vs University of Wisconsin–Madison); confirm middle initials.]`
 
-*Revised draft (2026-07-18); numbers from the current run (`results/`, `data/derived/recording_meta.parquet` + `recording_labels*.parquet`). Pre-revision draft: `docs/archive/manuscript_draft_pre_v6revision_2026-07-18.md`. `[TBD: …]` = to finalize before submission. Target: **Clinical Neurophysiology** (Original Article), with an open-source package + a published per-recording label set. Submission-readiness checklist: `docs/cn_submission_plan.md`.*
+*Revised draft (2026-07-18); numbers from the current run (`results/`, `data/derived/recording_meta.parquet` + `recording_labels*.parquet`). `[TBD: …]` = to finalize before submission. Target: **Clinical Neurophysiology** (Original Article), with an open-source package + a published per-recording label set. Submission-readiness checklist: `docs/cn_submission_plan.md`.*
 
 ---
 

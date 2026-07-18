@@ -75,7 +75,7 @@ scripts/         reproduce_story.sh = one-command rebuild; build_story_dashboard
                  fleet path: worker (31) + ledger (33) + verify (32) + pre-flight (129,130) + manifest
                  builders (120–128); analysis: norms/deviation (43,76,111,115,gamlss_*.R), detection
                  (49,53–55), description (56–58), benchmarks (recompute_vanputten_fullcov,
-                 recompute_human_ceiling_v6); scripts/archive/ = superseded (see docs/archive/ARCHIVE_MANIFEST.md)
+                 recompute_human_ceiling_v6)
 data/manifest/   frozen run + report manifests
 references/      van Putten qEEG sources (README + .bib; PDFs gitignored)
 tests/
