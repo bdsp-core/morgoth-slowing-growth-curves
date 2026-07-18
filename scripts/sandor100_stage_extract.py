@@ -11,7 +11,7 @@ with checkpoints/ss_hm_1.pth and a torch+timm python.
 Run: PYTHONPATH=src KMP_DUPLICATE_LIB_OK=TRUE python3 scripts/sandor100_stage_extract.py
 """
 from __future__ import annotations
-import os, sys, shutil, importlib.util
+import os, sys, shutil, subprocess, tempfile, importlib.util
 from pathlib import Path
 import numpy as np, pandas as pd
 
@@ -66,7 +66,12 @@ def main():
         if (out / "part.parquet").exists():
             skip += 1; continue
         try:
-            data, chs, fs = load_edf_referential(str(p))
+            # copy off Box CloudStorage to local first, with a bounded timeout (Box on-demand download can
+            # hang; a big file times out and is skipped rather than wedging the whole run)
+            with tempfile.TemporaryDirectory() as td:
+                loc = os.path.join(td, "r.edf")
+                subprocess.run(["cp", str(p), loc], check=True, timeout=300)
+                data, chs, fs = load_edf_referential(loc)
             bip = ex.to_bipolar(ex.preprocess(data.astype(np.float32), fs), chs)
             segidx = ex.segment_indices(bip.shape[0]); centers = [((s + e) / 2 / fs) for s, e in segidx]
             stages = stage_one(eid, data, chs, fs, len(segidx), centers)

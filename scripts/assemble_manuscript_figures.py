@@ -36,7 +36,7 @@ FIGS = [
     ("Figure4_example_eeg_reports.png",     "figures/story/s4_examples_eeg_panel.png",           "63_example_eeg_traces.py"),
     ("FigureS_example_reports_text.png",    "figures/story/s4_examples_panel.png",               "62_example_reports_panel.py"),
     # external validation (Sandor_100; present once the SB pipeline has run)
-    ("Figure6_sandor_external.png",        "figures/story/sandor100_slowing.png",               "sandor100_external_validation.py"),
+    ("Figure3_sandor_external.png",        "figures/story/sandor100_slowing.png",               "sandor100_external_validation.py"),
     # supplementary
     ("FigureS1_severity_null.png",         "figures/growth_v2/severity_recalibrated.png",       "109_severity_null_v6.py"),
 ]

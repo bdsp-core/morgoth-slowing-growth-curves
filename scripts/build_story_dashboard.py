@@ -101,6 +101,17 @@ SECTIONS = [
              "indices trail the learned representation, and our Morgoth-free deviation model (§2a) sits well "
              "above this ceiling too. (scripts/producer_vanputten_sap.py, recompute_vanputten_fullcov.py)",
              [Path("results/figs/vanputten_comparison.png")], []),
+            ("2d. External validation — Sandor_100 vs SCORE-AI, Morgoth, and experts (main-text figure)",
+             "The whole pipeline run UNCHANGED on a fully independent 100-EEG benchmark (EMU scalp EEG; no "
+             "overlap with training or the OccasionNoise panel) — feature extraction, Morgoth ss_hm_1 sleep "
+             "staging, age+stage-matched deviation, and the report-trained detectors — scored 98/100 and "
+             "compared against SCORE-AI, the Morgoth gate, the expert majority, and the individual experts. "
+             "FOCAL: our interpretable detector is the BEST on the benchmark — AUROC 0.736 [0.621–0.833], "
+             "beating SCORE-AI (0.605) and the Morgoth gate (0.609). GENERALIZED: ours 0.893 [0.784–0.978], "
+             "strong but behind Morgoth (0.951) and SCORE-AI (0.930). A foundation-model-free model, trained "
+             "on single-site report labels, out-detects a purpose-built EEG-AI at focal slowing on external "
+             "data — staging and all. (scripts/sandor100_stage_extract.py, sandor100_external_validation.py)",
+             [STY / "sandor100_slowing.png"], [Path("results/sandor/sandor100_external.md")]),
         ],
     ),
     (

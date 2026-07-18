@@ -24,5 +24,5 @@ Gathered by `scripts/assemble_manuscript_figures.py` from the producing director
 | `Figure5_sleep_underreporting.png` | `figures/growth_v2/v4a_wake_sleep.png` | `scripts/95_v4a_wake_sleep.py` |
 | `Figure4_example_eeg_reports.png` | `figures/story/s4_examples_eeg_panel.png` | `scripts/63_example_eeg_traces.py` |
 | `FigureS_example_reports_text.png` | `figures/story/s4_examples_panel.png` | `scripts/62_example_reports_panel.py` |
-| `Figure6_sandor_external.png` | `figures/story/sandor100_slowing.png` | `scripts/sandor100_external_validation.py` |
+| `Figure3_sandor_external.png` | `figures/story/sandor100_slowing.png` | `scripts/sandor100_external_validation.py` |
 | `FigureS1_severity_null.png` | *(missing: figures/growth_v2/severity_recalibrated.png)* | `scripts/109_severity_null_v6.py` |
