@@ -1,22 +1,32 @@
-# Normative growth curves for EEG slowing across the lifespan and sleep–wake states: a deviation-from-normal instrument that detects, localizes, and describes slowing in the language of clinical reports
+# Lifespan and sleep-stage-resolved normative EEG: deviation-from-normal detection and automated reporting of slowing
 
-*Revised draft (2026-07-18). Numbers are drawn from the project's current-run results (`results/`, the story dashboard `results/story_dashboard.html`, and the canonical tables `data/derived/recording_meta.parquet` + `recording_labels*.parquet`). The pre-revision draft is preserved at `docs/archive/manuscript_draft_pre_v6revision_2026-07-18.md`; placeholders `[TBD: …]` mark values still to finalize before submission.*
+*Authors:* [author list — TBD] · *Affiliations:* [TBD] · *Corresponding author:* M. B. Westover ([email]) · *ORCIDs:* [TBD]
 
-**Target venue:** *Clinical Neurophysiology*, accompanied by an open-source Python package and a published per-recording label set.
+*Revised draft (2026-07-18); numbers from the current run (`results/`, `data/derived/recording_meta.parquet` + `recording_labels*.parquet`). Pre-revision draft: `docs/archive/manuscript_draft_pre_v6revision_2026-07-18.md`. `[TBD: …]` = to finalize before submission. Target: **Clinical Neurophysiology** (Original Article), with an open-source package + a published per-recording label set. Submission-readiness checklist: `docs/cn_submission_plan.md`.*
 
 ---
 
+## Highlights
+
+- Lifespan × sleep-stage growth curves score EEG slowing as deviation from normal
+- An interpretable model detects slowing above experts and a foundation model
+- It exceeds published van Putten qEEG slowing indices by 0.14–0.17 AUROC
+- It auto-generates slowing reports validated against the clinical record
+- Externally validated on 100 EEGs against SCORE-AI and 11 experts
+
 ## Abstract
 
-**Objective.** Whether the EEG background is "slow" is inescapably age- and state-dependent, yet clinical reading remains qualitative, and existing quantitative lifespan EEG characterizes *normal values* rather than an individual recording's *deviation from normal*, almost always awake-only. We built a lifespan- and sleep-stage-resolved deviation-from-normal instrument for EEG slowing that both detects and describes it.
+**Objective.** Whether the EEG background is "slow" is age- and state-dependent, yet reading stays qualitative, and quantitative lifespan EEG describes normal values, not deviation from normal, and is mostly awake-only. We built a lifespan- and sleep-stage-resolved deviation-from-normal instrument for EEG slowing.
 
-**Methods.** 25,536 clinical EEGs from 21,757 patients (routine + overnight; infancy to >90 y) were processed through one reproducible pipeline. Sleep-stage × age percentile "growth curves" (GAMLSS) were fit on clean-normal recordings, and every 15-s segment was scored as a deviation z against its own stage- and age-matched normal. On that field we built a Morgoth-free detector (trained on single-scorer report labels, applied unchanged to an independent 18-electroencephalographer panel), benchmarked the van Putten qEEG indices on the same signals, and generated a structured description validated against clinical reports by dose-response contrast.
+**Methods.** 25,536 clinical EEGs (21,757 patients; infancy to >90 y) were processed through one pipeline; sleep-stage × age growth curves (GAMLSS) scored every 15-s segment as a deviation z from its own stage- and age-matched normal. We built an interpretable detector (trained on report labels, tested unchanged on an independent 18-reader panel), benchmarked the van Putten qEEG indices, and generated slowing descriptions validated against clinical reports.
 
-**Results.** The curves reproduced development, aging, and sleep physiology. Against the panel majority the detector reached AUROC 0.946 [95% CI 0.887–0.990] (generalized) and 0.923 [0.861–0.971] (focal), placing 78% of experts under the generalized curve — exceeding the foundation-model gate on generalized (0.853) and matching it on focal (0.908; CIs overlap) — and beat the best van Putten index by +0.14–0.17 AUROC. Slowing was the least reliable expert judgement (Fleiss κ 0.373–0.450); our score tracked expert conspicuity (ρ = 0.652) but not the severity adjective (null). Every description component tracked the report by dose-response, and readers under-reported slowing in sleep (named 54% vs 75% awake; confirmed on spindle-verified N2).
+**Results.** Curves reproduced development and sleep physiology. Against the panel majority the detector reached AUROC 0.946 (generalized) and 0.923 (focal) — beating a foundation-model gate on generalized (0.853), matching it on focal — and exceeded the best van Putten index by 0.14–0.17. Slowing was the least reliable expert judgement (Fleiss κ 0.37–0.45); generated reports tracked the record, and readers under-reported sleep slowing.
 
-**Conclusions.** A single interpretable normative deviation field detects EEG slowing at or beyond expert and foundation-model level and yields validated, stage-aware clinical descriptions.
+**Conclusions.** One interpretable normative field detects EEG slowing at or beyond expert and foundation-model level and yields validated, stage-aware reports.
 
-**Significance.** This is, to our knowledge, the first lifespan- and sleep-stage-resolved deviation-from-normal instrument for EEG slowing, enabling reproducible, interpretable automated reporting across the lifespan and sleep–wake states.
+**Significance.** To our knowledge the first lifespan, sleep-stage-resolved deviation-from-normal instrument for EEG slowing, enabling reproducible automated reporting.
+
+*Keywords:* EEG; quantitative EEG; slowing; normative modelling; sleep; automated reporting
 
 ---
 
@@ -175,25 +185,63 @@ We present, to our knowledge, the first large-scale, lifespan- and sleep-stage-r
 
 ## Figures and Tables
 
+*Triaged for CN (economy of display items; see `docs/cn_submission_plan.md`). **Main = 1 table + 6 figures**; the rest are Supplementary.*
+
 ### Main
 
-- **Table 1 — Cohort characteristics** (SAP §10; `results/table1.md`, `scripts/table1_sap.py`). Age/sex/length/stage composition and abnormal-detail strata, by routine/overnight/clean-normal/abnormal.
-- **Figure 1 — The normative deviation model (foundation).** (a) Lifespan percentile growth curves for the most discriminating slowing features per stage (`figures/growth_v2/keystone_growth_grid.png`; `scripts/76`). (b) The per-segment deviation field, calibrated and discriminative (`figures/story/s2_segment_deviation.png`; `scripts/44`). (c) Scalp topography of regional development by age × stage (`figures/growth_v2/topo_rel_delta_by_age_stage.png`, `topo_TAR_by_age_stage.png`; `scripts/77`). (d) Stage-resolved curve bank (`figures/stage_curves/`; `scripts/111`).
-- **Figure 2 — Detection: a Morgoth-free model vs 18 experts and Morgoth (OccasionNoise).** Report-trained, applied unchanged to the panel: generalized AUROC 0.946 [0.887–0.990] (78% experts under) — clearly beating Morgoth (0.853 [0.750–0.934]); focal 0.923 [0.861–0.971], on par with Morgoth (0.908 [0.828–0.974]) (`figures/story/s0d_single_occasion_generalized.png`, `s0e_occasion_focal.png`; `scripts/53–55`). 2b: why the two axes need different read-outs — the W+N1 localized focal detector (47% experts under, AUROC 0.89), illustrating what localization buys (`figures/story/s0_occasion_ours_v4_focal.png`; `scripts/49`).
-- **Figure 3 / Table 2 — Benchmark vs the van Putten lineage.** Morgoth 0.875/0.911/0.870 vs best van Putten 0.707/0.773/0.723; age-conditioning helps slowing ratios, not asymmetry (`results/figs/vanputten_comparison.png`, `results/vanputten_fullcoverage.md`; `scripts/recompute_vanputten_fullcov.py`).
-- **Figure 4 — Description, validated by contrast (D1–D6).** Type/amount, laterality/region, anterior–posterior gradient, persistence, sleep stage, and generated words (`figures/story/s4_d1.png … s4_d6.png`; `scripts/56–58`).
-- **Figure 5 — Readers under-report slowing in sleep.** 75% named when awake-visible vs 54% when sleep-only; effect survives spindle-verified N2 (`figures/growth_v2/v4a_wake_sleep.png`; `scripts/95/95b`, `results/p6_sleep_underreporting.md`).
+- **Table 1 — Cohort characteristics** (`results/table1.md`; `scripts/table1_sap.py`).
+- **Figure 1 — The normative deviation model.** (a) Lifespan percentile growth curves per stage (`figures/growth_v2/keystone_growth_grid.png`; `scripts/76`); (b) scalp topography of regional development by age × stage (`figures/growth_v2/topo_rel_delta_by_age_stage.png`; `scripts/77`).
+- **Figure 2 — Detection vs 18 experts and the foundation-model gate (OccasionNoise).** Generalized AUROC 0.946 [0.887–0.990] (78% experts under); focal 0.923 [0.861–0.971] (`figures/story/s0d_single_occasion_generalized.png`, `s0e_occasion_focal.png`; `scripts/53–55`).
+- **Figure 3 — External validation (Sandor_100).** Our detectors vs **SCORE-AI** vs the Morgoth gate vs the individual experts, for focal and generalized slowing (`figures/story/sandor100_slowing.png`; `scripts/sandor100_*`).
+- **Figure 4 — Example EEG segments with automated reports.** Six recordings (focal & generalized, varying degree, different sleep stages): the 15-s EEG (longitudinal bipolar) with our brief + full report and the clinical report's structured descriptors (`figures/story/s4_examples_eeg_panel.png`; `scripts/62`, `63`).
+- **Figure 5 — Description validated by contrast (condensed).** Laterality tracks the reported side; the slowing signal persists across sleep stages (`figures/story/s4_d2.png`, `s4_d5.png`; `scripts/57`).
+- **Figure 6 — Readers under-report slowing in sleep.** Named 75% when awake-visible vs 54% when sleep-only; survives spindle-verified N2 (`figures/growth_v2/v4a_wake_sleep.png`; `scripts/95/95b`).
 
 ### Supplementary
 
-- **Figure S1 — Severity is a null result** (`results/severity_null_v6.md`; `scripts/109`).
-- **Figure S2 — The human ceiling** (Fleiss κ, self-consistency, conspicuity ρ; `results/table5_human_ceiling.md`, `kappa_algorithm_vs_experts_v6.md`).
-- **Curve bank** — full feature × region normal curves (`figures/curves/`).
+- **Table S1 — van Putten qEEG benchmark** (full family × 3 arms; `results/vanputten_fullcoverage.md`). Summarised in one Results sentence (Morgoth 0.875/0.911/0.870 vs best van Putten 0.707/0.773/0.723; +0.14–0.17); bar chart `results/figs/vanputten_comparison.png`.
+- **Figure S1** — per-segment deviation field, calibrated & discriminative (`figures/story/s2_segment_deviation.png`; `scripts/44`).
+- **Figure S2** — stage-resolved curve bank (`figures/stage_curves/`, `figures/curves/`; `scripts/111`).
+- **Figure S3** — description panels D1/D3/D4/D6 (type/amount, anterior–posterior, persistence, generated-word concordance; `figures/story/s4_d1,3,4,6.png`; `scripts/57–58`).
+- **Figure S4** — why the two detection axes need different read-outs (localized focal; `figures/story/s0_occasion_ours_v4_focal.png`; `scripts/49`).
+- **Figure S5** — severity is a null result (`results/severity_null_v6.md`; `scripts/109`).
+- **Figure S6** — the human ceiling (Fleiss κ, self-consistency, conspicuity ρ; `results/table5_human_ceiling.md`, `kappa_algorithm_vs_experts_v6.md`).
+
+## Declarations
+
+- **Ethical approval.** [TBD: IRB/ethics approval body + protocol number; waiver of informed consent for retrospective de-identified data, or consent statement. BDSP data are de-identified.]
+- **Funding.** [TBD: grant numbers / sponsors; state role of funder or "none".]
+- **Conflicts of interest.** [TBD: declare or state "The authors declare no competing interests."]
+- **CRediT author contributions.** [TBD per author: Conceptualization; Methodology; Software; Formal analysis; Data curation; Writing – original draft; Writing – review & editing; Supervision; Funding acquisition.]
+- **Acknowledgements.** [TBD.]
 
 ## Data and code availability
 
-Code is released as the open-source package `bdsp-core/morgoth-slowing-growth-curves`, with a numbered, single-command-reproducible pipeline. From the derived feature tables (fleet/S3 extraction assumed done), the entire interpretable story regenerates via `scripts/reproduce_story.sh` (canonical tables → GAMLSS norms → deviation field → Morgoth-free detector → description → van Putten benchmark → Table 1 → dashboard; see the script header for the ordered stages and the R/gamlss and Morgoth-output dependencies). We publish per-recording labels — report-derived flags, corrected SAP labels, and description descriptors — each with provenance. Raw EEG and free-text report content are not redistributed; they are available via BDSP credentialed access. [TBD: DOI / repository release version and license confirmation before submission.]
+Code is released as the open-source package `bdsp-core/morgoth-slowing-growth-curves`, with a numbered, reproducible pipeline (three tiers — `results` / `features` / `scratch` — via `scripts/reproduce_story.sh`; `docs/REPRODUCE.md`). We publish per-recording labels (report-derived flags, corrected SAP labels, description descriptors) with provenance. Raw EEG and free-text report content are not redistributed; they are available via BDSP credentialed access. [TBD: DOI / release version / license.]
+
+## References
+
+*Vancouver style; numbered in citation order. In-text author–year mentions are to be converted to `[n]` against this list (remaining P0 pass). Entries flagged **[verify]** need a primary-source page/volume check before submission.*
+
+1. Engemann DA, Mellot A, Höchenberger R, et al. A reusable benchmark of brain-age prediction from M/EEG resting-state signals. *NeuroImage.* 2022;262:119512.
+2. Bethlehem RAI, Seidlitz J, White SR, et al. Brain charts for the human lifespan. *Nature.* 2022;604:525–533. **[verify]**
+3. Petersén I, Eeg-Olofsson O. The development of the electroencephalogram in normal children from the age of 1 through 15 years: non-paroxysmal activity. *Neuropädiatrie.* 1971;2:247–304. **[verify]**
+4. John ER, Ahn H, Prichep L, et al. Developmental equations for the electroencephalogram. *Science.* 1980;210(4475):1255–1258.
+5. John ER, Prichep LS, Fridman J, Easton P. Neurometrics: computer-assisted differential diagnosis of brain dysfunctions. *Science.* 1988;239(4836):162–169.
+6. van Putten MJAM, Tavy DLJ. Continuous quantitative EEG monitoring in hemispheric stroke patients using the brain symmetry index. *Stroke.* 2004;35(11):2489–2492.
+7. van Putten MJAM. The revised brain symmetry index. *Clin Neurophysiol.* 2007;118(11):2362–2367.
+8. Finnigan S, van Putten MJAM. EEG in ischaemic stroke: quantitative EEG can uniquely inform (sub-)acute prognoses and clinical management. *Clin Neurophysiol.* 2013;124(1):10–19.
+9. Tveit J, Aurlien H, Plis S, et al. Automated interpretation of clinical electroencephalograms using artificial intelligence (SCORE-AI). *JAMA Neurol.* 2023;80(8):805–812. **[verify]**
+10. Rigby RA, Stasinopoulos DM. Generalized additive models for location, scale and shape. *J R Stat Soc Ser C.* 2005;54(3):507–554.
+11. Cole TJ, Green PJ. Smoothing reference centile curves: the LMS method and penalized likelihood. *Stat Med.* 1992;11(10):1305–1319.
+12. Obeid I, Picone J. The Temple University Hospital EEG data corpus. *Front Neurosci.* 2016;10:196.
+13. López S, Suarez G, Jungreis D, Obeid I, Picone J. Automated identification of abnormal adult EEGs. *IEEE Signal Process Med Biol Symp (SPMB).* 2015. **[verify]**
+14. Schirrmeister RT, Springenberg JT, Fiederer LDJ, et al. Deep learning with convolutional neural networks for EEG decoding and visualization. *Hum Brain Mapp.* 2017;38(11):5391–5420.
+15. Gemein LAW, Schirrmeister RT, Chrabąszcz P, et al. Machine-learning-based diagnostics of EEG pathology. *NeuroImage.* 2020;220:117021.
+16. Biswal S, Nip Z, Moura Junior V, et al. Automated information extraction from free-text EEG reports. *Proc IEEE EMBC.* 2015:6804–6807. **[verify]**
+17. Kostas D, Aroca-Ouellette S, Rudzicz F. BENDR: using transformers and a contrastive self-supervised learning task to learn from massive amounts of EEG data. *Front Hum Neurosci.* 2021;15:653659.
+18. Jiang W-B, Zhao L-M, Lu B-L. Large Brain Model for learning generic representations with tremendous EEG data in BCI (LaBraM). *ICLR.* 2024. **[verify]**
 
 ---
 
-*Notes for revision:* verify exact historical Ns and page-level citations (Petersén & Eeg-Olofsson; John et al. 1980/1988; the Q_SLOWING "van Putten 2013, κ = 0.76" attribution — see `results/vanputten_fullcoverage.md`); the van Putten benchmark denominator is now stated explicitly in `results/vanputten_fullcoverage.md` (feature coverage 23,872; scored contrast n = 21,146 = 10,189 clean-normal vs 10,957 slowing-positive); produce a pipeline schematic; confirm final DOI/release version.
+*Notes for revision:* convert in-text author–year citations to numbered `[n]`; add author block/affiliations/ORCIDs; fill the Declarations; verify flagged references; produce a pipeline schematic (candidate graphical abstract); re-export main figures ≥300 dpi (or vector); confirm DOI/release version.
