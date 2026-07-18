@@ -159,6 +159,14 @@ SECTIONS = [
              "review set (structured labels only) shows the generated report beside the report's descriptors, "
              "✓/✗ per component.",
              [STY / "s4_d6.png"], [RES / "s4_d6.md"]),
+            ("D7. Example automated reports vs the clinical report (main-text figure)",
+             "Six example recordings — focal and generalized slowing of varying degree (peak 1.3–3.7 SD) in "
+             "different sleep stages — each with our BRIEF finding line, our FULL report paragraph, and the "
+             "clinical report's STRUCTURED descriptors for comparison (raw report text withheld as PHI). The "
+             "regional strip shows per-region delta-excess deviation (focal = one region high; diffuse = "
+             "broadly elevated). This is the candidate main-text figure for automated slowing reporting. "
+             "(scripts/62_example_reports_panel.py)",
+             [STY / "s4_examples_panel.png"], [RES / "s4_examples.md"]),
         ],
     ),
 ]
