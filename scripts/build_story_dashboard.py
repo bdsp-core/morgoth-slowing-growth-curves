@@ -25,6 +25,22 @@ C = Path("figures/curves"); S = Path("figures/stage_curves"); RES = Path("result
 # A section = (number, title, lede). Each block = (subtitle, method-caption, [fig paths], [table paths]).
 SECTIONS = [
     (
+        "0", "Pipeline architecture",
+        "One deviation-from-normal field is the shared substrate for BOTH detection (two report-trained heads) "
+        "and description (claims-table-governed read-out). The schematic traces the flow: raw EEG → Morgoth sleep "
+        "staging → segment features → lifespan × sleep-stage normative growth curves → the per-segment deviation "
+        "field → the two downstream branches, each validated on held-out data.",
+        [
+            ("Model / pipeline architecture (overview)",
+             "Ingest → Morgoth staging (ss_hm_1) → segment features → GAMLSS growth curves → deviation field (the "
+             "hub) → detection (generalized + focal heads, trained ONLY on report labels) and description "
+             "(claims-governed descriptors → generated finding line + report paragraph). Detection is validated "
+             "against the 18-expert panel, the Morgoth gate, van Putten and external Sandor_100; description "
+             "against clinical reports by dose-response.",
+             [STY / "architecture.png"], []),
+        ],
+    ),
+    (
         "1", "The normative deviation model",
         "Every feature is expressed as a DEVIATION from its age- and sleep-stage-matched normal. Growth curves "
         "are fit on clean-normal recordings, then every 15 s segment is scored against its OWN (stage, age) "
@@ -176,7 +192,10 @@ SECTIONS = [
              "frontal/eye-movement gradient cannot masquerade as a focus — an output-granularity gain for "
              "automated reporting (reports carry no electrode field, so it is not scored). Discrete components "
              "with a clean report word are concordant well above chance — side 56%, region 46% (chance 33%); "
-             "band is modest (39%) because the slow bands co-occur (its honest test is the continuous D1 contrast). "
+             "band is calibrated to the report DISTRIBUTION not to accuracy (report band is ~64% 'mixed', a "
+             "reader hedge inseparable from theta): marginal-matching reaches 51% at κ≈0.09, the expert-vs-expert "
+             "band floor (0.09–0.38) — only the delta↔theta axis carries real signal; the honest test is the "
+             "continuous D1 contrast (scripts/band_calibration.py). "
              "Focal-vs-diffuse is the detection head's call (§2), not re-derived here. A PHI-free reasonableness "
              "review set (structured labels only) shows the generated report beside the report's descriptors, "
              "✓/✗ per component.",
@@ -187,8 +206,9 @@ SECTIONS = [
              "1–30 Hz + 60 Hz notch, house style from NeuroTech-Wrangling) beside our BRIEF finding line, our "
              "FULL report paragraph, and the clinical report's STRUCTURED descriptors (raw text withheld as "
              "PHI). The EEG is the strongest-slowing 15 s in the dominant stage; EDFs pulled from S3. "
-             "(scripts/62 + 63). A compact text-only regional-strip version is also produced "
-             "(s4_examples_panel.png) for supplementary use.",
+             "(scripts/62 + 63). scripts/62 also writes the example set (results/story/s4_examples.parquet) that "
+             "scripts/63 renders; its compact text-only panel (s4_examples_panel.png) is an internal check, not "
+             "a submission figure (superseded by the actual-EEG Figure 4).",
              [STY / "s4_examples_eeg_panel.png"], [RES / "s4_examples.md"]),
         ],
     ),

@@ -1,6 +1,25 @@
 # Lifespan and sleep-stage-resolved normative EEG: deviation-from-normal detection and automated reporting of slowing
 
-*Authors:* [author list — TBD] · *Affiliations:* [TBD] · *Corresponding author:* M. B. Westover ([email]) · *ORCIDs:* [TBD]
+**Authors**
+
+Jin Jing<sup>1,\*</sup>, Chenxi Sun<sup>2,\*</sup>, Wolfgang Ganglberger<sup>1</sup>, Alice D. Lam<sup>3</sup>, Haoqi Sun<sup>1</sup>, Tianyu Zhang<sup>1</sup>, Daniel B. Goldenholz<sup>1</sup>, Fabio A. Nascimento<sup>4</sup>, Doyle Yuan<sup>5</sup>, Sándor Beniczky<sup>6</sup>, Jennifer A. Kim<sup>7</sup>, Aaron F. Struck<sup>4</sup>, Sahar F. Zafar<sup>3</sup>, Robert J. Thomas<sup>8</sup>, M. Brandon Westover<sup>2,†</sup>
+
+<sup>\*</sup> These authors contributed equally (co-first authors). &nbsp; <sup>†</sup> Corresponding author.
+
+**Affiliations**
+
+1. Department of Neurology, Beth Israel Deaconess Medical Center, Harvard Medical School, Boston, MA, USA
+2. Department of Neurology and Neurological Sciences, Stanford University School of Medicine, Stanford, CA, USA
+3. Department of Neurology, Massachusetts General Hospital, Harvard Medical School, Boston, MA, USA
+4. Department of Neurology, Washington University School of Medicine in St. Louis, St. Louis, MO, USA
+5. Department of Neurology, University of Texas Southwestern Medical Center, Dallas, TX, USA
+6. Department of Clinical Neurophysiology, Danish Epilepsy Centre, Dianalund, Denmark; and Department of Clinical Medicine, Aarhus University, Aarhus, Denmark
+7. Department of Neurology, Yale School of Medicine, New Haven, CT, USA
+8. Division of Pulmonary, Critical Care and Sleep Medicine, Department of Medicine, Beth Israel Deaconess Medical Center, Harvard Medical School, Boston, MA, USA
+
+*Corresponding author:* M. Brandon Westover, Department of Neurology and Neurological Sciences, Stanford University School of Medicine, Stanford, CA, USA — email: mb.westover@gmail.com `[TBD: confirm institutional email]`.
+
+`[TBD before submission: academic degrees (MD/PhD), ORCIDs, and any additional/secondary affiliations for each author; confirm A. F. Struck affiliation (Washington University vs University of Wisconsin–Madison); confirm middle initials.]`
 
 *Revised draft (2026-07-18); numbers from the current run (`results/`, `data/derived/recording_meta.parquet` + `recording_labels*.parquet`). Pre-revision draft: `docs/archive/manuscript_draft_pre_v6revision_2026-07-18.md`. `[TBD: …]` = to finalize before submission. Target: **Clinical Neurophysiology** (Original Article), with an open-source package + a published per-recording label set. Submission-readiness checklist: `docs/cn_submission_plan.md`.*
 
@@ -153,7 +172,7 @@ The deviation field reads OUT into a structured description whose every componen
 - **D3 — anterior–posterior predominance.** The anterior − posterior gradient is less posterior-predominant in report-anterior than report-posterior cases (−0.07 vs −0.22, p ≈ 9×10⁻⁶) — a real but modest gradient, as most generalized slowing is topographically unspecified.
 - **D4 — persistence.** Prevalence (fraction of abnormal segments) separates report-slowing from clean-normal (median 0.19 vs 0.05), with a fat continuous-prevalence tail; run length and episode counts give an ACNS-style occasional→continuous read-out. (There is no structured report qualifier, so this is shown as internal reasonableness.)
 - **D5 — by sleep stage.** Slowing prevalence sits above clean-normal at **every** stage, wake AND sleep (e.g. N2 0.32 vs 0.12); the description is not wake-only.
-- **D6 — words.** Descriptors are assembled into a compact finding line and a full report-style paragraph, governed clause-by-clause by `docs/claims_table.md` (magnitude as SD/centile — never a severity adjective; prevalence as a percentage with the ACNS word as an internal gloss; band a low-confidence δ/θ/mixed call on clear dominance; side asserted with the maximum-deviation lobe flagged provisional; anterior–posterior predominance only when it clears the normal centile; stage accentuation and "present only during sleep"; and a required abstain path). A representative paragraph: *"Left temporal theta–delta slowing, maximal over the left temporal region, peaking at T3 (the T3–T5 derivation). Peak deviation 2.8 SD above the age- and stage-matched normal (99th centile), abnormal in 46% of analysed segments; longest continuous run ≈9.1 min over 27 episodes. Present in wakefulness and sleep, most prominent in REM sleep."* For a lateralised, confident focus the paragraph names the **derivation carrying the slowing** — one level finer than the lobe (electrode-level, ~40% of focal recordings) — localised from **left–right delta asymmetry**, which cancels the symmetric frontal/eye-movement delta gradient that makes raw power a frontopolar attractor; reports carry no electrode field, so this is an output-granularity gain for automated reporting rather than a scored claim (clause 4e). The discretely checkable components are concordant with the report above the 33% chance rate on **side (56%)** and **region (46%)**; band as a hard 3-way call is near chance (39%) because the slow bands co-occur (~64% of reports say "mixed") — its valid test is the continuous D1 contrast. A PHI-free reasonableness review set (structured labels only; raw text withheld) shows the generated report beside the report's structured descriptors, marked per component (`results/story/s4_d6.md`).
+- **D6 — words.** Descriptors are assembled into a compact finding line and a full report-style paragraph, governed clause-by-clause by `docs/claims_table.md` (magnitude as SD/centile — never a severity adjective; prevalence as a percentage with the ACNS word as an internal gloss; band a low-confidence δ/θ/mixed call on clear dominance; side asserted with the maximum-deviation lobe flagged provisional; anterior–posterior predominance only when it clears the normal centile; stage accentuation and "present only during sleep"; and a required abstain path). A representative paragraph: *"Left temporal theta–delta slowing, maximal over the left temporal region, peaking at T3 (the T3–T5 derivation). Peak deviation 2.8 SD above the age- and stage-matched normal (99th centile), abnormal in 46% of analysed segments; longest continuous run ≈9.1 min over 27 episodes. Present in wakefulness and sleep, most prominent in REM sleep."* For a lateralised, confident focus the paragraph names the **derivation carrying the slowing** — one level finer than the lobe (electrode-level, ~40% of focal recordings) — localised from **left–right delta asymmetry**, which cancels the symmetric frontal/eye-movement delta gradient that makes raw power a frontopolar attractor; reports carry no electrode field, so this is an output-granularity gain for automated reporting rather than a scored claim (clause 4e). The discretely checkable components are concordant with the report above the 33% chance rate on **side (56%)** and **region (46%)**. The **band** call is deliberately calibrated to the report *distribution* rather than tuned for accuracy: the report band is ~64% "mixed" — a reader hedge that is statistically inseparable from theta (AUROC 0.40) and separable only from delta (0.68), so maximising 3-way accuracy collapses to "always mixed". Marginal-matching (default "mixed"; a pure delta/theta call only on a dominance threshold set to the report's own rates; `scripts/band_calibration.py`) reproduces the report distribution and reaches **51% concordance at Cohen κ ≈ 0.09 — the low end of published expert-vs-expert band agreement (0.09–0.38)**, i.e. the human noise floor. We therefore report band as a low-confidence gloss and rely on the continuous D1 contrast as its valid test. A PHI-free reasonableness review set (structured labels only; raw text withheld) shows the generated report beside the report's structured descriptors, marked per component (`results/story/s4_d6.md`).
 
 ### 3.8 Readers under-report slowing in sleep — a within-subject test
 
@@ -207,13 +226,21 @@ We present, to our knowledge, the first large-scale, lifespan- and sleep-stage-r
 
 ### Supplementary
 
-- **Table S1 — van Putten qEEG benchmark** (full family × 3 arms; `results/vanputten_fullcoverage.md`). Summarised in one Results sentence (Morgoth 0.875/0.911/0.870 vs best van Putten 0.707/0.773/0.723; +0.14–0.17); bar chart `results/figs/vanputten_comparison.png`.
-- **Figure S1** — per-segment deviation field, calibrated & discriminative (`figures/story/s2_segment_deviation.png`; `scripts/44`).
-- **Figure S2** — stage-resolved curve bank (`figures/stage_curves/`, `figures/curves/`; `scripts/111`).
-- **Figure S3** — description panels D1/D3/D4/D6 (type/amount, anterior–posterior, persistence, generated-word concordance; `figures/story/s4_d1,3,4,6.png`; `scripts/57–58`).
-- **Figure S4** — why the two detection axes need different read-outs (localized focal; `figures/story/s0_occasion_ours_v4_focal.png`; `scripts/49`).
-- **Figure S5** — severity is a null result (`results/severity_null_v6.md`; `scripts/109`).
-- **Figure S6** — the human ceiling (Fleiss κ, self-consistency, conspicuity ρ; `results/table5_human_ceiling.md`, `kappa_algorithm_vs_experts_v6.md`).
+*Supplementary figures (`figures/manuscript/` assembles the submission-named copies via `scripts/assemble_manuscript_figures.py`):*
+
+- **Figure S1 — Pipeline architecture.** One deviation-from-normal field as the shared substrate for detection (two report-trained heads) and claims-governed description, with held-out validation under each (`figures/story/architecture.png`; `scripts/architecture_diagram.py`).
+- **Figure S2 — Per-segment deviation field**, calibrated & discriminative (`figures/story/s2_segment_deviation.png`; `scripts/44`).
+- **Figure S3 — Stage-resolved curve bank** (rel_delta / TAR / DAR, whole-head; `figures/stage_curves/`; `scripts/111`).
+- **Figure S4 — Description panels D1/D3/D4/D6** (type/amount, anterior–posterior, persistence, generated-word concordance; `figures/story/s4_d1,3,4,6.png`; `scripts/57–58`).
+- **Figure S5 — Why the two detection axes need different read-outs** (localized focal; `figures/story/s0_occasion_ours_v4_focal.png`; `scripts/49`).
+- **Figure S6 — Severity is a null result** (`figures/growth_v2/severity_recalibrated.png`, `results/severity_null_v6.md`; `scripts/109`).
+- **Figure S7 — van Putten qEEG benchmark** (bar chart; `results/figs/vanputten_comparison.png`; `scripts/recompute_vanputten_fullcov.py`).
+
+*Supplementary tables:*
+
+- **Table S1 — van Putten qEEG benchmark** (full family × 3 arms; `results/vanputten_fullcoverage.md`). Summarised in one Results sentence (Morgoth 0.875/0.911/0.870 vs best van Putten 0.707/0.773/0.723; +0.14–0.17).
+- **Table S2 — Human ceiling** (Fleiss κ, self-consistency, conspicuity ρ; `results/table5_human_ceiling.md`, `kappa_algorithm_vs_experts_v6.md`).
+- **Table S3 — Band calibration.** Delta/theta/mixed agreement is at the expert-vs-expert floor (κ≈0.09), marginal-matched to the report distribution (`results/story/band_calibration.md`; `scripts/band_calibration.py`).
 
 ## Declarations
 
