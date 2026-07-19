@@ -118,12 +118,12 @@ def main():
     gen = [r for _, r in ex.iterrows() if not r.isfoc][:3]
     cols = [foc, gen]                                            # left column = focal, right column = generalized
 
-    fig = plt.figure(figsize=(13.2, 14.6))
+    fig = plt.figure(figsize=(13.2, 17.4))
     outer = fig.add_gridspec(3, 2, wspace=0.14, hspace=0.30, left=0.05, right=0.985, top=0.955, bottom=0.02)
     ok = 0
     for c, colrows in enumerate(cols):
         for rr, r in enumerate(colrows):
-            inner = outer[rr, c].subgridspec(2, 1, height_ratios=[3.0, 1.3], hspace=0.28)
+            inner = outer[rr, c].subgridspec(2, 1, height_ratios=[2.5, 1.9], hspace=0.28)
             axe = fig.add_subplot(inner[0]); axt = fig.add_subplot(inner[1]); axt.axis("off")
             kind = "Focal" if r.isfoc else "Generalized"
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()
@@ -137,19 +137,23 @@ def main():
                 axe.axis("off"); axe.text(0.5, 0.5, f"EEG unavailable\n{type(e).__name__}", ha="center", va="center",
                                           fontsize=8, transform=axe.transAxes); axe.set_title(head, fontsize=8.5, fontweight="bold", loc="left")
                 print(f"  {r.eeg_id}: {type(e).__name__}: {e}", flush=True)
-            y = [0.99]; LH = 0.135
+            y = [0.99]; LH = 0.093; C_LENS, C_REP = "#c2510a", "#3a3a3a"
 
-            def emit(lab, text, color, wrapw=86):
-                for k, ln in enumerate(textwrap.wrap(lab + text, wrapw) or [""]):
-                    axt.text(0.0, y[0], ln, fontsize=6.6, color=color, va="top", transform=axt.transAxes,
-                             fontweight="bold" if (k == 0 and lab.startswith("Ours (full)")) else "normal"); y[0] -= LH
-                y[0] -= 0.05
-            emit("Ours (brief): ", r.finding, "#0b6b34")
-            emit("Ours (full): ", r.paragraph, "#134a73")
-            emit("Clinical report: ", r.report_struct, "#9a4a12")
-    fig.suptitle("Figure 4.  Example EEG segments with automated slowing reports vs the clinical report "
-                 "(longitudinal bipolar; 1–30 Hz + 60 Hz notch).  Left: focal.  Right: generalized.",
-                 fontsize=11, y=0.99)
+            def emit(lab, text, color, wrapw=94):
+                for k, ln in enumerate(textwrap.wrap(lab + (text or "—"), wrapw) or [""]):
+                    axt.text(0.0, y[0], ln, fontsize=6.0, color=color, va="top", transform=axt.transAxes,
+                             fontweight="bold" if k == 0 else "normal"); y[0] -= LH
+                y[0] -= 0.02
+            # two paired comparisons: our brief vs the report IMPRESSION; our detailed vs the report DESCRIPTION
+            emit("LENS (brief): ", r.finding, C_LENS)
+            emit("Report impression: ", getattr(r, "report_impression_text", "") or "(no slowing sentence)", C_REP)
+            emit("LENS (detailed): ", r.paragraph, C_LENS)
+            emit("Report description: ", getattr(r, "report_detail_text", "") or "(no slowing sentence)", C_REP)
+    fig.suptitle("Figure 4.  Example 10-s EEG segments (longitudinal bipolar; 1–30 Hz + 60 Hz notch) with the "
+                 "LENS automated report vs the clinical report.\nEach example pairs LENS's brief finding with the "
+                 "report's impression, and LENS's detailed description with the report's description.  "
+                 "Left column: focal.  Right: generalized.",
+                 fontsize=10, y=0.995)
     fig.savefig(FIG / "s4_examples_eeg_panel.png", dpi=300, bbox_inches="tight", facecolor="white"); plt.close(fig)
     print(f"rendered EEG for {ok}/6 examples -> figures/story/s4_examples_eeg_panel.png")
 

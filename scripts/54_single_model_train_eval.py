@@ -152,7 +152,7 @@ def main():
             pts = m46.expert_points(wide)
             fig, (a0, a1) = plt.subplots(1, 2, figsize=(11.5, 4.8)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
             best = None
-            for ver, col, cc in [("Morgoth", None, C_MORG), ("ours-v1", "v1", OURS_ALT), ("ours-v2", "v2", C_OURS)]:
+            for ver, col, cc in [("Morgoth", None, C_MORG), ("LENS-v1", "v1", OURS_ALT), ("LENS-v2", "v2", C_OURS)]:
                 if ver == "Morgoth":
                     s = morg.reindex(keep_eeg).values
                 else:
@@ -175,7 +175,7 @@ def main():
             a0.legend(frameon=False, fontsize=8, loc="lower right"); a1.legend(frameon=False, fontsize=8, loc="upper right")
             for a in (a0, a1):
                 a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
-            fig.suptitle(f"{ds.upper()} {tag} — ONE report-trained model (MIL) vs Morgoth vs {len(pts)} experts", fontsize=10.5)
+            fig.suptitle(f"ON-100 {tag} — ONE report-trained model (MIL) vs Morgoth vs {len(pts)} experts", fontsize=10.5)
             fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / f"s0d_single_{ds}_{tag}.png", dpi=150); plt.close(fig)
 
     (RES / "s0d_single_model.md").write_text("\n".join(md))

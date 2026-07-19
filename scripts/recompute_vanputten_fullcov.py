@@ -112,6 +112,7 @@ def make_figure(arms):
     """Figure S7 — best van Putten qEEG index vs the learned representation, per contrast, with bootstrap CIs.
     Reproducible producer of results/figs/vanputten_comparison.png (supersedes the old orphaned figure)."""
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+    from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
     morg = arms.get("** Morgoth p_slowing (gate) **")
     vp = {k: v for k, v in arms.items() if not k.startswith("**")}
     if morg is None or not vp:
@@ -123,11 +124,11 @@ def make_figure(arms):
     mrow = [morg[i] for i in range(3)]
     fig, ax = plt.subplots(figsize=(7, 4.2)); x = np.arange(3); w = 0.36
     ax.bar(x - w / 2, v(best), w, yerr=e(best), capsize=3, color="#9aa0a6", label="best van Putten index")
-    ax.bar(x + w / 2, v(mrow), w, yerr=e(mrow), capsize=3, color="#6a3d9a", label="Morgoth p_slowing (learned)")
+    ax.bar(x + w / 2, v(mrow), w, yerr=e(mrow), capsize=3, color="#6a3d9a", label="Morgoth gate (foundation model)")
     ax.axhline(0.5, ls="--", color="#bbb", lw=1); ax.text(2.46, 0.505, "chance", color="#999", fontsize=8, va="bottom", ha="right")
     ax.set_xticks(x); ax.set_xticklabels(["Any abnormal", "Generalized", "Focal"]); ax.set_ylim(0.5, 1.0)
     ax.set_ylabel("AUROC (auto-oriented > 0.5)")
-    ax.set_title("Slowing detection: best van Putten qEEG index vs the learned representation\n"
+    ax.set_title("Slowing detection: best van Putten qEEG index vs the Morgoth foundation-model gate\n"
                  "(each contrast one-vs-clean-normal; patient-clustered bootstrap 95% CI)", fontsize=9.5)
     ax.legend(frameon=False, fontsize=9, loc="upper left")
     for xi, val in zip(x - w / 2, v(best)):

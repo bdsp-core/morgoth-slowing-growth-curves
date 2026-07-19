@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 import mne
 
 DEFAULT_FEATURES = ["rel_delta", "TAR"]

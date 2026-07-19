@@ -15,6 +15,6 @@ Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are compo
 | `FigureS3_curvebank.png` | 3 (rel_delta__whole_head.png, TAR__whole_head.png, DAR__whole_head.png) | `scripts/111` |
 | `FigureS4_description_panels.png` | 4 (s4_d1.png, s4_d3.png, s4_d4.png, s4_d6.png) | `scripts/57, 58` |
 | `FigureS5_localized_focal.png` | 1 (s0_occasion_ours_v4_focal.png) | `scripts/49` |
-| `FigureS6_severity_null.png` | *(missing: figures/growth_v2/severity_recalibrated.png)* | `scripts/109` |
-| `FigureS7_vanputten.png` | 1 (vanputten_comparison.png) | `scripts/recompute_vanputten_fullcov` |
+| `FigureS6_severity_null.png` | 1 (severity_recalibrated.png) | `scripts/109` |
+| `FigureS7_vanputten.png` | 1 (vanputten_panel_s7.png) | `scripts/vanputten_panel_s7` |
 | `FigureS8_topoplot_TAR.png` | 1 (topo_TAR_by_age_stage.png) | `scripts/77` |

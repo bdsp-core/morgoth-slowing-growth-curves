@@ -38,6 +38,7 @@ from scipy.stats import mannwhitneyu, wilcoxon, spearmanr
 from sklearn.metrics import roc_auc_score
 import statsmodels.api as sm
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 
 SC = "/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/reports/EEGs_And_Reports.csv"
 ABN = "/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/abn_stages"
@@ -697,8 +698,7 @@ def main():
     ax[4].set_xticks(xx); ax[4].set_xticklabels(labs, fontsize=8)
     ax[4].set_ylim(0.45, 0.85); ax[4].set_ylabel("AUROC (case vs control)")
     ax[4].set_title("misclassification checks (weak):\ndecided by spindle test (95b)"); ax[4].legend(fontsize=8)
-    fig.suptitle("V4a within-subject wake->sleep test: cases deviate in N2/N3 (log_delta, DAR), not a global "
-                 "shift; ESTABLISHED on spindle-verified true-N2 for routine-length recordings (DAR 0.86) — see results md", fontsize=11)
+    fig.suptitle("Within-subject wake → sleep deviation: cases separate in N2/N3, controls do not", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     Path("figures/growth_v2").mkdir(parents=True, exist_ok=True)
     fig.savefig("figures/growth_v2/v4a_wake_sleep.png", dpi=130); plt.close(fig)

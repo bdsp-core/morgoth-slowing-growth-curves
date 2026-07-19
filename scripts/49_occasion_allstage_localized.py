@@ -133,13 +133,13 @@ def evaluate(T, V, name, ax, cols, color):
     pu_roc, fr = m46.under_roc(fpr, tpr, pts); pu_pr, fp = m46.under_pr(prec, rec, pts)
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(11, 4.6))
-    a0.plot([0, 1], [0, 1], "--", color="#bbb", lw=1); a0.plot(fpr, tpr, color=color, lw=2.4, label=f"ours (AUROC {auc:.2f})")
+    a0.plot([0, 1], [0, 1], "--", color="#bbb", lw=1); a0.plot(fpr, tpr, color=color, lw=2.4, label=f"LENS (AUROC {auc:.2f})")
     for r, pp in pts.items():
         a0.plot(pp["fpr"], pp["tpr"], "o", ms=6, mfc=("#888" if fr.get(r) else "#e41a1c"), mec="k", mew=.4, alpha=.85)
     a0.plot([], [], "o", mfc="#888", mec="k", label=f"under ({sum(fr.values())})"); a0.plot([], [], "o", mfc="#e41a1c", mec="k", label=f"above ({len(pts)-sum(fr.values())})")
     a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{name.upper()} — ROC\n{100*pu_roc:.0f}% of {len(pts)} experts under", fontsize=10)
     a0.legend(frameon=False, fontsize=7.5, loc="lower right"); a0.set_xlim(-.02, 1.02); a0.set_ylim(-.02, 1.02)
-    a1.plot(rec, prec, color=color, lw=2.4, label=f"ours (AP {ap:.2f})"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
+    a1.plot(rec, prec, color=color, lw=2.4, label=f"LENS (AP {ap:.2f})"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
     for r, pp in pts.items():
         if np.isfinite(pp["precision"]):
             a1.plot(pp["recall"], pp["precision"], "o", ms=6, mfc=("#888" if fp.get(r) else "#e41a1c"), mec="k", mew=.4, alpha=.85)

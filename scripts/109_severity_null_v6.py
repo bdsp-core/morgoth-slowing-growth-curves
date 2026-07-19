@@ -22,6 +22,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 from scipy.stats import spearmanr, kruskal
 
 Q = Path("data/derived/_legacy_quarantine")

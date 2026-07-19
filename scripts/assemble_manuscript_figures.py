@@ -31,7 +31,7 @@ FIGS = {
     "FigureS4_description_panels.png": ([f"{STY}/s4_d1.png", f"{STY}/s4_d3.png", f"{STY}/s4_d4.png", f"{STY}/s4_d6.png"], 2, "57, 58"),
     "FigureS5_localized_focal.png":  ([f"{STY}/s0_occasion_ours_v4_focal.png"], 1, "49"),
     "FigureS6_severity_null.png":    ([f"{G}/severity_recalibrated.png"], 1, "109"),
-    "FigureS7_vanputten.png":        ([f"{RF}/vanputten_comparison.png"], 1, "recompute_vanputten_fullcov"),
+    "FigureS7_vanputten.png":        (["figures/figs/vanputten_panel_s7.png"], 1, "vanputten_panel_s7"),
     "FigureS8_topoplot_TAR.png":     ([f"{G}/topo_TAR_by_age_stage.png"], 1, "77"),
 }
 COLW = 7.0                                                       # inches per panel column

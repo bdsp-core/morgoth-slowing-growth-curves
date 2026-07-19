@@ -13,6 +13,7 @@ import os, sys, subprocess, tempfile
 from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 
 FEATURES = (sys.argv[1].split(",") if len(sys.argv) > 1 else ["rel_delta", "TAR", "DAR"])
 FEAT_LABEL = {"rel_delta": "Relative delta  (δ / total)", "TAR": "Theta/alpha ratio  (TAR)",

@@ -33,6 +33,7 @@ import numpy as np, pandas as pd
 from scipy.stats import norm
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 
 FIG = Path("figures/story"); RES = Path("results/story")
 STAGES = ["W", "N1", "N2", "N3", "REM"]
@@ -154,6 +155,17 @@ def ourisfoc(row):
     return (abs(row.lat_signed) >= 0.5) or (max(ft, ff, fp) >= 0.6)
 
 
+GEN_THR = 1.0                                          # every lobe's p90 z above this => a diffuse background
+
+
+def has_generalized(row):
+    """A diffuse (generalized) background is present when even the least-abnormal lobe is slow — so it does not
+    depend on the focal excess, which is relative and cancels a uniform background."""
+    lobes = [row.lobe_temporal, row.lobe_frontal, row.lobe_posterior]
+    lobes = [x for x in lobes if np.isfinite(x)]
+    return bool(lobes) and min(lobes) >= GEN_THR
+
+
 def ap_word(antpost):
     # normal-referenced z; assert predominance only beyond ~95th centile, else the (majority) "diffuse"
     if not np.isfinite(antpost):
@@ -231,32 +243,56 @@ def stage_presence(stage_rows):
 
 
 def finding_line(row, spatial, band, base, acc, confident, elec):
-    """Compact headline finding — persistence gloss + spatial + band (+ peak electrode) + stage."""
-    prev = row.prevalence
-    parts = [persistence_word(prev), spatial, band_phrase(band)]
-    s = " ".join(p for p in parts if p) + " slowing"
-    if confident and elec:
-        s += f" (max {elec[0]})"
+    """Compact headline finding — persistence gloss + spatial + band (+ peak electrode) + stage; integrates a
+    diffuse background and a superimposed focus into one line when both are present."""
+    foc = ourisfoc(row); gen = has_generalized(row)
+    prev = row.prevalence; bp = band_phrase(band)
+    if foc and gen:
+        s = f"{persistence_word(prev)} diffuse {bp} slowing with a superimposed {spatial} focus"
+        if confident and elec:
+            s += f" (max {elec[0]})"
+    else:
+        s = " ".join(p for p in [persistence_word(prev), spatial, bp] if p) + " slowing"
+        if confident and elec:
+            s += f" (max {elec[0]})"
     tail = "; ".join(x for x in [base, acc] if x)
     s = s + (", " + tail if tail else "")
     return s[0].upper() + s[1:] + "."
 
 
 def report_paragraph(row, spatial, maxreg, confident, band, base, acc, elec):
-    """Full report-style paragraph, every clause a number with a reference population (claims-table §permitted)."""
-    isfoc = ourisfoc(row)
-    prev = row.prevalence
-    z = magnitude(row, isfoc); cent = centile_word(z)
-    # sentence 1 — localization + band (+ provisional electrode-level peak from L-R asymmetry)
-    s1 = " ".join(x for x in [spatial, band_phrase(band)] if x) + " slowing"
-    if isfoc and maxreg:
-        s1 += f", maximal over {maxreg}"
-        if confident and elec:
-            s1 += f", peaking at {elec[0]} (the {elec[1]} derivation)"
+    """Full report-style paragraph, every clause a number with a reference population (claims-table §permitted).
+    When a diffuse background AND a superimposed focus are both present, the two are described together (a single
+    integrated finding), not as two separate reports."""
+    foc = ourisfoc(row); gen = has_generalized(row)
+    prev = row.prevalence; bp = band_phrase(band)
+    # sentence 1 — localization; integrate "diffuse background + superimposed focus" when both are present
+    if foc and gen:
+        s1 = f"diffuse {bp} slowing with a superimposed {spatial} focus"
+        if maxreg:
+            s1 += f", maximal over {maxreg}"
+            if confident and elec:
+                s1 += f", peaking at {elec[0]} (the {elec[1]} derivation)"
+    elif foc:
+        s1 = " ".join(x for x in [spatial, bp] if x) + " slowing"
+        if maxreg:
+            s1 += f", maximal over {maxreg}"
+            if confident and elec:
+                s1 += f", peaking at {elec[0]} (the {elec[1]} derivation)"
+    else:
+        s1 = " ".join(x for x in [spatial, bp] if x) + " slowing"
     s1 = s1[0].upper() + s1[1:] + "."
-    # sentence 2 — magnitude + prevalence % + run structure
-    ref = "the age- and stage-matched normal at that region" if isfoc else "the age- and stage-matched normal"
-    mag = f"Peak deviation {z:.1f} SD above {ref}" + (f" ({cent} centile)" if cent else "")
+    # sentence 2 — magnitude(s) + prevalence % + run structure
+    if foc and gen:
+        gz, fz = magnitude(row, False), magnitude(row, True); cent = centile_word(fz)
+        mag = (f"Whole-head deviation {gz:.1f} SD above the age- and stage-matched normal, with the focus reaching "
+               f"{fz:.1f} SD" + (f" ({cent} centile)" if cent else "") + " at that region")
+    elif foc:
+        fz = magnitude(row, True); cent = centile_word(fz)
+        mag = f"Peak deviation {fz:.1f} SD above the age- and stage-matched normal at that region" + (f" ({cent} centile)" if cent else "")
+    else:
+        gz = magnitude(row, False); cent = centile_word(gz)
+        mag = f"Peak deviation {gz:.1f} SD above the age- and stage-matched normal" + (f" ({cent} centile)" if cent else "")
     nep = int(row.n_episodes) if np.isfinite(row.n_episodes) else 0
     run = f"; longest continuous run ≈{row.longest_run_min:.1f} min over {nep} episode{'s' if nep != 1 else ''}" \
         if nep and np.isfinite(row.longest_run_min) else ""
@@ -264,9 +300,9 @@ def report_paragraph(row, spatial, maxreg, confident, band, base, acc, elec):
     # sentence 3 — stage (cap first letter only; keep stage tokens like REM/N2 uppercase)
     stage_txt = "; ".join(x for x in [base, acc] if x)
     s3 = (stage_txt[0].upper() + stage_txt[1:] + ".") if stage_txt else ""
-    # sentence 4 — abstain (claims-table clause 11)
+    # sentence 4 — abstain (claims-table clause 11); only for a pure focus with no diffuse background
     s4 = ""
-    if isfoc and not confident:
+    if foc and not gen and not confident:
         s4 = "Localization is low-confidence: no lateralizing or regional spectral excess clears the 84th " \
              "centile of normals."
     return " ".join(x for x in [s1, s2, s3, s4] if x)
@@ -353,7 +389,7 @@ def main():
     ax.axhline(1/3, ls="--", color="#666", lw=1); ax.text(xx[-1]+.15, 1/3, "chance (1/3)", color="#666", fontsize=8, va="bottom")
     ax.set_xticks(xx); ax.set_xticklabels([c[0] for c in comps], fontsize=8.5)
     ax.set_ylabel("concordance with report word"); ax.set_ylim(0, 1)
-    ax.set_title("D6 — Generated descriptor words concordant with the report", fontsize=11)
+    ax.set_title("Generated descriptor words concordant with the report", fontsize=12)
     ax.grid(alpha=.2, axis="y")
     fig.tight_layout(); fig.savefig(FIG / "s4_d6.png", dpi=140); plt.close(fig)
     md += ["## Component concordance (generated word vs report structured field)",

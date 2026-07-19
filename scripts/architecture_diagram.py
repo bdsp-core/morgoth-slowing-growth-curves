@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 FIG = Path("figures/story")
@@ -68,8 +69,8 @@ def main():
 
     # ---- validation (bottom) ----
     box(ax, 0.6, 3.0, 5.1, 1.4,
-        "VALIDATION (held out)\n• 18-expert OccasionNoise panel — % experts under ROC\n• Morgoth foundation-model gate\n"
-        "• van Putten qEEG indices\n• external Sandor_100 (second site, SCORE-AI)", C_VAL, 7.6, bold=False)
+        "VALIDATION (held out)\n• 18-expert ON-100 panel — % experts under ROC\n• Morgoth foundation-model gate\n"
+        "• previously published qEEG slowing indices\n• external SAI-100 (second site, SCORE-AI)", C_VAL, 7.6, bold=False)
     box(ax, 6.6, 3.0, 5.0, 1.4,
         "VALIDATION (vs clinical reports)\n• dose-response contrasts (D1–D5)\n• component concordance (side, region, band)\n"
         "• band at expert-vs-expert floor (κ≈0.09)\n• sleep-slowing under-reporting (spindle-verified)", C_VAL, 7.6)

@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 from scipy.stats import mannwhitneyu
 
 FIG = Path("figures/story"); RES = Path("results/story")
@@ -77,7 +78,7 @@ def main():
     l2 = contrast(ax[2], [("report: delta\n(delta/mixed)", sl[sl.rep_delta].delta_p90),
                           ("report: no delta\n(theta only)", sl[~sl.rep_delta].delta_p90)],
                   "Our DELTA measure by report band", "delta-excess z (p90)", ["#c8443c", "#bbb"], ylim=(-2, 5))
-    fig.suptitle("D1 — Type & amount: our band-deviation tracks the report's band word", fontsize=12)
+    fig.suptitle("Type & amount: LENS band-deviation tracks the report's band word", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d1.png", dpi=140); plt.close(fig)
     pth = mannwhitneyu(sl[sl.rep_theta].theta_p90.dropna(), sl[~sl.rep_theta].theta_p90.dropna()).pvalue
     pdd = mannwhitneyu(sl[sl.rep_delta].delta_p90.dropna(), sl[~sl.rep_delta].delta_p90.dropna()).pvalue
@@ -90,7 +91,7 @@ def main():
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
     foc = d[d.slowing_focal == True].copy()                                                 # noqa: E712
     ll = contrast(ax[0], [(s, foc[foc.focal_side == s].lat_signed) for s in ["left", "bilateral", "right"]],
-                  "Our L-R asymmetry by report side", "signed asymmetry z  (+ = left)", ["#c8443c", "#999", "#2c7fb8"], ylim=(-3, 3))
+                  "LENS L-R asymmetry by report side", "signed asymmetry z  (+ = left)", ["#c8443c", "#999", "#2c7fb8"], ylim=(-3, 3))
     ax[0].axhline(0, ls="--", color="#666")
     md += ["## D2 — laterality & region", "- laterality: " + "; ".join(ll)]
     # region as DOSE-RESPONSE (not a confusion matrix): a lobe's relative prominence (focality = that lobe's
@@ -113,7 +114,7 @@ def main():
     ax[1].axhline(0, color="#666", lw=.8); ax[1].set_xticks(xx); ax[1].set_xticklabels([l for l, _ in lobes])
     ax[1].set_ylabel("lobe focality  (prominence vs rest of head)"); ax[1].legend(frameon=False, fontsize=8)
     ax[1].set_title("Lobe prominence rises when the report names that lobe", fontsize=10); ax[1].grid(alpha=.2, axis="y")
-    fig.suptitle("D2 — Laterality tracks report side; lobe prominence tracks the reported region", fontsize=12)
+    fig.suptitle("Laterality tracks the reported side; lobe prominence tracks the reported region", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "s4_d2.png", dpi=140); plt.close(fig)
     md.append("- region (focality dose-response): " + "; ".join(rl) + "\n")
 
@@ -122,7 +123,7 @@ def main():
     aa = contrast(ax, [(t, d[d.gen_topography == t].antpost) for t in ["anterior", "posterior", "unspec"]],
                   "Our A-P gradient by report topography", "anterior − posterior z  (+ = frontal)", ["#c8443c", "#2c7fb8", "#bbb"], ylim=(-2, 2))
     ax.axhline(0, ls="--", color="#666")
-    fig.suptitle("D3 — Anterior−posterior gradient tracks report topography", fontsize=11)
+    fig.suptitle("Anterior−posterior gradient tracks report topography", fontsize=12)
     fig.tight_layout(); fig.savefig(FIG / "s4_d3.png", dpi=140); plt.close(fig)
     pap = mannwhitneyu(d[d.gen_topography == "anterior"].antpost.dropna(), d[d.gen_topography == "posterior"].antpost.dropna()).pvalue
     md += ["## D3 — anterior-posterior predominance", "- " + "; ".join(aa) + f"; anterior>posterior p={pap:.1e}\n"]
@@ -137,7 +138,7 @@ def main():
     ax[0].set_title("Persistence: prevalence + ACNS scale", fontsize=10); ax[0].legend(frameon=False, fontsize=8)
     ax[1].hist(np.clip(d[d.slowing].longest_run_min, 0, 30), bins=40, color="#c8443c", alpha=.7)
     ax[1].set_xlabel("longest continuous run (min)"); ax[1].set_ylabel("recordings"); ax[1].set_title("Longest run (report slowing)", fontsize=10)
-    fig.suptitle("D4 — Persistence: prevalence & run-length (internal; no structured report qualifier)", fontsize=11)
+    fig.suptitle("Persistence: prevalence & run-length (internal; no structured report qualifier)", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d4.png", dpi=140); plt.close(fig)
     md += ["## D4 — persistence vs intermittence",
            f"- prevalence: clean-normal {d[d.clean_normal==True].prevalence.median():.2f} vs report-slowing {d[d.slowing].prevalence.median():.2f}",
@@ -162,7 +163,7 @@ def main():
     ax[1].set_xticks(list(xs)); ax[1].set_xticklabels(STAGES)
     ax[1].set_ylabel("deviation z (median)"); ax[1].set_title("Band deviation by stage (report slowing)", fontsize=10)
     ax[1].legend(frameon=False, fontsize=8); ax[1].grid(alpha=.2)
-    fig.suptitle("D5 — Stage-resolved description: the slowing signal is present in sleep, not only wake", fontsize=11)
+    fig.suptitle("Stage-resolved: the slowing signal is present in sleep, not only wake", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d5.png", dpi=140); plt.close(fig)
     # under-reporting probe: among report-negative recordings, N2 deviation still sits above clean-normal N2
     neg = Sm[(Sm.clean_normal != True) & (~Sm.slowing)]                                      # abnormal, report does not call slowing

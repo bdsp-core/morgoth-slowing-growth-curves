@@ -19,3 +19,47 @@ NORMAL = "#31a354"       # clean-normal reference (green = healthy)
 ABNORMAL = "#c8443c"     # report-slowing / abnormal (brick red)
 
 CHANCE = "#bbbbbb"       # diagonal / chance reference lines
+
+
+# --- shared publication style (Tufte-leaning) ---------------------------------------------------------------
+# Applied once at import so every figure script that imports this module inherits the same look: no top/right
+# spines (drop the box), frameless legends, thin axes, and one consistent font ladder. Individual scripts can
+# still override locally, and call despine()/despine_all() for axes that need extra treatment.
+_PUB_RC = {
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.linewidth": 0.8,
+    "axes.titlesize": 11,
+    "axes.labelsize": 10,
+    "axes.titleweight": "normal",
+    "figure.titlesize": 13,
+    "figure.titleweight": "bold",
+    "font.size": 10,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "xtick.major.width": 0.8,
+    "ytick.major.width": 0.8,
+    "legend.fontsize": 9,
+    "legend.frameon": False,
+    "axes.grid": False,
+}
+
+
+def set_pub_style():
+    import matplotlib as mpl
+    mpl.rcParams.update(_PUB_RC)
+
+
+def despine(ax, which=("top", "right")):
+    """Hide the named spines on one Axes (use for axes made before rcParams applies, e.g. mne/twin axes)."""
+    for s in which:
+        if s in ax.spines:
+            ax.spines[s].set_visible(False)
+
+
+def despine_all(fig):
+    for ax in fig.get_axes():
+        despine(ax)
+
+
+set_pub_style()

@@ -11,12 +11,70 @@ Run: PYTHONPATH=src MPLBACKEND=Agg python3 scripts/62_example_reports_panel.py
 Writes figures/story/s4_examples_panel.png + results/story/s4_examples.md
 """
 from __future__ import annotations
-import importlib.util, textwrap
+import importlib.util, textwrap, re
 from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
+
+MANIFEST = "data/manifest/report_manifest_v6.parquet"
+# Recordings never used as figure examples. S0001121298232 is a burst-suppression study mis-staged as REM —
+# its report ("burst suppression with bursts of irregular theta slowing") is not a clean generalized-slowing
+# case, so it makes a misleading LENS-vs-report comparison.
+EXCLUDE_IDS = ("S0001121298232",)
+# Pull ONLY the SLOWING-finding sentence(s) from the clinical report: require the core word "slow", and drop
+# sentences about medications / history / times / epileptiform activity — those are off-topic for this figure
+# and the most PHI-sensitive part. Then de-identify (dates, times, redaction stars, long-number IDs, names).
+SLOW_KW = re.compile(r"\bslow(ing|ed|s)?\b", re.I)
+EXCLUDE = re.compile(r"\b(medication|treatment|administered|history|reason for|hemorrhage|h/o|epoch|start:|end:|"
+                     r"comparison|clinical correlation|discharge|spike|seizure|anti-?seizure|dose|mg|bid|q\d+h|"
+                     r"propofol|clobazam|lamotrigine|phenobarbital|phenytoin|lacosamide|keppra|levetiracetam)\b", re.I)
+# leading report boilerplate to strip so a snippet never reads "Report impression: final report impression: ..."
+BOILER = re.compile(r"^\s*(\*+\s*final report\s*\*+|final report impression|final impression|summary impression|"
+                    r"final correlation|clinical correlation|final report|impression|report)\s*[:\-.]*\s*", re.I)
+
+
+def _strip_boiler(s: str) -> str:
+    prev = None
+    while s and s != prev:                            # repeat: handles "final report impression: impression: ..."
+        prev = s; s = BOILER.sub("", s).strip()
+    return s
+
+
+def _scrub(s: str) -> str:
+    s = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}:\d{2}(:\d{2})?\b", "[…]", s)  # dates/times
+    s = re.sub(r"\*+", "", s)                                                              # redaction stars
+    s = re.sub(r"\b\d{5,}\b", "[id]", s)
+    s = re.sub(r"\b(Dr\.?|Drs\.?|MD|M\.D\.)\s+[A-Z][a-z]+", "[physician]", s)
+    return _strip_boiler(re.sub(r"\s+", " ", s).strip().strip(":").strip())
+
+
+def _slow_sentences(text):
+    if not isinstance(text, str) or not text.strip():
+        return []
+    return [s for s in re.split(r"(?<=[.!?])\s+", text.replace("\n", " "))
+            if SLOW_KW.search(s) and not EXCLUDE.search(s)]
+
+
+def _clip(out, maxchar):
+    return out[:maxchar].rsplit(" ", 1)[0] + "…" if len(out) > maxchar else out
+
+
+def slowing_snippet(text, maxn=2, maxchar=300) -> str:
+    return _clip(_scrub(" ".join(_slow_sentences(text)[:maxn])), maxchar)
+
+
+def _norm(s):                                          # normalized 60-char prefix key (robust to truncation)
+    return re.sub(r"[^a-z0-9]+", " ", _strip_boiler(s).lower()).strip()[:60]
+
+
+def detail_snippet(text, impression, maxn=3, maxchar=340) -> str:
+    """Detailed description = slowing sentences the impression does NOT already state; a note when it adds none."""
+    imp = {_norm(s) for s in re.split(r"(?<=[.!?])\s+", impression or "") if s.strip()}
+    extra = [s for s in _slow_sentences(text) if _norm(s) not in imp][:maxn]
+    out = _clip(_scrub(" ".join(extra)), maxchar)
+    return out or "— the report gives no detailed description beyond the impression above"
 
 m58 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m58", "scripts/58_description_words.py"))
 importlib.util.spec_from_file_location("m58", "scripts/58_description_words.py").loader.exec_module(m58)
@@ -48,12 +106,15 @@ def main():
     lab = pd.read_parquet("data/derived/recording_labels.parquet").drop_duplicates("eeg_id")
     sap = pd.read_parquet("data/derived/recording_labels_sap.parquet").drop_duplicates("eeg_id")
     meta = pd.read_parquet("data/derived/recording_meta.parquet").drop_duplicates("eeg_id").set_index("eeg_id")
+    man = pd.read_parquet(MANIFEST).drop_duplicates("eeg_id").set_index("eeg_id")   # clinical report text (impression + detail)
     d = R.merge(lab[["eeg_id", "focal_side", "focal_region", "focal_band", "gen_band", "gen_topography"]], on="eeg_id") \
          .merge(sap[["eeg_id", "slowing_focal", "slowing_gen_pathologic"]], on="eeg_id")
     d = d[d.slowing_focal.fillna(False) | d.slowing_gen_pathologic.fillna(False)].copy()
+    d = d[~d.eeg_id.astype(str).str.startswith(EXCLUDE_IDS)].copy()             # drop known-bad example recordings
     S = S[S.eeg_id.isin(set(d.eeg_id))].copy(); S["amount"] = S[["delta_p90", "theta_p90"]].max(axis=1)
     stage_map = {eid: {r.stage: (r.prevalence, r.n_seg, r.amount) for r in g.itertuples()} for eid, g in S.groupby("eeg_id")}
     d["isfoc"] = d.apply(m58.ourisfoc, axis=1)
+    d["gen"] = d.apply(m58.has_generalized, axis=1)
     d["peakz"] = [m58.magnitude(r, r.isfoc) for r in d.itertuples()]
     d["domstage"] = d.eeg_id.map(lambda e: max(stage_map.get(e, {"W": (0, 0, -9)}), key=lambda s: stage_map[e][s][2]) if stage_map.get(e) else "W")
     d["age"] = d.eeg_id.map(meta.age); d["sex"] = d.eeg_id.map(meta.sex)
@@ -75,8 +136,9 @@ def main():
         pc = p[p.concord]                                                              # prefer report-concordant side
         p = pc if len(pc) else p
         return p.sort_values("n_seg", ascending=False).iloc[0]
-    foc = d[d.isfoc & (d.slowing_focal == True) & d.focal_side.notna()]              # noqa: E712
-    gen = d[(~d.isfoc) & (d.slowing_gen_pathologic == True)]                          # noqa: E712
+    # EXCLUSIVELY focal / generalized (report AND model agree) so each example shows one clean pattern
+    foc = d[d.isfoc & (~d.gen) & (d.slowing_focal == True) & (d.slowing_gen_pathologic != True) & d.focal_side.notna()]  # noqa: E712
+    gen = d[(~d.isfoc) & d.gen & (d.slowing_gen_pathologic == True) & (d.slowing_focal != True)]                        # noqa: E712
     MARKED, MODERATE, MILD = (3.0, 12.0), (1.8, 3.0), (1.0, 1.8)
     used_ids, used_stages, chosen = set(), [], []
     for pool, band in [(foc, MARKED), (foc, MODERATE), (foc, MILD),
@@ -90,16 +152,21 @@ def main():
     n = len(ex); fig = plt.figure(figsize=(12.5, 3.0 * n + 0.5))
     gs = fig.add_gridspec(n, 2, width_ratios=[1, 4.0], hspace=0.55, wspace=0.06)
     md = ["# Example generated reports vs the clinical report (6 recordings)\n",
-          "Our BRIEF finding line and FULL report paragraph (governed by docs/claims_table.md — magnitude in "
+          "LENS's BRIEF finding line and FULL report paragraph (governed by docs/claims_table.md — magnitude in "
           "SD/centile, no severity adjective) beside the clinical report's STRUCTURED descriptors (raw report "
           "text withheld as PHI). Regional strip = per-region delta-excess deviation z (focal = one region "
           "high; diffuse = broadly elevated).\n"]
     recs = []
     for i, r in ex.iterrows():
         finding, paragraph, isfoc = m58.build(r, stage_map.get(r.eeg_id, {}))
+        imp = man.report_impression.get(r.eeg_id, "") if r.eeg_id in man.index else ""
+        det = man.report_text.get(r.eeg_id, "") if r.eeg_id in man.index else ""
+        report_impression_text = slowing_snippet(imp, maxn=2) or slowing_snippet(det, maxn=1)
+        report_detail_text = detail_snippet(det, report_impression_text)
         recs.append(dict(eeg_id=r.eeg_id, isfoc=bool(isfoc), domstage=str(r.domstage), peakz=float(r.peakz),
                          age=float(r.age) if np.isfinite(r.age) else np.nan, sex=str(r.sex),
-                         finding=finding, paragraph=paragraph, report_struct=report_structured(r)))
+                         finding=finding, paragraph=paragraph, report_struct=report_structured(r),
+                         report_impression_text=report_impression_text, report_detail_text=report_detail_text))
         kind = "Focal" if isfoc else "Generalized"
         age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper() if isinstance(r.sex, str) else "?"
         cent = m58.centile_word(r.peakz)
@@ -126,10 +193,10 @@ def main():
                 y[0] -= LH
             y[0] -= gap
         emit(f"Case {i+1}.   {header}", "#111", bold=True)
-        emit("Ours (brief): " + finding, "#127a3d")
-        emit("Ours (full): " + paragraph, "#12608a")
+        emit("LENS (brief): " + finding, "#127a3d")
+        emit("LENS (full): " + paragraph, "#12608a")
         emit("Report (structured): " + rep, "#a5561f")
-        md.append(f"**Case {i+1} — {header}**  \n- Ours (brief): {finding}  \n- Ours (full): {paragraph}  \n- Report (structured): {rep}\n")
+        md.append(f"**Case {i+1} — {header}**  \n- LENS (brief): {finding}  \n- LENS (full): {paragraph}  \n- Report (structured): {rep}\n")
     fig.suptitle("Example automated slowing reports vs the clinical report — focal & generalized, varying degree & sleep stage",
                  fontsize=12, y=0.995)
     fig.savefig(FIG / "s4_examples_panel.png", dpi=150, bbox_inches="tight"); plt.close(fig)

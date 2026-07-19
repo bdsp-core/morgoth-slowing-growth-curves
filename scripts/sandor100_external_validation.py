@@ -87,7 +87,7 @@ def eval_axis(scores, axis, mr_file, ax):
     # 0.976 vs the stated column at 0.62). Verified 2026-07-18; the generalized sheet is unaffected.
     y = (wide.mean(axis=1).values >= 0.5).astype(int)
     pts = m46.expert_points(wide)
-    models = [("ours", m[f"ours_{axis}"].values, C_OURS), ("Morgoth", m["M_pred"].values, C_MORG),
+    models = [("LENS", m[f"ours_{axis}"].values, C_OURS), ("Morgoth", m["M_pred"].values, C_MORG),
               ("SCORE-AI", m["S_pred"].values, C_SAI)]
     ax.plot([0, 1], [0, 1], "--", color="#ccc", lw=1); res = []
     for name, s, c in models:
@@ -117,15 +117,15 @@ def main():
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(12, 5))
     rf, nf, pf, ne = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
     rg, ng, pg, _ = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
-    fig.suptitle(f"Sandor_100 external validation — our models vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=12)
+    fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig(FIG / "sandor100_slowing.png", dpi=150); plt.close(fig)
 
-    md = ["# SB / Sandor_100 — external validation: our models vs SCORE-AI vs Morgoth vs experts\n",
-          f"Full pipeline (extraction → **Morgoth ss_hm_1 sleep staging** → age+stage-matched deviation → our "
-          f"report-trained detectors) run UNCHANGED on {len(scores)}/100 external EMU EEGs. Ground truth = "
+    md = ["# SAI-100 (SCORE-AI validation set) — external validation: LENS vs SCORE-AI vs Morgoth vs experts\n",
+          f"Full pipeline (extraction → **Morgoth ss_hm_1 sleep staging** → age+stage-matched deviation → the "
+          f"report-trained LENS detectors) run UNCHANGED on {len(scores)}/100 external EMU EEGs. Ground truth = "
           f"expert majority; SCORE-AI (`S_pred`) and the Morgoth gate (`M_pred`) and the individual experts "
           f"are pre-joined in Sandor_100/Morgoth_results/. Recording-level bootstrap 95% CIs; % experts under "
-          f"our ROC curve.\n",
+          f"the LENS ROC curve.\n",
           "| axis | model | AUROC [95% CI] | % experts under ROC | AP |", "|---|---|---|---|---|"]
     for axis, res, npos in [("focal", rf, pf), ("generalized", rg, pg)]:
         for name, au, lo, hi, ur, ap in res:

@@ -118,14 +118,14 @@ def main():
             ur = up = np.nan
             if pts:
                 fpr, tpr, _ = roc_curve(y.values[ok], s_ours.values[ok]); prec, rec, _ = precision_recall_curve(y.values[ok], s_ours.values[ok])
-                cur = m54.panel_curve(None, y.values[ok], s_ours.values[ok], pts, C_OURS, "ours"); ur, up = cur["ur"], cur["up"]
+                cur = m54.panel_curve(None, y.values[ok], s_ours.values[ok], pts, C_OURS, "LENS"); ur, up = cur["ur"], cur["up"]
                 # figure: ours vs Morgoth vs experts (occasion has Morgoth via occasion_morgoth_preds)
                 MP = pd.read_parquet("data/derived/occasion_morgoth_preds.parquet")
                 mm = MP[MP.axis == mx].set_index("fid").M_pred; mm.index = [f"ON_{int(i)}" for i in mm.index]
                 cm = m54.panel_curve(None, y.values[ok], mm.reindex(idx).values[ok], pts, C_MORG, "Morgoth")
                 fig, (a0, a1) = plt.subplots(1, 2, figsize=(11.5, 4.8)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
-                for cur2, lab, cc in [(cm, "Morgoth", C_MORG), (cur, "ours", C_OURS)]:
-                    ci = f" [{lo:.2f}–{hi:.2f}]" if lab == "ours" else ""
+                for cur2, lab, cc in [(cm, "Morgoth", C_MORG), (cur, "LENS", C_OURS)]:
+                    ci = f" [{lo:.2f}–{hi:.2f}]" if lab == "LENS" else ""
                     a0.plot(cur2["fpr"], cur2["tpr"], color=cc, lw=2.4, label=f"{lab} (AUROC {cur2['auc']:.2f}{ci}, {cur2['ur']:.0f}% under)")
                     a1.plot(cur2["rec"], cur2["prec"], color=cc, lw=2.4, label=f"{lab} (AP {cur2['ap']:.2f}, {cur2['up']:.0f}% under)")
                 for r, p in pts.items():
@@ -137,7 +137,7 @@ def main():
                 a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{tag.upper()} — PRC", fontsize=11)
                 a0.legend(frameon=False, fontsize=8, loc="lower right"); a1.legend(frameon=False, fontsize=8, loc="upper right")
                 for a in (a0, a1): a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
-                fig.suptitle(f"{ds.upper()} {tag} — report-trained recording model vs Morgoth vs {len(pts)} experts", fontsize=10.5)
+                fig.suptitle(f"ON-100 {tag} — report-trained recording model vs Morgoth vs {len(pts)} experts", fontsize=10.5)
                 fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / f"s0e_{ds}_{tag}.png", dpi=150); plt.close(fig)
             else:
                 aum = roc_auc_score(y.values[ok], morg.reindex(idx).values[ok]) if morg is not None else np.nan
