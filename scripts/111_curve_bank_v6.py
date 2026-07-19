@@ -25,7 +25,7 @@ FEATURES = ["log_delta", "log_theta", "rel_delta", "rel_theta", "DAR", "TAR", "D
 REGIONS = ["whole_head", "L_temporal", "R_temporal", "L_parasagittal", "R_parasagittal"]
 STAGES = ["W", "N1", "N2", "N3", "REM"]
 GRID = np.arange(0.25, 90, 0.5)
-C_NORM, C_ABN = "#2c7fb8", "#d95f02"
+from morgoth_slowing.viz.palette import NORMAL as C_NORM, ABNORMAL as C_ABN
 XT = [0.25, 0.5, 1, 2, 5, 10, 20, 40, 60, 90]
 XL = ["3 mo", "6 mo", "1", "2", "5", "10", "20", "40", "60", "90"]
 

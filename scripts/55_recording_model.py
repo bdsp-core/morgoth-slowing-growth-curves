@@ -31,7 +31,8 @@ m46 = m54.m49.m46; m45 = m54.m45
 AMT0 = [f"amt_{ft}" for ft in m54.FEATS]
 FOC0 = [f"{p}_{ft}" for ft in m54.FOC_F for p in ("peak", "foc", "asym")]
 FIG = Path("figures/story"); RES = Path("results/story")
-C_MORG, C_OURS = "#6a3d9a", "#e6550d"
+from morgoth_slowing.viz.palette import MORGOTH, OURS
+C_MORG, C_OURS = MORGOTH, OURS
 MOE_XL = ("/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
           "543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/moe/Morgoth_test_list_MoE.xlsx")
 

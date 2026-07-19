@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz.palette import NORMAL, ABNORMAL
 
 DEV = "data/derived/segment_deviation"
 STAGES = ["W", "N1", "N2", "N3", "REM"]
@@ -65,7 +66,7 @@ def main():
     fig, axes = plt.subplots(1, 3, figsize=(14, 4.6), sharey=True)
     for j, (col, label) in enumerate(FEATS):
         ax = axes[j]
-        for grp, D, color in [("clean-normal", cn_d, "#2c7fb8"), ("abnormal", ab_d, "#c8443c")]:
+        for grp, D, color in [("clean-normal", cn_d, NORMAL), ("abnormal", ab_d, ABNORMAL)]:
             meds, q1s, q3s = [], [], []
             for st in STAGES:
                 v = D[D.stage == st][col].replace([np.inf, -np.inf], np.nan).dropna()

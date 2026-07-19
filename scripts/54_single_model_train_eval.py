@@ -36,7 +36,8 @@ AMT = [f"amt_{ft}" for ft in FEATS] + ["age"]
 FOC = [f"{p}_{ft}" for ft in FOC_F for p in ("peak", "foc", "asym")] + ["age"]
 K = 5
 FIG = Path("figures/story"); RES = Path("results/story")
-C_MORG, C_OURS = "#6a3d9a", "#e6550d"
+from morgoth_slowing.viz.palette import MORGOTH, OURS, OURS_ALT
+C_MORG, C_OURS = MORGOTH, OURS
 
 
 class Head:
@@ -151,7 +152,7 @@ def main():
             pts = m46.expert_points(wide)
             fig, (a0, a1) = plt.subplots(1, 2, figsize=(11.5, 4.8)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
             best = None
-            for ver, col, cc in [("Morgoth", None, C_MORG), ("ours-v1", "v1", "#31a354"), ("ours-v2", "v2", C_OURS)]:
+            for ver, col, cc in [("Morgoth", None, C_MORG), ("ours-v1", "v1", OURS_ALT), ("ours-v2", "v2", C_OURS)]:
                 if ver == "Morgoth":
                     s = morg.reindex(keep_eeg).values
                 else:

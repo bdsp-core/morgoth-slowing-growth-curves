@@ -38,7 +38,8 @@ SM = Path("data/derived/segment_master")
 OUT = Path("results/sandor"); FIG = Path("figures/story")
 AMT, FOC = m54.AMT, m54.FOC
 FOC_R = [f"{c}_{s}" for c in m55.FOC0 for s in ("mean", "p90", "max", "prev")] + ["age"]
-K = m54.K; C_OURS, C_MORG, C_SAI = "#e6550d", "#6a3d9a", "#2c7fb8"
+from morgoth_slowing.viz.palette import OURS, MORGOTH, SCORE_AI
+K = m54.K; C_OURS, C_MORG, C_SAI = OURS, MORGOTH, SCORE_AI
 
 
 def train_heads():

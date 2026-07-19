@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
+from morgoth_slowing.viz.palette import OURS
 
 m46 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m46", "scripts/46_occasion_wake_classifier.py"))
 importlib.util.spec_from_file_location("m46", "scripts/46_occasion_wake_classifier.py").loader.exec_module(m46)
@@ -169,8 +170,8 @@ def main():
           "(peak − median region), asymmetry z, spatial stability.\n",
           "| axis | stages | n pos/N | AUROC | AP | experts | % under ROC | % under PR |",
           "|---|---|---|---|---|---|---|---|"]
-    md.append(evaluate(T, V, "focal", "FN", foc, "#c8443c"))
-    md.append(evaluate(T, V, "generalized", "GN", amt, "#2c7fb8"))
+    md.append(evaluate(T, V, "focal", "FN", foc, OURS))
+    md.append(evaluate(T, V, "generalized", "GN", amt, OURS))
     (RES / "s0_occasion_ours_v4.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/story/s0_occasion_ours_v4_*.png + results/story/s0_occasion_ours_v4.md")
 
