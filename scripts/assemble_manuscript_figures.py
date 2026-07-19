@@ -1,73 +1,88 @@
-"""Assemble the submission figure set into figures/manuscript/ with manuscript figure-number names.
+"""Assemble the SUBMISSION figure set into figures/manuscript/: multi-panel figures are composited into a
+single file with (A)/(B)/... panel labels — the way the journal receives them — not left as separate panel
+files. Single-panel figures are copied through. Names track docs/manuscript_draft.md §Figures exactly.
 
-The figures are PRODUCED in their own dirs (figures/growth_v2, figures/story, figures/stage_curves,
-results/figs); this gathers the final ones into one clean, submission-ready folder named by figure number,
-matching the Figures section of docs/manuscript_draft.md, and writes a MANIFEST mapping each to its source +
-producing script. Re-run any time (it's part of the `results` reproduce tier). Missing sources are reported,
-not fatal.
+The output folder is WIPED and rebuilt each run, so a rename never leaves an orphan. Missing sources are
+reported, not fatal. Part of the `results` reproduce tier (regenerate the panel sources first).
 
-Run: PYTHONPATH=src python3 scripts/assemble_manuscript_figures.py
+Run: MPLBACKEND=Agg python3 scripts/assemble_manuscript_figures.py
 """
 from __future__ import annotations
-import shutil
 from pathlib import Path
+import matplotlib; matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 OUT = Path("figures/manuscript")
-# submission figure name -> (source path, producing script). Names track docs/manuscript_draft.md §Figures
-# EXACTLY (6 main figures + supplementary). Keep this list the single source of truth; the output folder is
-# wiped and rebuilt on every run, so a rename here never leaves an orphan behind.
-FIGS = [
+STY = "figures/story"; G = "figures/growth_v2"; SC = "figures/stage_curves"; RF = "results/figs"
+
+# submission figure -> (list of panel source paths, ncols, producing scripts). >1 panel => composited with letters.
+FIGS = {
     # ---- MAIN (1 table + 6 figures) ----
-    ("Figure1a_growth_curves.png",         "figures/growth_v2/keystone_growth_grid.png",        "76_keystone_growth_grid.py"),
-    ("Figure1b_topoplot_rel_delta.png",    "figures/growth_v2/topo_rel_delta_by_age_stage.png", "77_topoplots_by_age.py"),
-    ("Figure1b_topoplot_TAR.png",          "figures/growth_v2/topo_TAR_by_age_stage.png",       "77_topoplots_by_age.py"),
-    ("Figure2a_detection_generalized.png", "figures/story/s0d_single_occasion_generalized.png", "54_single_model_train_eval.py"),
-    ("Figure2b_detection_focal.png",       "figures/story/s0e_occasion_focal.png",              "55_recording_model.py"),
-    ("Figure3_sandor_external.png",        "figures/story/sandor100_slowing.png",               "sandor100_external_validation.py"),
-    ("Figure4_example_eeg_reports.png",    "figures/story/s4_examples_eeg_panel.png",           "63_example_eeg_traces.py"),
-    ("Figure5a_laterality_region.png",     "figures/story/s4_d2.png",                           "57_description_panels.py"),
-    ("Figure5b_by_sleep_stage.png",        "figures/story/s4_d5.png",                           "57_description_panels.py"),
-    ("Figure6_sleep_underreporting.png",   "figures/growth_v2/v4a_wake_sleep.png",              "95_v4a_wake_sleep.py"),
-    # ---- SUPPLEMENTARY FIGURES ----
-    ("FigureS1_architecture.png",          "figures/story/architecture.png",                    "architecture_diagram.py"),
-    ("FigureS2_deviation_field.png",       "figures/story/s2_segment_deviation.png",            "44_segment_deviation_summary.py"),
-    ("FigureS3a_curvebank_rel_delta.png",  "figures/stage_curves/rel_delta__whole_head.png",    "111_curve_bank_v6.py"),
-    ("FigureS3b_curvebank_TAR.png",        "figures/stage_curves/TAR__whole_head.png",          "111_curve_bank_v6.py"),
-    ("FigureS3c_curvebank_DAR.png",        "figures/stage_curves/DAR__whole_head.png",          "111_curve_bank_v6.py"),
-    ("FigureS4a_D1_type_amount.png",       "figures/story/s4_d1.png",                           "57_description_panels.py"),
-    ("FigureS4b_D3_anteroposterior.png",   "figures/story/s4_d3.png",                           "57_description_panels.py"),
-    ("FigureS4c_D4_persistence.png",       "figures/story/s4_d4.png",                           "57_description_panels.py"),
-    ("FigureS4d_D6_generated_words.png",   "figures/story/s4_d6.png",                           "58_description_words.py"),
-    ("FigureS5_localized_focal.png",       "figures/story/s0_occasion_ours_v4_focal.png",       "49_occasion_allstage_localized.py"),
-    ("FigureS6_severity_null.png",         "figures/growth_v2/severity_recalibrated.png",       "109_severity_null_v6.py"),
-    ("FigureS7_vanputten_benchmark.png",   "results/figs/vanputten_comparison.png",             "recompute_vanputten_fullcov.py"),
-]
+    "Figure1_normative_model.png":   ([f"{G}/keystone_growth_grid.png", f"{G}/topo_rel_delta_by_age_stage.png"], 1, "76, 77"),
+    "Figure2_detection.png":         ([f"{STY}/s0d_single_occasion_generalized.png", f"{STY}/s0e_occasion_focal.png"], 1, "54, 55, 66"),
+    "Figure3_sandor_external.png":   ([f"{STY}/sandor100_slowing.png"], 1, "sandor100_external_validation"),
+    "Figure4_example_eeg_reports.png": ([f"{STY}/s4_examples_eeg_panel.png"], 1, "62, 63"),
+    "Figure5_description_contrast.png": ([f"{STY}/s4_d2.png", f"{STY}/s4_d5.png"], 2, "57"),
+    "Figure6_sleep_underreporting.png": ([f"{G}/v4a_wake_sleep.png"], 1, "95, 95b"),
+    # ---- SUPPLEMENTARY ----
+    "FigureS1_architecture.png":     ([f"{STY}/architecture.png"], 1, "architecture_diagram"),
+    "FigureS2_deviation_field.png":  ([f"{STY}/s2_segment_deviation.png"], 1, "44"),
+    "FigureS3_curvebank.png":        ([f"{SC}/rel_delta__whole_head.png", f"{SC}/TAR__whole_head.png", f"{SC}/DAR__whole_head.png"], 1, "111"),
+    "FigureS4_description_panels.png": ([f"{STY}/s4_d1.png", f"{STY}/s4_d3.png", f"{STY}/s4_d4.png", f"{STY}/s4_d6.png"], 2, "57, 58"),
+    "FigureS5_localized_focal.png":  ([f"{STY}/s0_occasion_ours_v4_focal.png"], 1, "49"),
+    "FigureS6_severity_null.png":    ([f"{G}/severity_recalibrated.png"], 1, "109"),
+    "FigureS7_vanputten.png":        ([f"{RF}/vanputten_comparison.png"], 1, "recompute_vanputten_fullcov"),
+    "FigureS8_topoplot_TAR.png":     ([f"{G}/topo_TAR_by_age_stage.png"], 1, "77"),
+}
+COLW = 7.0                                                       # inches per panel column
+
+
+def compose(out_path: Path, panels: list[str], ncols: int) -> bool:
+    imgs = []
+    for p in panels:
+        if not Path(p).exists():
+            return False
+        imgs.append(plt.imread(p))
+    n = len(imgs); nrows = (n + ncols - 1) // ncols
+    cell_h = [COLW * im.shape[0] / im.shape[1] for im in imgs]   # height each panel needs at width COLW
+    row_h = [max(cell_h[r * ncols:(r + 1) * ncols]) for r in range(nrows)]
+    fig = plt.figure(figsize=(COLW * ncols, sum(row_h)))
+    gs = fig.add_gridspec(nrows, ncols, height_ratios=row_h, hspace=0.03, wspace=0.03)
+    for i, im in enumerate(imgs):
+        r, c = divmod(i, ncols)
+        ax = fig.add_subplot(gs[r, c]); ax.imshow(im); ax.axis("off")
+        if n > 1:
+            ax.text(0.0, 1.0, chr(65 + i), transform=ax.transAxes, fontsize=17, fontweight="bold",
+                    va="bottom", ha="left")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white"); plt.close(fig)
+    return True
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for old in OUT.glob("*.png"):                        # wipe first so a rename never leaves an orphan
+    for old in OUT.glob("*.png"):
         old.unlink()
-    lines = ["# Manuscript figures — assembled set", "",
-             "Gathered by `scripts/assemble_manuscript_figures.py` from the producing directories; each is a "
-             "copy of the current canonical figure. Regenerate the sources via the `results` reproduce tier, "
-             "then re-run this.", "", "| manuscript figure | source | producing script |", "|---|---|---|"]
+    lines = ["# Manuscript figures — composited submission set", "",
+             "Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are composited into one "
+             "file with (A)/(B) labels (as submitted); singles are passed through. Regenerate panel sources via "
+             "the `results` reproduce tier, then re-run.", "",
+             "| submission figure | panels | producing script(s) |", "|---|---|---|"]
     have = miss = 0
-    for name, src, script in FIGS:
-        s = Path(src)
-        if s.exists():
-            shutil.copy2(s, OUT / name); have += 1
-            lines.append(f"| `{name}` | `{src}` | `scripts/{script}` |")
+    for name, (panels, ncols, scripts) in FIGS.items():
+        if compose(OUT / name, panels, ncols):
+            have += 1
+            lines.append(f"| `{name}` | {len(panels)} ({', '.join(Path(p).name for p in panels)}) | `scripts/{scripts}` |")
         else:
             miss += 1
-            lines.append(f"| `{name}` | *(missing: {src})* | `scripts/{script}` |")
+            missing = [p for p in panels if not Path(p).exists()]
+            lines.append(f"| `{name}` | *(missing: {', '.join(missing)})* | `scripts/{scripts}` |")
     (OUT / "MANIFEST.md").write_text("\n".join(lines) + "\n")
-    print(f"assembled {have} figures into {OUT}/ ({miss} sources missing) + MANIFEST.md")
+    print(f"composited {have} submission figures into {OUT}/ ({miss} with a missing source) + MANIFEST.md")
     if miss:
-        print("  missing sources (run their producing script / reproduce tier):")
-        for name, src, _ in FIGS:
-            if not Path(src).exists():
-                print(f"    {name} <- {src}")
+        for name, (panels, _, _) in FIGS.items():
+            missing = [p for p in panels if not Path(p).exists()]
+            if missing:
+                print(f"    {name} <- missing {missing}")
 
 
 if __name__ == "__main__":
