@@ -108,6 +108,39 @@ def auc_ci(y, s, rng, n=300, groups=None):
     return (round(a, 3), round(np.percentile(bs, 2.5), 3), round(np.percentile(bs, 97.5), 3), int(m.sum()))
 
 
+def make_figure(arms):
+    """Figure S7 — best van Putten qEEG index vs the learned representation, per contrast, with bootstrap CIs.
+    Reproducible producer of results/figs/vanputten_comparison.png (supersedes the old orphaned figure)."""
+    import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+    morg = arms.get("** Morgoth p_slowing (gate) **")
+    vp = {k: v for k, v in arms.items() if not k.startswith("**")}
+    if morg is None or not vp:
+        return
+    v = lambda rows: [float(rows[i][0]) for i in range(3)]
+    e = lambda rows: [[float(rows[i][0]) - float(rows[i][1]) for i in range(3)],
+                      [float(rows[i][2]) - float(rows[i][0]) for i in range(3)]]
+    best = [max(vp.values(), key=lambda t: float(t[i][0]))[i] for i in range(3)]
+    mrow = [morg[i] for i in range(3)]
+    fig, ax = plt.subplots(figsize=(7, 4.2)); x = np.arange(3); w = 0.36
+    ax.bar(x - w / 2, v(best), w, yerr=e(best), capsize=3, color="#9aa0a6", label="best van Putten index")
+    ax.bar(x + w / 2, v(mrow), w, yerr=e(mrow), capsize=3, color="#6a3d9a", label="Morgoth p_slowing (learned)")
+    ax.axhline(0.5, ls="--", color="#bbb", lw=1); ax.text(2.46, 0.505, "chance", color="#999", fontsize=8, va="bottom", ha="right")
+    ax.set_xticks(x); ax.set_xticklabels(["Any abnormal", "Generalized", "Focal"]); ax.set_ylim(0.5, 1.0)
+    ax.set_ylabel("AUROC (auto-oriented > 0.5)")
+    ax.set_title("Slowing detection: best van Putten qEEG index vs the learned representation\n"
+                 "(each contrast one-vs-clean-normal; patient-clustered bootstrap 95% CI)", fontsize=9.5)
+    ax.legend(frameon=False, fontsize=9, loc="upper left")
+    for xi, val in zip(x - w / 2, v(best)):
+        ax.text(xi, val + 0.012, f"{val:.2f}", ha="center", fontsize=8)
+    for xi, val in zip(x + w / 2, v(mrow)):
+        ax.text(xi, val + 0.012, f"{val:.2f}", ha="center", fontsize=8)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    Path("results/figs").mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(); fig.savefig("results/figs/vanputten_comparison.png", dpi=300); plt.close(fig)
+    print("wrote results/figs/vanputten_comparison.png")
+
+
 def main():
     vp = per_recording()
     lab = pd.read_parquet(LAB).drop_duplicates("eeg_id").set_index("eeg_id")
@@ -166,15 +199,16 @@ def main():
         # --- ours ---
         ("** Morgoth p_slowing (gate) **", "p_slowing_p90"),
     ]
-    out = []
+    out = []; arms = {}
     for name, col in specs:
         if col not in d.columns:
             continue
-        A, G, F = arm(col)
+        A, G, F = arm(col); arms[name] = (A, G, F)
         out.append({"method": name,
                     "abnormal": f"{A[0]} [{A[1]}–{A[2]}]", "generalized": f"{G[0]} [{G[1]}–{G[2]}]",
                     "focal": f"{F[0]} [{F[1]}–{F[2]}]", "n_scored": A[3]})
     tab = pd.DataFrame(out)
+    make_figure(arms)
     print(tab.to_string(index=False))
     Path("results").mkdir(exist_ok=True)
     n_ab = len(norm) + len(pos)
