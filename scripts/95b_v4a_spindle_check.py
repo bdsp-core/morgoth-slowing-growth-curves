@@ -140,10 +140,11 @@ def spindle_pos(x, fs, thr, b, a):
     return False
 
 
-def edf_local(site, bf, ses, workdir):
-    """Return (local_path, status). Checks size via lsjson BEFORE downloading; skips oversized EDFs."""
-    d = f"{REPO}/bids/{site}/{bf}/ses-{ses}/eeg"
-    out = subprocess.run([RCLONE, "lsjson", f"{REMOTE}{d}", "--contimeout", "15s", "--timeout", "30s",
+def edf_local(resolved_path, workdir):
+    """Return (local_path, status). `resolved_path` is the manifest's rclone path to this recording's EDF; we
+    list its directory, pick the smallest *_eeg.edf, size-check, then download. Skips oversized EDFs."""
+    d = resolved_path.rsplit("/", 1)[0]              # the eeg/ directory (already carries the 's3:' remote prefix)
+    out = subprocess.run([RCLONE, "lsjson", d, "--contimeout", "15s", "--timeout", "30s",
                           "--low-level-retries", "1", "--retries", "1"], capture_output=True, text=True)
     try:
         items = json.loads(out.stdout)
@@ -155,7 +156,7 @@ def edf_local(site, bf, ses, workdir):
     e = min(edfs, key=lambda x: x["Size"])           # smallest EDF (avoid concatenated/long variants)
     if e["Size"] / 1e6 > MAX_EDF_MB:
         return None, "too_big"
-    subprocess.run([RCLONE, "copy", f"{REMOTE}{d}/{e['Name']}", str(workdir), "--contimeout", "20s",
+    subprocess.run([RCLONE, "copy", f"{d}/{e['Name']}", str(workdir), "--contimeout", "20s",
                     "--timeout", "300s", "--low-level-retries", "2", "--retries", "2"], check=True,
                    capture_output=True)
     return workdir / e["Name"], "ok"
@@ -194,10 +195,15 @@ def main():
     if "--limit" in sys.argv:
         limit = int(sys.argv[sys.argv.index("--limit") + 1])
 
-    grp = pd.read_parquet(SC / "v4a_groups.parquet")
-    pm = pd.read_parquet(SC / "v4a_pathmeta.parquet")[["bdsp_id", "SiteID", "BidsFolder", "SessionID_new"]]
-    grp = grp.merge(pm, on="bdsp_id", how="left").dropna(subset=["BidsFolder"])
-    ref = np.load(SC / "v4a_ref_n2.npz"); grid = ref["grid"]
+    # 95 writes the case/control groups + N2 reference to data/derived; EDF paths come from the manifest's
+    # resolved_path (the old v4a_pathmeta hand-off had no producer after the reorg).
+    HANDOFF = Path("data/derived")
+    grp = pd.read_parquet(HANDOFF / "v4a_groups.parquet")
+    man = pd.read_parquet("data/manifest/report_manifest_v6.parquet")
+    man["bdsp_id"] = man.patient_id.astype(str)
+    pm = man.sort_values("clean_pair", ascending=False).drop_duplicates("bdsp_id")[["bdsp_id", "resolved_path"]]
+    grp = grp.merge(pm, on="bdsp_id", how="left").dropna(subset=["resolved_path"])
+    ref = np.load(HANDOFF / "v4a_ref_n2.npz"); grid = ref["grid"]
 
     # stage tables: N2 segments per recording
     sn = pd.read_parquet("data/derived/segment_stages.parquet")[["bdsp_id", "segment", "stage"]]
@@ -229,8 +235,7 @@ def main():
                    align_drel=np.nan, n_n2=0, n_spindle=0)
         try:
             import pyedflib
-            ses = str(r.SessionID_new).split(".")[0]
-            local, est = edf_local(r.SiteID, r.BidsFolder, ses, work)
+            local, est = edf_local(r.resolved_path, work)
             if local is None:
                 rec["status"] = est; rows.append(rec)
                 print(f"  [{len(rows)}] {r.bdsp_id} {r.group:<7} {est}", flush=True); continue
