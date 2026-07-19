@@ -108,8 +108,9 @@ fi
 run 4 figures/story/s4_d1.png                  "Fig 4 D1-D5 description panels (57)"              -- py scripts/57_description_panels.py
 run 4 figures/story/s4_d6.png                  "Fig 4 D6 words + concordance (58)"               -- py scripts/58_description_words.py
 # -- Figure 5 + supplementary results (sleep under-reporting, human ceiling, severity null)
-run 4 figures/growth_v2/v4a_wake_sleep.png     "Fig 5 sleep under-reporting (95)"                 -- py scripts/95_v4a_wake_sleep.py
-run 4 results/p6_sleep_underreporting.md       "Fig 5 spindle-verified check (95b)"               -- py scripts/95b_v4a_spindle_check.py
+run 4 figures/growth_v2/v4a_deviation_panels.png "§3.8 within-subject deviation panels (95)"       -- py scripts/95_v4a_wake_sleep.py
+run 4 results/p6_sleep_underreporting.md       "P6 naming stat + spindle-verified check (95b)"    -- py scripts/95b_v4a_spindle_check.py
+run 4 figures/growth_v2/v4a_wake_sleep.png     "Fig 6 sleep-naming bar chart (fig6_sleep_naming)" -- py scripts/fig6_sleep_naming.py
 run 4 results/table5_human_ceiling.md          "S2 human ceiling (recompute_human_ceiling_v6)"    -- py scripts/recompute_human_ceiling_v6.py
 run 4 results/severity_null_v6.md              "S1 severity null (109)"                           -- py scripts/109_severity_null_v6.py
 # -- Table 1: cohort

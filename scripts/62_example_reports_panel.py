@@ -76,6 +76,23 @@ def detail_snippet(text, impression, maxn=3, maxchar=340) -> str:
     out = _clip(_scrub(" ".join(extra)), maxchar)
     return out or "— the report gives no detailed description beyond the impression above"
 
+
+def _consistent(field, body) -> bool:
+    """True if the impression FIELD lines up with a body sentence (guards against truncated impression fields,
+    e.g. a stored 'normal eeg...' where the body correctly reads 'abnormal eeg...')."""
+    fk = _norm(field)[:25]
+    if not fk:
+        return False
+    return any((sk := _norm(s)[:25]).startswith(fk) or fk.startswith(sk) for s in _slow_sentences(body))
+
+
+def report_two_part(imp_raw, det_raw):
+    """(impression, detail) for a Figure-4 card: the concise impression FIELD when it is consistent with the full
+    report body, else the body's lead slowing sentence; detail = the body sentences beyond the impression."""
+    imp_field = slowing_snippet(imp_raw, maxn=2)
+    impression = imp_field if _consistent(imp_field, det_raw) else slowing_snippet(det_raw, maxn=1)
+    return impression, detail_snippet(det_raw, impression)
+
 m58 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m58", "scripts/58_description_words.py"))
 importlib.util.spec_from_file_location("m58", "scripts/58_description_words.py").loader.exec_module(m58)
 
@@ -122,6 +139,15 @@ def main():
     d["concord"] = (d.our_side == d.focal_side) | (d.focal_side.isna())            # side agrees (or n/a for gen)
     d = d[d.peakz.notna() & d.age.notna() & (d.n_seg >= 20)]
 
+    # keep only recordings whose report yields BOTH a brief impression AND a distinct detailed description, so
+    # every Figure-4 card shows a real two-way comparison and never falls back to a "no detail" note
+    def _two_part(eid):
+        if eid not in man.index:
+            return False
+        impr, det = report_two_part(man.report_impression.get(eid, ""), man.report_text.get(eid, ""))
+        return bool(impr) and not det.startswith("—")
+    d = d[d.eeg_id.map(_two_part)]
+
     # --- pick 6 CONCORDANT examples (our field agrees slowing is present), 3 focal + 3 generalized,
     #     spanning degree (marked/moderate/mild) and DIFFERENT dominant sleep stages ---
     def pick(pool, used_ids, used_stages, band):
@@ -161,8 +187,7 @@ def main():
         finding, paragraph, isfoc = m58.build(r, stage_map.get(r.eeg_id, {}))
         imp = man.report_impression.get(r.eeg_id, "") if r.eeg_id in man.index else ""
         det = man.report_text.get(r.eeg_id, "") if r.eeg_id in man.index else ""
-        report_impression_text = slowing_snippet(imp, maxn=2) or slowing_snippet(det, maxn=1)
-        report_detail_text = detail_snippet(det, report_impression_text)
+        report_impression_text, report_detail_text = report_two_part(imp, det)
         recs.append(dict(eeg_id=r.eeg_id, isfoc=bool(isfoc), domstage=str(r.domstage), peakz=float(r.peakz),
                          age=float(r.age) if np.isfinite(r.age) else np.nan, sex=str(r.sex),
                          finding=finding, paragraph=paragraph, report_struct=report_structured(r),

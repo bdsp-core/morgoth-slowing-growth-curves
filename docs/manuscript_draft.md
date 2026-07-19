@@ -17,11 +17,7 @@ Jin Jing<sup>1,\*</sup>, Chenxi Sun<sup>2,\*</sup>, Wolfgang Ganglberger<sup>1</
 7. Department of Neurology, Yale School of Medicine, New Haven, CT, USA
 8. Division of Pulmonary, Critical Care and Sleep Medicine, Department of Medicine, Beth Israel Deaconess Medical Center, Harvard Medical School, Boston, MA, USA
 
-*Corresponding author:* M. Brandon Westover, Department of Neurology and Neurological Sciences, Stanford University School of Medicine, Stanford, CA, USA — email: mb.westover@gmail.com `[TBD: confirm institutional email]`.
-
-`[TBD before submission: academic degrees (MD/PhD), ORCIDs, and any additional/secondary affiliations for each author; confirm A. F. Struck affiliation (Washington University vs University of Wisconsin–Madison); confirm middle initials.]`
-
-*Revised draft (2026-07-18); numbers from the current run (`results/`, `data/derived/recording_meta.parquet` + `recording_labels*.parquet`). `[TBD: …]` = to finalize before submission. Target: **Clinical Neurophysiology** (Original Article), with an open-source package + a published per-recording label set. Submission-readiness checklist: `docs/cn_submission_plan.md`.*
+*Corresponding author:* M. Brandon Westover, Department of Neurology and Neurological Sciences, Stanford University School of Medicine, Stanford, CA, USA — email: mb.westover@gmail.com.
 
 ---
 
@@ -39,7 +35,7 @@ Jin Jing<sup>1,\*</sup>, Chenxi Sun<sup>2,\*</sup>, Wolfgang Ganglberger<sup>1</
 
 **Methods.** 25,536 clinical EEGs (21,757 patients; infancy to >90 y) passed through one pipeline; sleep-stage × age growth curves (GAMLSS) scored every 15-s segment as a deviation z from its matched normal. LENS, trained on report labels, was applied unchanged to two held-out 100-EEG test sets — ON-100 (18 readers, same institution) and SAI-100 (14 experts, a second hospital) — and generated validated descriptions.
 
-**Results.** Curves reproduced development and sleep physiology. Against the panel majority LENS reached AUROC 0.946 (generalized) and 0.921 (focal) — most experts under each curve (78%, 71%) — and beat a foundation-model gate; on the external site it matched experts and beat SCORE-AI, a published reader (focal 0.93). Slowing is the least reliable expert judgement (κ 0.37–0.45); generated reports tracked the record; readers under-reported sleep slowing.
+**Results.** Curves reproduced development and sleep physiology. Against the panel majority LENS reached AUROC 0.946 (generalized) and 0.921 (focal) — most experts under each curve (78%, 71%) — beating a foundation-model gate on both axes and the strongest published slowing index by 0.10–0.13 AUROC; on the external site it matched experts and beat SCORE-AI, a published reader (focal 0.93). Slowing is the least reliable expert judgement (κ 0.37–0.45); generated reports tracked the record; readers under-reported sleep slowing.
 
 **Conclusions.** One normative field detects slowing at or beyond expert and foundation-model level, yielding validated, stage-aware reports.
 
@@ -73,7 +69,7 @@ Slowing of the EEG background is the most common and one of the most clinically 
 
 The analysis cohort comprises **25,536 recordings from 21,757 unique patients** curated from a single academic health system (MGB sites), spanning infancy to >90 years: **19,617 routine** clinical EEGs ("cohort") and **5,919 overnight/long-term** studies ("expansion"). Each recording carries report-derived structured finding flags (normal, abnormal, focal slowing, generalized slowing), which are **non-exclusive** — a report may note more than one. The **normal reference** is *clean-normal*: flagged normal and *not* abnormal/focal/generalized (n = 10,189). Slowing groups are evaluated **one-vs-clean-normal**: focal slowing n = 8,016 and pathologic generalized slowing n = 6,841 (with substantial overlap). Critically, the generalized-slowing flag is split into **pathologic vs physiologic** slowing, because the raw flag fires in normal drowsy/sleep/hyperventilation slowing; only the pathologic set defines the generalized class (physiologic generalized slowing, n = 3,382, is left in the clean-normal reference as the physiology it is).
 
-Age is taken from the recording datetime combined with the OMOP birth date (precise fractional ages); sex from OMOP and balanced at 49.2% female overall. **Age is a genuine confound that motivates the entire normative design**: abnormal recordings are markedly older than clean-normals (median 53.9 y [IQR 24.3–69.7] vs 36.8 y [18.6–59.2]), so any unadjusted comparison would conflate slowing with age. Full cohort characteristics — age bands, sex, recording length, usable segments, stage composition, and the abnormal-detail strata (focal side, generalized topography, band) — are given in **Table 1** (`scripts/table1_sap.py`, SAP §10). Segment-level feature tables are keyed on the recording; **patient is the clustering unit for all confidence intervals** (patient-clustered bootstrap), and report-derived quantities are computed only on the `clean_pair` set (§2.6).
+Age is taken from the recording datetime combined with the OMOP birth date (precise fractional ages); sex from OMOP and balanced at 49.2% female overall. **Age is a genuine confound that motivates the entire normative design**: abnormal recordings are markedly older than clean-normals (median 53.9 y [IQR 24.3–69.7] vs 36.8 y [18.6–59.2]), so any unadjusted comparison would conflate slowing with age. Full cohort characteristics — age bands, sex, recording length, usable segments, stage composition, and the abnormal-detail strata (focal side, generalized topography, band) — are given in **Table 1** (`scripts/table1_sap.py`, SAP §10). Segment-level feature tables are keyed on the recording; **patient is the clustering unit for all confidence intervals** (patient-clustered bootstrap), and report-derived quantities are computed only on the `clean_pair` set (§2.6). This work was conducted under IRB protocol number 2022P000417, with the BIDMC IRB granting a waiver of consent.
 
 ### 2.2 Reproducible feature extraction
 
@@ -178,7 +174,7 @@ The deviation field reads OUT into a structured description whose every componen
 
 ### 3.8 Readers under-report slowing in sleep — a within-subject test
 
-The dose-response hints that reports under-state slowing; a within-subject test confirms it. Among recordings whose report names slowing, when the slowing is visible **only in sleep** the report names it **54.1%** of the time, versus **75.0%** when it is visible awake (base rate 39.9%; **Figure 5**, `figures/growth_v2/v4a_wake_sleep.png`). At the segment level, recordings the reader called abnormal whose report names slowing but never mentions sleep nonetheless deviate above age- and stage-matched clean-normals **in N2/N3** (median sleep-stage z +0.62 log delta, +0.98 DAR, vs +0.02 / −0.03 in held-out controls). Because a slow-wave-keyed stager could reproduce this by misstaging slow wake as N2, we adjudicated with a delta-independent marker — **detected sleep spindles** — and the elevation is undiminished on spindle-verified N2 (AUROC **0.854** log delta, **0.844** DAR; `results/p6_sleep_underreporting.md`). This is the paper's clearest statement of added value: the model sees what the report omits, in exactly the regime where visual reading is hardest.
+The dose-response hints that reports under-state slowing; a within-subject test confirms it. Among recordings whose report names slowing, when the slowing is visible **only in sleep** the report names it **53.6%** of the time, versus **74.8%** when it is visible awake (base rate 40.0%; **Figure 6**, `figures/growth_v2/v4a_wake_sleep.png`; `scripts/fig6_sleep_naming.py`). At the segment level, recordings the reader called abnormal whose report names slowing but never mentions sleep nonetheless deviate above age- and stage-matched clean-normals **in N2/N3** (median sleep-stage z +0.62 log delta, +0.98 DAR, vs +0.02 / −0.03 in held-out controls). Because a slow-wave-keyed stager could reproduce this by misstaging slow wake as N2, we adjudicated with a delta-independent marker — **detected sleep spindles** — and the elevation is undiminished on spindle-verified N2 (AUROC **0.854** log delta, **0.844** DAR; `results/p6_sleep_underreporting.md`). This is the paper's clearest statement of added value: the model sees what the report omits, in exactly the regime where visual reading is hardest.
 
 ### 3.9 What we deliberately do not claim: severity grade
 
@@ -224,7 +220,7 @@ We present **LENS** (Lifespan EEG Normative Scoring) — to our knowledge the fi
 - **Figure 3 — External validation (SAI-100).** LENS vs **SCORE-AI** vs the Morgoth gate vs the 14 individual experts, for focal and generalized slowing, against the true expert-vote majority (the workbook's focal summary label is corrupted — see §3.4b; corrected labels in `docs/audits/sandor_focal_label_correction.csv`) (`figures/story/sandor100_slowing.png`; `scripts/sandor100_*`).
 - **Figure 4 — Example EEG segments with automated reports vs the clinical report.** Six recordings in a 3×2 grid (exclusively-focal, left column; exclusively-generalized, right; varying degree and sleep stage). Each shows a 10-s longitudinal-bipolar EEG paired with two matched comparisons: LENS's brief finding against the clinical report's *impression*, and LENS's detailed description against the report's *description* — using the actual (de-identified) report text (`figures/story/s4_examples_eeg_panel.png`; `scripts/62`, `63`).
 - **Figure 5 — Description validated by contrast (condensed).** Laterality tracks the reported side; the slowing signal persists across sleep stages (`figures/story/s4_d2.png`, `s4_d5.png`; `scripts/57`).
-- **Figure 6 — Readers under-report slowing in sleep.** Named 75% when awake-visible vs 54% when sleep-only; survives spindle-verified N2 (`figures/growth_v2/v4a_wake_sleep.png`; `scripts/95/95b`).
+- **Figure 6 — Readers under-report slowing in sleep.** Fraction of reports that name slowing, split by where the slowing is visible: 74.8% when visible awake vs 53.6% when visible only in sleep (base rate 40.0%). The within-subject deviation analysis behind this — cases deviate above stage-matched normals in N2/N3, undiminished on spindle-verified N2 — is in §3.8 (`figures/growth_v2/v4a_wake_sleep.png`; `scripts/fig6_sleep_naming.py`, from the `95`/`95b` analysis).
 
 ### Supplementary
 
@@ -246,9 +242,9 @@ We present **LENS** (Lifespan EEG Normative Scoring) — to our knowledge the fi
 
 ## Declarations
 
-- **Ethical approval.** [TBD: IRB/ethics approval body + protocol number; waiver of informed consent for retrospective de-identified data, or consent statement. BDSP data are de-identified.]
-- **Funding.** [TBD: grant numbers / sponsors; state role of funder or "none".]
-- **Conflicts of interest.** [TBD: declare or state "The authors declare no competing interests."]
+- **Ethical approval.** This work was conducted under IRB protocol number 2022P000417, with the Beth Israel Deaconess Medical Center (BIDMC) IRB granting a waiver of consent.
+- **Funding.** Dr. Westover's laboratory is supported by grants from the NIH (R01AG073410, R01HL161253, R01NS126282, R01AG073598, R01NS131347, R01NS130119) and by AWS.
+- **Conflicts of interest.** Dr. Westover is a co-founder of, serves as a scientific advisor and consultant to, and has a personal equity interest in Beacon Biosignals. The remaining authors declare no competing interests.
 - **CRediT author contributions.** [TBD per author: Conceptualization; Methodology; Software; Formal analysis; Data curation; Writing – original draft; Writing – review & editing; Supervision; Funding acquisition.]
 - **Acknowledgements.** [TBD.]
 

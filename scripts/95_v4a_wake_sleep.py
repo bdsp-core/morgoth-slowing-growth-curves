@@ -275,8 +275,14 @@ def main():
     stages = pd.concat([sn, sa], ignore_index=True).drop_duplicates(["bdsp_id", "segment"])
     seg = seg.merge(stages, on=["bdsp_id", "segment"], how="inner")
     seg = seg[seg.stage.isin(WAKE + SLEEP)]
-    lu = pd.read_parquet("data/derived/labels_unified.parquet")[
-        ["bdsp_id", "eeg_datetime", "age", "clean_normal", "is_abnormal", "has_gen_slow"]].drop_duplicates("bdsp_id")
+    # The manifest is the canonical report<->EEG linkage and keeps the SAME bdsp_id space as segment_features;
+    # labels_unified drifted to a different id convention (MOE_*_datetime) and dropped eeg_datetime, so per-
+    # patient metadata (one row per patient, preferring a clean_pair recording) is sourced from the manifest.
+    man = pd.read_parquet("data/manifest/report_manifest_v6.parquet").rename(columns={"patient_id": "bdsp_id"})
+    man["bdsp_id"] = man.bdsp_id.astype(str)
+    lu = man.sort_values("clean_pair", ascending=False).drop_duplicates("bdsp_id")[
+        ["bdsp_id", "age", "clean_normal", "is_abnormal", "has_gen_slow", "clean_pair"]].copy()
+    lu["clean_pair"] = lu.clean_pair == True
     seg = seg.merge(lu, on="bdsp_id", how="inner")
     seg = seg[seg.age.between(0, 100)]
 
@@ -286,14 +292,14 @@ def main():
     ctrl_ids = set(cn_ids) - ref_ids
     seg["ref_normal"] = seg.bdsp_id.isin(ref_ids)
 
-    # ---- report flags & clean_pair -------------------------------------------------------------
-    rf = report_flags()
-    lu["date"] = lu.eeg_datetime.astype(str).str[:8]
-    lab = lu.merge(rf, on=["bdsp_id", "date"], how="left")
+    # ---- report flags (patient level) ---------------------------------------------------------
+    # OR each patient's report flags: the manifest eeg_datetime does not share the report CSV's StartTime date
+    # convention, so a (bdsp_id, date) join is unreliable — the flags are aggregated to bdsp_id instead.
+    rf = report_flags().groupby("bdsp_id", as_index=False).agg(
+        names_slowing=("names_slowing", "max"), mentions_sleep_slowing=("mentions_sleep_slowing", "max"))
+    lab = lu.merge(rf, on="bdsp_id", how="left")
     lab["names_slowing"] = lab.names_slowing == True
     lab["mentions_sleep_slowing"] = lab.mentions_sleep_slowing == True
-    cp = pd.read_parquet("data/derived/report_pairing.parquet")[["bdsp_id", "clean_pair"]]
-    lab = lab.merge(cp, on="bdsp_id", how="left"); lab["clean_pair"] = lab.clean_pair == True
 
     # ---- segment counts per recording (whole_head, staged) -------------------------------------
     cnt = seg.groupby("bdsp_id").stage.agg(
@@ -701,8 +707,10 @@ def main():
     fig.suptitle("Within-subject wake → sleep deviation: cases separate in N2/N3, controls do not", fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     Path("figures/growth_v2").mkdir(parents=True, exist_ok=True)
-    fig.savefig("figures/growth_v2/v4a_wake_sleep.png", dpi=130); plt.close(fig)
-    print("wrote results/v4a_wake_sleep.md + figures/growth_v2/v4a_wake_sleep.png")
+    # the manuscript Figure 6 is the P6 naming bar chart (scripts/fig6_sleep_naming.py -> v4a_wake_sleep.png);
+    # this 5-panel is the within-subject deviation analysis behind §3.8, kept under its own name (no collision)
+    fig.savefig("figures/growth_v2/v4a_deviation_panels.png", dpi=130); plt.close(fig)
+    print("wrote results/v4a_wake_sleep.md + figures/growth_v2/v4a_deviation_panels.png")
 
 
 if __name__ == "__main__":

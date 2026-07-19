@@ -22,12 +22,12 @@ LENS's BRIEF finding line and FULL report paragraph (governed by docs/claims_tab
 - LENS (full): Diffuse theta–delta (mixed) slowing. Peak deviation 3.1 SD above the age- and stage-matched normal (99th centile), abnormal in 97% of analysed segments (continuous); longest continuous run ≈16.3 min over 6 episodes. Present in wakefulness and sleep; most prominent in N2.  
 - Report (structured): generalized slowing (mixed)
 
-**Case 5 — Generalized slowing · peak 2.1 SD (98th centile) · prominent in N3 · 46F**  
-- LENS (brief): Frequent diffuse theta–delta (mixed) slowing, present in wakefulness and sleep; most prominent in N3.  
-- LENS (full): Diffuse theta–delta (mixed) slowing. Peak deviation 2.1 SD above the age- and stage-matched normal (98th centile), abnormal in 37% of analysed segments (frequent); longest continuous run ≈34.5 min over 397 episodes. Present in wakefulness and sleep; most prominent in N3.  
-- Report (structured): generalized slowing (theta)
+**Case 5 — Generalized slowing · peak 2.0 SD (98th centile) · prominent in N3 · 2M**  
+- LENS (brief): Frequent diffuse theta slowing, present in wakefulness and sleep; most prominent in N3.  
+- LENS (full): Diffuse theta slowing. Peak deviation 2.0 SD above the age- and stage-matched normal (98th centile), abnormal in 43% of analysed segments (frequent); longest continuous run ≈2.6 min over 23 episodes. Present in wakefulness and sleep; most prominent in N3.  
+- Report (structured): generalized slowing, posterior (delta)
 
-**Case 6 — Generalized slowing · peak 1.5 SD (94th centile) · prominent in REM · 64M**  
-- LENS (brief): Frequent diffuse theta–delta (mixed) slowing, present in wakefulness and sleep; most prominent in REM sleep.  
-- LENS (full): Diffuse theta–delta (mixed) slowing. Peak deviation 1.5 SD above the age- and stage-matched normal (94th centile), abnormal in 15% of analysed segments (frequent); longest continuous run ≈4.0 min over 545 episodes. Present in wakefulness and sleep; most prominent in REM sleep.  
-- Report (structured): generalized slowing (mixed)
+**Case 6 — Generalized slowing · peak 1.6 SD (94th centile) · prominent in N1 · 65M**  
+- LENS (brief): Frequent diffuse delta slowing, present in wakefulness and sleep; activated in drowsiness.  
+- LENS (full): Diffuse delta slowing. Peak deviation 1.6 SD above the age- and stage-matched normal (94th centile), abnormal in 12% of analysed segments (frequent); longest continuous run ≈28.9 min over 216 episodes. Present in wakefulness and sleep; activated in drowsiness.  
+- Report (structured): generalized slowing, anterior (delta)

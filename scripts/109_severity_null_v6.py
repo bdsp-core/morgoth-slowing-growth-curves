@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 from scipy.stats import spearmanr, kruskal
 
-Q = Path("data/derived/_legacy_quarantine")
+Q = Path("data/derived")   # report_ordinals lives in data/derived (was wrongly read from _legacy_quarantine)
 STAGES = ["W", "N1", "N2", "N3", "REM"]
 FEATS = ["rel_delta", "DAR", "TAR"]
 SEV_LBL = {1: "mild", 2: "moderate", 3: "marked"}

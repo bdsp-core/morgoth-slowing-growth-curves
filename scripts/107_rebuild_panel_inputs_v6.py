@@ -28,17 +28,16 @@ Run: PYTHONPATH=src python scripts/107_rebuild_panel_inputs_v6.py
 from pathlib import Path
 import numpy as np, pandas as pd
 
-Q = Path("data/derived/_legacy_quarantine")
 D = Path("data/derived")
+Q = D   # inputs now live in data/derived (were wrongly read from _legacy_quarantine); kept as an alias
 STAGES_KEEP = None   # keep every stage; 103/104/105 filter themselves
 
 
 def main():
-    # ---------------------------------------------------------------- restore genuine inputs
+    # ---------------------------------------------------------------- genuine inputs (already in data/derived)
     for f in ["excluded_bdsp_ids.parquet", "occasion_expert_votes.parquet"]:
-        d = pd.read_parquet(Q / f)
-        d.to_parquet(D / f, index=False)
-        print(f"restored (input)  {f:32s} {d.shape}")
+        d = pd.read_parquet(D / f)
+        print(f"input present     {f:32s} {d.shape}")
 
     # ---------------------------------------------------------------- panel demographics (age/sex only)
     legacy = pd.read_parquet(Q / "occasion_features.parquet")

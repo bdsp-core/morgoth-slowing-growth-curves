@@ -23,7 +23,7 @@ FIGS = {
     "Figure3_sandor_external.png":   ([f"{STY}/sandor100_slowing.png"], 1, "sandor100_external_validation"),
     "Figure4_example_eeg_reports.png": ([f"{STY}/s4_examples_eeg_panel.png"], 1, "62, 63"),
     "Figure5_description_contrast.png": ([f"{STY}/s4_d2.png", f"{STY}/s4_d5.png"], 2, "57"),
-    "Figure6_sleep_underreporting.png": ([f"{G}/v4a_wake_sleep.png"], 1, "95, 95b"),
+    "Figure6_sleep_underreporting.png": ([f"{G}/v4a_wake_sleep.png"], 1, "fig6_sleep_naming (95b stat)"),
     # ---- SUPPLEMENTARY ----
     "FigureS1_architecture.png":     ([f"{STY}/architecture.png"], 1, "architecture_diagram"),
     "FigureS2_deviation_field.png":  ([f"{STY}/s2_segment_deviation.png"], 1, "44"),
