@@ -236,7 +236,7 @@ We present LENS (Lifespan EEG Normative Scoring), which is to our knowledge the 
 
 ## Data and code availability
 
-Code is released as the open-source package `bdsp-core/morgoth-slowing-growth-curves`, with a numbered, reproducible pipeline (three tiers --- `results` / `features` / `scratch` --- via `scripts/reproduce_story.sh`; `docs/REPRODUCE.md`). We publish per-recording labels (report-derived flags, corrected SAP labels, description descriptors) with provenance. Raw EEG and free-text report content are not redistributed; they are available via BDSP credentialed access. \[TBD: DOI / release version / license.\]
+Code is released as the open-source package `bdsp-core/morgoth-slowing-growth-curves`, with a numbered, reproducible pipeline (three tiers --- `results` / `features` / `scratch` --- via `scripts/reproduce_story.sh`; `docs/REPRODUCE.md`). We publish per-recording labels (report-derived flags, corrected SAP labels, description descriptors) with provenance. Raw EEG and free-text report content are not redistributed; they are available via BDSP credentialed access. The de-identified derived data and code are published on BDSP as **LENS v1.0.0** (<https://bdsp.io/content/q8qpxsk3sgq57vkm5abp/1.0.0/>; version DOI [10.60508/7060-qq30](https://doi.org/10.60508/7060-qq30), concept DOI [10.60508/wt7m-f443](https://doi.org/10.60508/wt7m-f443)) under the BDSP Credentialed Health Data License and Data Use Agreement; the code repository (<https://github.com/bdsp-core/morgoth-slowing-growth-curves>) is licensed CC BY-NC 4.0.
 
 ## References
 
