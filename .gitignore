@@ -84,3 +84,8 @@ figures/manuscript/*.png
 figures/manuscript_review/
 *.docx
 figures/manuscript/*.pdf
+
+# raw-data manifest is committed; the raw EDFs are not
+!data/raw/
+!data/raw/manifest.csv
+!data/raw/.gitkeep

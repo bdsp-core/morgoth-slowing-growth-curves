@@ -13,7 +13,9 @@ artifacts committed in-repo.
 | **De-identified clinical reports** | committed: `data/manifest/report_manifest_v6.parquet` (one row per recording: `eeg_id`, `report_impression`, `report_text`, `resolved_path`, structured labels) | in this repo. Report free text is **de-identified** (surrogate `S####…` IDs, shifted dates) per BDSP policy — DUA-governed, not PHI |
 
 Cohort: **27,524 recordings / 23,543 patients** in the report manifest; the analysed clean-paired
-report cohort and the ON-100 / SAI-100 evaluation sets are described in the manuscript (§2).
+report cohort and the ON-100 / SAI-100 evaluation sets are described in the manuscript (§2). The committed
+[`data/raw/manifest.csv`](data/raw/manifest.csv) lists all **25,008 source EDFs** (`eeg_id`, `patient_id`,
+`bids_task`, `s3_uri`) — the raw data itself is **not** bundled; fetch it from the S3 URIs (credentialed).
 
 ## 2. Derived data (this project's credentialed prefix)
 
@@ -23,6 +25,7 @@ report cohort and the ON-100 / SAI-100 evaluation sets are described in the manu
 |---|---|---|
 | `derived/` | the reproduce cache: `segment_master/` (per-segment × per-channel band powers, hive-partitioned by `eeg_id`), `segment_deviation/` (per-segment age/stage-matched z field), `description_recording.parquet` + `description_stage.parquet`, `single_model_segfeats.parquet`, `occasion_*.parquet`, `grid_norm.json` (GAMLSS norm grids), gate tables | ~72 GB |
 | `panels/` | ON-100 expert-panel inputs / votes | ~2.5 GB |
+| `manifest_build/` | manifest-construction lineage: `report_manifest_v1–v5` + backfill (scripts 121–130 build v6 from these) and the raw report-findings CSVs. Regenerable; kept for provenance, out of git | ~150 MB |
 
 Locally these mirror `data/derived/` (git-ignored; pull with `aws s3 sync`, see `REPRODUCE.md`).
 
