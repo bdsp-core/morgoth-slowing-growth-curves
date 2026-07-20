@@ -118,7 +118,7 @@ run 4 results/table1.md                        "Table 1 cohort (table1_sap)"    
 
 hdr "STAGE 5 — assemble the dashboard + the manuscript figure set"
 run 5 __always__ "story dashboard (build_story_dashboard)" -- py scripts/build_story_dashboard.py
-run 5 __always__ "manuscript figures -> figures/manuscript/ (assemble)" -- py scripts/assemble_manuscript_figures.py
+run 5 __always__ "manuscript figures -> figures/manuscript/ as PNG + publication PDF (assemble)" -- py scripts/assemble_manuscript_figures.py
 
 hdr "DONE"
 echo "  results/story_dashboard.html    — the narrative dashboard (Table 1 + Figs 1-5)"

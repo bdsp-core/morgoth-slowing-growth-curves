@@ -82,3 +82,4 @@ fleet/rclone_s3.conf
 figures/manuscript/*.png
 .eeg_cache/
 figures/manuscript_review/
+*.docx

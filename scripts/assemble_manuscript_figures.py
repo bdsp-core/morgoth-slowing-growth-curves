@@ -54,13 +54,15 @@ def compose(out_path: Path, panels: list[str], ncols: int) -> bool:
         if n > 1:
             ax.text(0.0, 1.0, chr(65 + i), transform=ax.transAxes, fontsize=17, fontweight="bold",
                     va="bottom", ha="left")
-    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white"); plt.close(fig)
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
+    fig.savefig(out_path.with_suffix(".pdf"), dpi=300, bbox_inches="tight", facecolor="white")  # publication PDF
+    plt.close(fig)
     return True
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for old in OUT.glob("*.png"):
+    for old in [*OUT.glob("*.png"), *OUT.glob("*.pdf")]:
         old.unlink()
     lines = ["# Manuscript figures — composited submission set", "",
              "Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are composited into one "

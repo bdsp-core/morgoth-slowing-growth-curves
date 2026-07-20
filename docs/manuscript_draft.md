@@ -2,7 +2,7 @@
 
 **Authors**
 
-Jin Jing<sup>1,\*</sup>, Chenxi Sun<sup>2,\*</sup>, Wolfgang Ganglberger<sup>1</sup>, Alice D. Lam<sup>3</sup>, Haoqi Sun<sup>1</sup>, Tianyu Zhang<sup>1</sup>, Daniel B. Goldenholz<sup>1</sup>, Fabio A. Nascimento<sup>4</sup>, Doyle Yuan<sup>5</sup>, Sándor Beniczky<sup>6</sup>, Jennifer A. Kim<sup>7</sup>, Aaron F. Struck<sup>4</sup>, Sahar F. Zafar<sup>3</sup>, Robert J. Thomas<sup>8</sup>, M. Brandon Westover<sup>2,†</sup>
+Jin Jing<sup>1,\*</sup>, Chenxi Sun<sup>2,\*</sup>, Wolfgang Ganglberger<sup>1</sup>, Alice D. Lam<sup>3</sup>, Haoqi Sun<sup>1</sup>, Tianyu Zhang<sup>1</sup>, Daniel B. Goldenholz<sup>1</sup>, Fabio A. Nascimento<sup>4</sup>, Doyle Yuan<sup>5</sup>, Sándor Beniczky<sup>6</sup>, Jennifer A. Kim<sup>7</sup>, Aaron F. Struck<sup>4</sup>, Sahar F. Zafar<sup>3</sup>, Robert J. Thomas<sup>8</sup>, Mouhsin Shafi<sup>1</sup>, M. Brandon Westover<sup>2,†</sup>
 
 <sup>\*</sup> These authors contributed equally (co-first authors). &nbsp; <sup>†</sup> Corresponding author.
 

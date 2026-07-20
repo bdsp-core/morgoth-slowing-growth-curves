@@ -27,6 +27,10 @@ EXCLUDE_IDS = ("S0001121298232",)
 # sentences about medications / history / times / epileptiform activity — those are off-topic for this figure
 # and the most PHI-sensitive part. Then de-identify (dates, times, redaction stars, long-number IDs, names).
 SLOW_KW = re.compile(r"\bslow(ing|ed|s)?\b", re.I)
+# a recording is NOT a clean "slowing" exemplar if its report describes a PERIODIC/rhythmic epileptiform pattern
+# (LPDs/PLEDs/GPDs/triphasic/LRDA) — those are ictal-interictal-continuum patterns, not background slowing, and
+# would dominate the displayed segment. (Narrow on purpose: 84% of reports mention some spike/discharge term.)
+PERIODIC = re.compile(r"\b(lpd|pled|lrda|periodic|triphasic|gpd|bipd)s?\b", re.I)
 EXCLUDE = re.compile(r"\b(medication|treatment|administered|history|reason for|hemorrhage|h/o|epoch|start:|end:|"
                      r"comparison|clinical correlation|discharge|spike|seizure|anti-?seizure|dose|mg|bid|q\d+h|"
                      r"propofol|clobazam|lamotrigine|phenobarbital|phenytoin|lacosamide|keppra|levetiracetam)\b", re.I)
@@ -148,9 +152,16 @@ def main():
         return bool(impr) and not det.startswith("—")
     d = d[d.eeg_id.map(_two_part)]
 
+    # drop recordings whose report describes a PERIODIC epileptiform pattern (LPDs etc.) — not clean slowing
+    def _no_periodic(eid):
+        if eid not in man.index:
+            return True
+        return not PERIODIC.search(str(man.report_impression.get(eid, "")) + " " + str(man.report_text.get(eid, "")))
+    d = d[d.eeg_id.map(_no_periodic)]
+
     # --- pick 6 CONCORDANT examples (our field agrees slowing is present), 3 focal + 3 generalized,
     #     spanning degree (marked/moderate/mild) and DIFFERENT dominant sleep stages ---
-    def pick(pool, used_ids, used_stages, band):
+    def pick(pool, used_ids, used_stages, used_regions, band):
         lo, hi = band
         p = pool[(pool.peakz >= lo) & (pool.peakz < hi) & (~pool.eeg_id.isin(used_ids))]
         if not len(p):                                                                # relax band if empty
@@ -159,6 +170,8 @@ def main():
             return None
         pu = p[~p.domstage.isin(used_stages)]                                          # prefer an unused stage
         p = pu if len(pu) else p
+        if "peak_region" in p.columns:                                                # prefer an unused region (variety)
+            pr = p[~p.peak_region.isin(used_regions)]; p = pr if len(pr) else p
         pc = p[p.concord]                                                              # prefer report-concordant side
         p = pc if len(pc) else p
         return p.sort_values("n_seg", ascending=False).iloc[0]
@@ -170,12 +183,12 @@ def main():
             & d.focal_side.notna() & (d.lat_signed.abs() >= LAT_MIN)]                                               # noqa: E712
     gen = d[(~d.isfoc) & d.gen & (d.slowing_gen_pathologic == True) & (d.slowing_focal != True)]                    # noqa: E712
     MARKED, MODERATE, MILD = (3.0, 12.0), (1.8, 3.0), (1.0, 1.8)
-    used_ids, used_stages, chosen = set(), [], []
+    used_ids, used_stages, used_regions, chosen = set(), [], set(), []
     for pool, band in [(foc, MARKED), (foc, MODERATE), (foc, MILD),
                        (gen, MARKED), (gen, MODERATE), (gen, MILD)]:
-        r = pick(pool, used_ids, used_stages, band)
+        r = pick(pool, used_ids, used_stages, used_regions, band)
         if r is not None:
-            used_ids.add(r.eeg_id); used_stages.append(r.domstage); chosen.append(r)
+            used_ids.add(r.eeg_id); used_stages.append(r.domstage); used_regions.add(r.peak_region); chosen.append(r)
     ex = pd.DataFrame(chosen).reset_index(drop=True)
 
     # --- render 6 cards (one row each) ---
