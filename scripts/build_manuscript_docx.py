@@ -27,7 +27,7 @@ def main():
     with tempfile.NamedTemporaryFile("w", suffix=".md", dir=".", delete=False) as tf:
         tf.write(body); tmp = tf.name
     try:
-        subprocess.run(["pandoc", tmp, "-o", str(OUT), "--resource-path=.", "--from", "gfm",
+        subprocess.run(["pandoc", tmp, "-o", str(OUT), "--resource-path=.", "--from", "markdown",
                         "--reference-doc" if Path("docs/_reference.docx").exists() else "--metadata",
                         "docs/_reference.docx" if Path("docs/_reference.docx").exists() else "title=manuscript"],
                        check=True)
