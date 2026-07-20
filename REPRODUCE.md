@@ -19,6 +19,7 @@ credentialed access + a DUA — see [`DATA_SOURCE.md`](DATA_SOURCE.md)):
 export AWS_PROFILE=opendata          # read profile for s3://bdsp-opendata-credentialed
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/ data/derived/
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/panels/  data/derived/   # ON-100 panel inputs
+aws s3 cp   s3://bdsp-opendata-credentialed/morgoth-slowing/manifest/report_manifest_v6.parquet data/manifest/   # report-recording pairing (de-identified report text; DUA-governed, not committed)
 ```
 
 The small **proximal artifacts** each figure/table also needs (report manifest, result CSVs/MD, norm

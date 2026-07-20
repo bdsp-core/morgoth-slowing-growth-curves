@@ -89,3 +89,6 @@ figures/manuscript/*.pdf
 !data/raw/
 !data/raw/manifest.csv
 !data/raw/.gitkeep
+
+# de-identified report text -> credentialed S3, synced to this path, not committed
+data/manifest/report_manifest_v6.parquet
