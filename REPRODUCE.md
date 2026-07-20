@@ -65,3 +65,19 @@ Figures are assembled into the submission set by
 Numbers that require the **raw EEG or model training** to regenerate (not just the committed CSVs) are
 produced by the `features`/`scratch` tiers and are marked in `reproduce_story.sh`; every other number
 regenerates from the derived tables in the `results` tier.
+
+## How the runner works
+
+The runner executes numbered stages (0 canonical tables · 1 norms + deviation field · 2 panel inputs
+[Morgoth] · 3 descriptors + model features · 4 figures/tables/models · 5 dashboard + manuscript figure set);
+the tier just sets the starting stage (`results`→4, `features`→0, `scratch`→fleet then 0). Each step is
+**skipped when its output already exists** — `FORCE=1` rebuilds regardless, `SKIP_PANEL=1` skips the
+Morgoth-dependent panel step. Steps needing R (`115`, `76`) are marked `[R]`. `scratch` is a sharded,
+multi-host S3 job, not a laptop run; the runner prints the fleet command and, if `segment_master/` is present
+locally, continues from `features`.
+
+## Known reproducibility note
+
+`results/story/s0c_morgoth_free.md` (the in-domain focal/generalized trajectory in dashboard block 2b) is a
+hand-authored summary of the design search, not a script-generated artifact. Everything else is produced by
+the stages above.

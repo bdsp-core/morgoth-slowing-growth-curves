@@ -7,7 +7,7 @@ governed, clinician-style **description**, validated against clinical EEG report
 ceiling. Part of the [bdsp-core](https://github.com/bdsp-core) automated-EEG effort.
 
 > **Reproduce — three named tiers** (`bash scripts/reproduce_story.sh <tier>`; see
-> [docs/REPRODUCE.md](docs/REPRODUCE.md)):
+> [REPRODUCE.md](REPRODUCE.md)):
 > - **`results`** (default, fast, minutes) — regenerate all figures/tables + the dashboard from the computed
 >   derived tables. The iterate-on-publication-figures loop.
 > - **`features`** (~1 h) — from the extracted features (`segment_master/`): rebuild the GAMLSS norms +
@@ -84,6 +84,13 @@ tests/
 ## Status
 
 Findings are being hardened on the current (legacy) derived tables; the **one clean-room re-run** over the
-frozen manifest produces the final numbers (SAP §12 code-review gate → §13 build order). Data access needs
-BDSP credentialed AWS keys — see [docs/data_sources.md](docs/data_sources.md). Environment:
+frozen manifest produces the final numbers (SAP §12 code-review gate → §13 build order). Environment:
 `PYTHONPATH=src`, `KMP_DUPLICATE_LIB_OK=TRUE`; the norms engine is R (GAMLSS, `scripts/gamlss_fit.R`).
+
+## Data access
+
+De-identified, DUA-governed data (BDSP credentialed access). **Source EEGs** are referenced from the
+published BDSP EEG dataset (`s3://bdsp-opendata-repository/EEG/bids/`), not re-hosted; the **derived reproduce
+cache** lives in this project's credentialed prefix `s3://bdsp-opendata-credentialed/morgoth-slowing/`
+(pull with `aws s3 sync` — see [REPRODUCE.md](REPRODUCE.md)). Full provenance (raw→derived, de-identification
+status, bdsp.io project) is in [DATA_SOURCE.md](DATA_SOURCE.md).
