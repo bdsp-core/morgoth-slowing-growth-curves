@@ -44,17 +44,25 @@ def peak_channels(eid):
     if not os.path.exists(f):
         return {}
     try:
-        d = pd.read_parquet(f, columns=["segment", "channel", "artifact_flag", "log_delta"])
+        d = pd.read_parquet(f, columns=["segment", "channel", "artifact_flag", "log_delta", "log_DTR"])
     except Exception:
         return {}
     d = d[~d.artifact_flag.astype(bool)]
     if d.empty:
         return {}
+    out = {}
+    # BAND (delta vs theta) is read off ABSOLUTE delta/theta power dominance, not the deviation z: a reader who
+    # writes "delta slowing" means delta power dominates the trace, which the per-band age/stage z does NOT track
+    # (a large delta in a young brain sits at a modest z because normal delta σ is large). Whole-head mean log(δ/θ)
+    # predicts the report's delta-vs-theta band at AUROC 0.72 vs 0.66 for the deviation axis (scripts/band_calibration).
+    dtr = d["log_DTR"].to_numpy(); dtr = dtr[np.isfinite(dtr)]
+    if len(dtr):
+        out["band_dtr"] = float(dtr.mean())
     w = d.pivot_table(index="segment", columns="channel", values="log_delta", aggfunc="mean")
     if w.shape[1] < 2:
-        return {}
+        return out                                      # keep band_dtr even if per-derivation localisation fails
     p90 = w.quantile(.9)                                # per-derivation slow-power (p90 over segments)
-    out = {f"pw_{c.replace('-', '_')}": float(p90[c]) for c in DERIVS if c in p90.index and np.isfinite(p90[c])}
+    out.update({f"pw_{c.replace('-', '_')}": float(p90[c]) for c in DERIVS if c in p90.index and np.isfinite(p90[c])})
     pk = w.idxmax(axis=1)                               # per-segment argmax derivation -> spatial stability
     if len(pk):
         vc = pk.value_counts(normalize=True)

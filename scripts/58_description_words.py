@@ -9,10 +9,11 @@ Every clause is governed by docs/claims_table.md:
   - persistence reported as a PERCENTAGE (clause 6 ALLOWED); the ACNS prevalence word (rare/occasional/
     frequent/abundant/continuous) is a gloss on OUR measured prevalence, never a report-concordance claim
     (clause 6b FORBIDDEN)
-  - band is a LOW-CONFIDENCE delta/theta/mixed call; "mixed" is the modal report band (~64%) and the default,
-    a pure band asserted only on a dominance threshold CALIBRATED to the report marginals (clause 5;
-    scripts/band_calibration.py). Only delta-vs-theta is separable — theta and mixed are not — so we match the
-    report DISTRIBUTION (κ≈0.09, the expert-vs-expert floor) rather than chase 3-way accuracy
+  - band is a LOW-CONFIDENCE delta/theta/mixed call read from ABSOLUTE δ/θ power dominance (mean log(δ/θ), the
+    band_dtr descriptor — not the deviation z; it separates the reports' delta-from-theta at AUROC 0.74 vs 0.68);
+    "mixed" is the modal report band (~64%) and the default, a pure band asserted only on a dominance threshold
+    CALIBRATED to the report marginals (clause 5; scripts/band_calibration.py). Only delta-vs-theta is separable —
+    theta and mixed are not — so we match the report DISTRIBUTION (κ≈0.10, the expert-vs-expert floor)
   - side ALLOWED; maximum-deviation lobe is PROVISIONAL, phrased as "maximal over …" (clauses 4/4b)
   - electrode-level peak ("peaking at T3 …") is a PROVISIONAL finer read-off, one level below the lobe,
     localised from LEFT-RIGHT delta asymmetry (which cancels the symmetric frontal/eye-movement gradient, so
@@ -95,21 +96,24 @@ def persistence_word(prev):
             "frequent" if prev < 0.50 else "abundant" if prev < 0.90 else "continuous")
 
 
-# ---- band: low-confidence delta/theta/mixed. "mixed" is the modal report band (~64%) and the honest default;
-# a PURE band is asserted only when z_theta - z_delta clears a threshold CALIBRATED to reproduce the report's
-# own delta/theta rates (scripts/band_calibration.py, N=9,412). Only the delta-vs-theta axis carries real signal
-# (AUROC ~0.68); theta and "mixed" are not separable, so we do not chase 3-way accuracy (claims-table clause 5). ----
-BAND_LO, BAND_HI = -0.936, 0.355                        # z_theta - z_delta thresholds (marginal-matched to reports)
+# ---- band: low-confidence delta/theta/mixed, read off ABSOLUTE delta/theta power dominance (whole-head mean
+# log(δ/θ) = the `band_dtr` descriptor), NOT the deviation z. A clinician's "delta slowing" means delta POWER
+# dominates the trace; the per-band age/stage z does not track that — normal delta σ is large, so a big delta in a
+# young brain sits at a modest z while a smaller theta excess can win the deviation axis even though delta plainly
+# dominates. Raw log(δ/θ) predicts the report's delta-vs-theta band at AUROC ~0.74 vs ~0.68 for the deviation axis.
+# "mixed" is the modal report band (~64%) and the honest default; a PURE band is asserted only when the ratio
+# clears a threshold CALIBRATED to reproduce the report's own delta/theta rates (scripts/band_calibration.py,
+# N=9,412). Only the delta-vs-theta axis carries real signal, so we do not chase 3-way accuracy (clause 5). ----
+BAND_LO, BAND_HI = 0.515, 1.643                         # on band_dtr = mean log(δ/θ): >HI delta, <LO theta (marginal-matched)
 
 
-def band_word(dp, tp):
-    if not (np.isfinite(dp) and np.isfinite(tp)):
-        return "theta-delta"                            # default to the modal "mixed" when undetermined
-    idx = tp - dp                                       # z_theta - z_delta
-    if idx < BAND_LO:
-        return "delta"
-    if idx > BAND_HI:
-        return "theta"
+def band_word(dtr):
+    if not np.isfinite(dtr):
+        return "theta-delta"                            # default to the modal "mixed" when the ratio is unavailable
+    if dtr > BAND_HI:
+        return "delta"                                  # delta power dominates the trace
+    if dtr < BAND_LO:
+        return "theta"                                  # theta power dominates
     return "theta-delta"                                # mixed — the modal report band and the honest default
 
 
@@ -311,7 +315,7 @@ def report_paragraph(row, spatial, maxreg, confident, band, base, acc, elec):
 def build(row, stage_rows):
     isfoc = ourisfoc(row)
     spatial, maxreg, confident, elec = localization(row)
-    band = band_word(row.delta_p90, row.theta_p90)
+    band = band_word(getattr(row, "band_dtr", np.nan))
     base, acc = stage_presence(stage_rows)
     finding = finding_line(row, spatial, band, base, acc, confident, elec)
     paragraph = report_paragraph(row, spatial, maxreg, confident, band, base, acc, elec)
@@ -342,7 +346,7 @@ def main():
         findings.append(f); paragraphs.append(p)
     d["finding"] = findings
     d["report"] = paragraphs
-    d["our_band"] = [band_word(r.delta_p90, r.theta_p90) for r in d.itertuples()]
+    d["our_band"] = [band_word(getattr(r, "band_dtr", np.nan)) for r in d.itertuples()]
     d["our_side"] = [our_side(r) for r in d.lat_signed]
     d["our_lobe"] = [our_lobe(r) for r in d.itertuples()]
 
@@ -396,14 +400,16 @@ def main():
            "| component | concordance | n | chance | note |", "|---|---|---|---|---|",
            f"| side (L/R/bilateral) | **{a_side*100:.0f}%** | {n_side} | 33% | above chance |",
            f"| region (temporal/frontal/posterior) | **{a_reg*100:.0f}%** | {n_reg} | 33% | above chance |",
-           f"| band (delta/theta/mixed) | {a_band*100:.0f}% | {n_band} | 33% | at the human floor — the report "
-           f"band is ~64% 'mixed' (a reader hedge, inseparable from theta); marginal-matched to the report "
-           f"distribution, κ≈0.09 = the expert-vs-expert band floor (0.09–0.38). The valid test is the "
+           f"| band (delta/theta/mixed) | {a_band*100:.0f}% | {n_band} | 33% | at the human floor — read from "
+           f"absolute δ/θ power dominance (mean log(δ/θ)), which separates the reports' delta-from-theta at AUROC "
+           f"0.74 (vs 0.68 for the deviation axis); marginal-matched to the report distribution (~64% 'mixed'), "
+           f"κ≈0.10 = the expert-vs-expert band floor (0.09–0.38). The valid test is the "
            f"CONTINUOUS D1 contrast (our delta rises with report-delta, theta with report-theta); `scripts/band_calibration.py` |",
            "\n*Focal-vs-diffuse (distribution) is decided by the detection head (§2, AUROC 0.92), not "
            "re-derived here. D6 is the synthesis/output layer; each component's validation lives in D1–D5. "
-           "The band call is deliberately calibrated to the report DISTRIBUTION, not to maximise 3-way accuracy "
-           "(which collapses to 'always mixed'); only the delta↔theta axis carries real signal (AUROC ~0.68).*\n"]
+           "The band call is read from absolute δ/θ power dominance and calibrated to the report DISTRIBUTION, not "
+           "to maximise 3-way accuracy (which collapses to 'always mixed'); only the delta↔theta axis carries real "
+           "signal (AUROC 0.74 on log(δ/θ), 0.68 on the deviation axis).*\n"]
 
     # ---- reasonableness review set (structured only, no raw text, no ids, no ages) ----
     md += ["## Reasonableness review set — generated report vs report structured descriptors",

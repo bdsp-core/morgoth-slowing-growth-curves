@@ -97,6 +97,50 @@ def report_two_part(imp_raw, det_raw):
     impression = imp_field if _consistent(imp_field, det_raw) else slowing_snippet(det_raw, maxn=1)
     return impression, detail_snippet(det_raw, impression)
 
+
+# Author-curated (impression, description) for the six figure exemplars. The automated split above only works
+# when the report carries a separate impression field, which is absent in ~56% of notes (report_impression is
+# populated 44%); when it is missing the extractor takes the body's FIRST slowing sentence as the "impression",
+# but reports are written description-first / conclusion-last, so the true impression sinks into the detail slot.
+# These six were hand-selected from the de-identified reports (impression = the report's conclusion; description =
+# the descriptive body) to make the two-way LENS↔report comparison faithful. Text is verbatim from the reports
+# (already de-identified; committable per project policy); "…" marks author-elided intervening text.
+REPORT_OVERRIDES = {
+    "S0001112857553_20160206081631": (
+        "focal slowing in the right posterior region",
+        "on the right, there is near continuous 3-5 hz of focal slowing in the posterior quadrant…drowsiness was "
+        "characterized by generalized background slowing and gradual dropout of the posterior dominant rhythm. "
+        "stage ii sleep was seen, characterized by sleep spindles."),
+    "S0001120133802_20120917122010": (
+        "focal right fronto-temporal theta slowing",
+        "there was increased slowing over the right frontotemporal region. during drowsiness and sleep, "
+        "generalized slowing, vertex sharp waves, sleep spindles and k-complexes were recorded."),
+    "S0002118633403_20191203074129": (
+        "left hemisphere slowing",
+        "over the left hemisphere, there is moderate amplitude left temporo-parietal delta/theta slowing which "
+        "rarely form fluctuating semi-rhythmic activity…intermittent drowsiness is characterized by attenuation of "
+        "the background, slow roving eye movements and bilateral slowing in the theta and delta range, l>>r."),
+    "S0001119160767_20190930133101": (
+        "occasional periods of generalized delta slowing alternating with periods of lower voltage theta slowing "
+        "of the background.",
+        "there is frequent 3-5 hz generalized slowing in the 60-100 uv range"),
+    "S0002114400117_20220102134116": (
+        "disorganized diffusely slow background",
+        "the background is disorganized with no clear discernible posterior rhythm, but rather predominantly "
+        "20-40 v, theta and delta slowing."),
+    "S0002119199989_20170830132221": (
+        "abnormal, due to frequent bilateral anterior slowing, as well as bilateral high voltage theta bursts",
+        "there is frequent bifrontal slowing with mostly theta activity. there are also independent bursts of "
+        "bilateral high voltage theta without any reported symptoms. drowsiness is characterized by attenuation of "
+        "the background rhythm, bilateral slowing. all stages of sleep are seen without major abnormalities in "
+        "morphology."),
+}
+
+
+def curated_two_part(eid, imp_raw, det_raw):
+    """Author-curated (impression, description) when available, else the automated split."""
+    return REPORT_OVERRIDES.get(eid) or report_two_part(imp_raw, det_raw)
+
 m58 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m58", "scripts/58_description_words.py"))
 importlib.util.spec_from_file_location("m58", "scripts/58_description_words.py").loader.exec_module(m58)
 
@@ -146,6 +190,8 @@ def main():
     # keep only recordings whose report yields BOTH a brief impression AND a distinct detailed description, so
     # every Figure-4 card shows a real two-way comparison and never falls back to a "no detail" note
     def _two_part(eid):
+        if eid in REPORT_OVERRIDES:
+            return True                                                            # author-curated -> always valid
         if eid not in man.index:
             return False
         impr, det = report_two_part(man.report_impression.get(eid, ""), man.report_text.get(eid, ""))
@@ -204,7 +250,7 @@ def main():
         finding, paragraph, isfoc = m58.build(r, stage_map.get(r.eeg_id, {}))
         imp = man.report_impression.get(r.eeg_id, "") if r.eeg_id in man.index else ""
         det = man.report_text.get(r.eeg_id, "") if r.eeg_id in man.index else ""
-        report_impression_text, report_detail_text = report_two_part(imp, det)
+        report_impression_text, report_detail_text = curated_two_part(r.eeg_id, imp, det)
         recs.append(dict(eeg_id=r.eeg_id, isfoc=bool(isfoc), domstage=str(r.domstage), peakz=float(r.peakz),
                          age=float(r.age) if np.isfinite(r.age) else np.nan, sex=str(r.sex),
                          # the claimed focal region (maps to a segment_deviation region) so Figure 4 can display

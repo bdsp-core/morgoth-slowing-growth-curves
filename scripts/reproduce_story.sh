@@ -104,7 +104,8 @@ else
   run 4 data/derived/segment_master/eeg_id=SB_001 "Sandor Morgoth staging + feature extraction (sandor100_stage_extract)" -- py scripts/sandor100_stage_extract.py
   run 4 figures/story/sandor100_slowing.png    "Fig 3 Sandor external validation (sandor100_external_validation)" -- py scripts/sandor100_external_validation.py
 fi
-# -- Figure 4: description (D1-D6)
+# -- Figure 4: description (D1-D6). band_calibration sets the δ/θ band thresholds hard-coded in scripts/58.
+run 4 results/story/band_calibration.md        "band (δ/θ) calibration -> scripts/58 thresholds (band_calibration)" -- py scripts/band_calibration.py
 run 4 figures/story/s4_d1.png                  "Fig 4 D1-D5 description panels (57)"              -- py scripts/57_description_panels.py
 run 4 figures/story/s4_d6.png                  "Fig 4 D6 words + concordance (58)"               -- py scripts/58_description_words.py
 # -- Figure 5 + supplementary results (sleep under-reporting, human ceiling, severity null)

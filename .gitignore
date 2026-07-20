@@ -83,3 +83,4 @@ figures/manuscript/*.png
 .eeg_cache/
 figures/manuscript_review/
 *.docx
+figures/manuscript/*.pdf
