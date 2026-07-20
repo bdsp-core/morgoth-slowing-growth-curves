@@ -9,7 +9,7 @@ Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are compo
 | `Figure3_sandor_external.png` | 1 (sandor100_slowing.png) | `scripts/sandor100_external_validation` |
 | `Figure4_example_eeg_reports.png` | 1 (s4_examples_eeg_panel.png) | `scripts/62, 63` |
 | `Figure5_description_contrast.png` | 2 (s4_d2.png, s4_d5.png) | `scripts/57` |
-| `Figure6_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/95, 95b` |
+| `Figure6_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/fig6_sleep_naming (95b stat)` |
 | `FigureS1_architecture.png` | 1 (architecture.png) | `scripts/architecture_diagram` |
 | `FigureS2_deviation_field.png` | 1 (s2_segment_deviation.png) | `scripts/44` |
 | `FigureS3_curvebank.png` | 3 (rel_delta__whole_head.png, TAR__whole_head.png, DAR__whole_head.png) | `scripts/111` |

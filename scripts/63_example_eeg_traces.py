@@ -83,12 +83,17 @@ def plot_panel(ax, data, sr, title):
     ax.text(x0 - 0.05, y0 + 50, "100 µV", ha="right", va="center", fontsize=6.5)
 
 
-def pick_segment(eid, domstage):
+def pick_segment(eid, domstage, region=None):
+    """Display window = where the finding is clearest. FOCAL: the segment where the CLAIMED region's slowing
+    peaks (so the plotted window matches the label, not an off-region/artefact whole-head max — QC 2026-07-19).
+    GENERALIZED: the max whole-head amount. Restricted to the dominant stage, first hour."""
     f = f"{DEV}/eeg_id={eid}/part.parquet"
     if not os.path.exists(f):
         return None
     d = pd.read_parquet(f); d = d[d.t_start_s < 3600]
-    have = [c for c in AMT_Z if c in d.columns]; d = d.assign(amt=d[have].mean(axis=1))
+    cols = [f"z__{region}__{ft}" for ft in ("log_delta", "log_theta", "log_TAR")] if region else AMT_Z
+    have = [c for c in cols if c in d.columns] or [c for c in AMT_Z if c in d.columns]
+    d = d.assign(amt=d[have].mean(axis=1))
     ds = d[d.stage == domstage]; ds = ds if len(ds) else d
     return float(ds.sort_values("amt", ascending=False).iloc[0].t_start_s)
 
@@ -129,7 +134,7 @@ def main():
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()
             head = f"{kind} · {r.peakz:.1f} SD · {r.domstage} · {age}{sex}"
             try:
-                t0 = pick_segment(r.eeg_id, r.domstage)
+                t0 = pick_segment(r.eeg_id, r.domstage, r.get("peak_region"))
                 mono, chs, fs = fetch_window(man.loc[r.eeg_id], t0, r.eeg_id)
                 plot_panel(axe, bipolar(mono, chs, fs), fs, f"{head}   (10 s, t≈{t0/60:.0f} min)")
                 ok += 1

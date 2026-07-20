@@ -162,9 +162,13 @@ def main():
         pc = p[p.concord]                                                              # prefer report-concordant side
         p = pc if len(pc) else p
         return p.sort_values("n_seg", ascending=False).iloc[0]
-    # EXCLUSIVELY focal / generalized (report AND model agree) so each example shows one clean pattern
-    foc = d[d.isfoc & (~d.gen) & (d.slowing_focal == True) & (d.slowing_gen_pathologic != True) & d.focal_side.notna()]  # noqa: E712
-    gen = d[(~d.isfoc) & d.gen & (d.slowing_gen_pathologic == True) & (d.slowing_focal != True)]                        # noqa: E712
+    # EXCLUSIVELY focal / generalized (report AND model agree) so each example shows one clean pattern.
+    # Focal cases additionally require a CLEARLY lateralized field (|lat_signed| >= LAT_MIN): a weak asymmetry
+    # gives an unreliable side/electrode call that the displayed segment can contradict (QC catch 2026-07-19).
+    LAT_MIN = 1.5
+    foc = d[d.isfoc & (~d.gen) & (d.slowing_focal == True) & (d.slowing_gen_pathologic != True)
+            & d.focal_side.notna() & (d.lat_signed.abs() >= LAT_MIN)]                                               # noqa: E712
+    gen = d[(~d.isfoc) & d.gen & (d.slowing_gen_pathologic == True) & (d.slowing_focal != True)]                    # noqa: E712
     MARKED, MODERATE, MILD = (3.0, 12.0), (1.8, 3.0), (1.0, 1.8)
     used_ids, used_stages, chosen = set(), [], []
     for pool, band in [(foc, MARKED), (foc, MODERATE), (foc, MILD),
@@ -190,6 +194,9 @@ def main():
         report_impression_text, report_detail_text = report_two_part(imp, det)
         recs.append(dict(eeg_id=r.eeg_id, isfoc=bool(isfoc), domstage=str(r.domstage), peakz=float(r.peakz),
                          age=float(r.age) if np.isfinite(r.age) else np.nan, sex=str(r.sex),
+                         # the claimed focal region (maps to a segment_deviation region) so Figure 4 can display
+                         # the segment where THIS region peaks, not just the max whole-head-amount segment
+                         peak_region=(str(r.peak_region) if isfoc and pd.notna(r.get("peak_region")) else None),
                          finding=finding, paragraph=paragraph, report_struct=report_structured(r),
                          report_impression_text=report_impression_text, report_detail_text=report_detail_text))
         kind = "Focal" if isfoc else "Generalized"
