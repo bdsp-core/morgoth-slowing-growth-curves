@@ -62,7 +62,7 @@ def main():
     fig.suptitle(f"segment_master (per-channel) -> regions -> figure  |  {n_eeg} pilot EEGs "
                  f"(plumbing proof, not a result)", fontsize=11)
     Path("figures/pilot").mkdir(parents=True, exist_ok=True)
-    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig("figures/pilot/segmaster_by_stage.png", dpi=140)
+    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig("figures/pilot/segmaster_by_stage.png", dpi=300)
     print("wrote docs/pilot_segmaster_summary.md + figures/pilot/segmaster_by_stage.png")
 
 

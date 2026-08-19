@@ -115,7 +115,7 @@ def main():
               f"{med[0]:.2f} → {med[1]:.2f} → {med[2]:.2f}")
     fig.suptitle("Figure S1 — Severity is a null result (v6, corrected labels + exact ages)", fontsize=12)
     fig.tight_layout()
-    fig.savefig("figures/growth_v2/severity_recalibrated.png", dpi=150)
+    fig.savefig("figures/growth_v2/severity_recalibrated.png", dpi=300)
     plt.close(fig)
 
     Path("results/severity_null_v6.md").write_text(

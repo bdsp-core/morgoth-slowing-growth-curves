@@ -93,7 +93,7 @@ def main():
             ax.set_title(f"{feat} — {reg}, wake (v6: corrected labels + exact ages)", fontsize=10)
             ax.legend(frameon=False, fontsize=7)
             fig.tight_layout()
-            fig.savefig(f"figures/curves/{feat}__{reg}.png", dpi=140)
+            fig.savefig(f"figures/curves/{feat}__{reg}.png", dpi=300)
             plt.close(fig)
             n += 1
 
@@ -113,7 +113,7 @@ def main():
             ax.set_title(f"{feat} by sleep stage — clean-normals (v6)", fontsize=10)
             ax.legend(frameon=False, fontsize=8, title="stage")
             fig.tight_layout()
-            fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=140)
+            fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300)
             n += 1
         plt.close(fig)
 

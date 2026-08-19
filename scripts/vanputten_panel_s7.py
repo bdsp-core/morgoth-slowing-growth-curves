@@ -134,7 +134,7 @@ def main():
         ax.set_title(f"{axis.upper()} slowing — n={len(idx)}, {int(y.sum())} pos", fontsize=11)
         ax.legend(frameon=False, fontsize=8, loc="lower right")
     fig.suptitle("ON-100 panel (clean expert labels) — hand-crafted van Putten indices vs LENS vs Morgoth gate", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig(FIG / "vanputten_panel_s7.png", dpi=150); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig(FIG / "vanputten_panel_s7.png", dpi=300); plt.close(fig)
     (RES / "vanputten_panel_s7.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/figs/vanputten_panel_s7.png + results/vanputten_panel_s7.md")
 

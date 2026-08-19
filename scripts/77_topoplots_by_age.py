@@ -83,7 +83,7 @@ def render(tab, info, feature):
                  f"n={tab.bdsp_id.nunique()} recordings", fontsize=12)
     out = Path(f"figures/growth_v2/topo_{feature}_by_age_stage.png")
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=125, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(out, dpi=300, bbox_inches="tight"); plt.close(fig)
     print("wrote", out)
 
 

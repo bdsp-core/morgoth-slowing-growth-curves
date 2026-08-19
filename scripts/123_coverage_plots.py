@@ -113,7 +113,7 @@ def main():
                loc="lower center", ncol=2, fontsize=10, frameon=False)
     fig.tight_layout(rect=[0, 0.03, 1, 0.97])
     p = OUT / "coverage_overview.png"
-    fig.savefig(p, dpi=140); plt.close(fig)
+    fig.savefig(p, dpi=300); plt.close(fig)
     print(f"wrote {p}")
     # adequacy summary
     for lab, s in [("focal region", f.focal_region.value_counts()), ("focal side", f.focal_side.value_counts()),

@@ -43,7 +43,7 @@ def main():
     ax.set_title("Slowing is named less often when visible only in sleep", fontsize=12)
     fig.tight_layout()
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(OUT, dpi=150); plt.close(fig)
+    fig.savefig(OUT, dpi=300); plt.close(fig)
     print(f"wrote {OUT}  ({rates[0]:.0f}% wake vs {rates[1]:.0f}% sleep-only, base {rates[2]:.0f}%)")
 
 

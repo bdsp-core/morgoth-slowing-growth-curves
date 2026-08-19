@@ -50,5 +50,5 @@ def growth_figure(curve_by_sex, feature, region, subjects=None, out=None):
     axes[1].legend(fontsize=7, markerscale=2, loc="best")
     fig.tight_layout()
     if out:
-        fig.savefig(out, dpi=110, bbox_inches="tight"); plt.close(fig)
+        fig.savefig(out, dpi=300, bbox_inches="tight"); plt.close(fig)
     return fig

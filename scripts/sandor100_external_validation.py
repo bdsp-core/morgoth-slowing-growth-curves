@@ -118,7 +118,7 @@ def main():
     rf, nf, pf, ne = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
     rg, ng, pg, _ = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
     fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig(FIG / "sandor100_slowing.png", dpi=150); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig(FIG / "sandor100_slowing.png", dpi=300); plt.close(fig)
 
     md = ["# SAI-100 (SCORE-AI validation set) — external validation: LENS vs SCORE-AI vs Morgoth vs experts\n",
           f"Full pipeline (extraction → **Morgoth ss_hm_1 sleep staging** → age+stage-matched deviation → the "

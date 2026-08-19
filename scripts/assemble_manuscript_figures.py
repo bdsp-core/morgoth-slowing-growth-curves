@@ -35,6 +35,39 @@ FIGS = {
     "FigureS8_topoplot_TAR.png":     ([f"{G}/topo_TAR_by_age_stage.png"], 1, "77"),
 }
 COLW = 7.0                                                       # inches per panel column
+SHRINK_WARN = 0.70   # a source authored wider than COLW/SHRINK_WARN has its text shrunk below legibility
+
+
+def native_inches(path: str) -> float | None:
+    """Width in inches the panel was authored at (px / its own stored dpi). None if undeterminable."""
+    try:
+        from PIL import Image
+        with Image.open(path) as im:
+            dpi = (im.info.get("dpi") or (None,))[0]
+            return im.size[0] / dpi if dpi else None
+    except Exception:
+        return None
+
+
+def legibility(panels: list[str], ncols: int) -> list[str]:
+    """Warn when compositing shrinks a panel enough to make its axis text unreadable in print.
+
+    The composite gives every panel COLW inches of width. A panel authored at W inches therefore has all of
+    its text scaled by COLW/W; an 18-inch-wide panel with 6.5 pt ticks lands at ~2.5 pt on the page. This is
+    the mechanism behind the round-1 review comment that axis labels were illegible even at high
+    magnification, so it is checked rather than left to the eye.
+    """
+    out = []
+    for p in panels:
+        w = native_inches(p)
+        if w is None:
+            continue
+        scale = COLW / w
+        if scale < SHRINK_WARN:
+            out.append(f"{Path(p).name}: authored {w:.1f}in wide -> {COLW:.1f}in "
+                       f"({scale:.0%} of original; text at {scale:.0%} of its authored pt size)")
+    return out
+
 
 
 def compose(out_path: Path, panels: list[str], ncols: int) -> bool:
@@ -70,7 +103,11 @@ def main():
              "the `results` reproduce tier, then re-run.", "",
              "| submission figure | panels | producing script(s) |", "|---|---|---|"]
     have = miss = 0
+    warnings: dict[str, list[str]] = {}
     for name, (panels, ncols, scripts) in FIGS.items():
+        w = legibility(panels, ncols)
+        if w:
+            warnings[name] = w
         if compose(OUT / name, panels, ncols):
             have += 1
             lines.append(f"| `{name}` | {len(panels)} ({', '.join(Path(p).name for p in panels)}) | `scripts/{scripts}` |")
@@ -85,6 +122,13 @@ def main():
             missing = [p for p in panels if not Path(p).exists()]
             if missing:
                 print(f"    {name} <- missing {missing}")
+    if warnings:
+        print(f"\n!! {len(warnings)} figure(s) shrink below {SHRINK_WARN:.0%} of authored width — "
+              f"axis text will be hard to read in print:")
+        for name, ws in warnings.items():
+            for w in ws:
+                print(f"    {name} <- {w}")
+        print("   Fix in the PRODUCING script (narrower figsize or larger fontsize), not here.")
 
 
 if __name__ == "__main__":

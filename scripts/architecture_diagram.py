@@ -81,7 +81,7 @@ def main():
     ax.text(6, 11.9, "Pipeline architecture — lifespan/sleep-stage deviation-from-normal EEG slowing",
             ha="center", fontsize=11.5, fontweight="bold")
 
-    fig.tight_layout(); fig.savefig(FIG / "architecture.png", dpi=200, bbox_inches="tight"); plt.close(fig)
+    fig.tight_layout(); fig.savefig(FIG / "architecture.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     print("wrote figures/story/architecture.png")
 
 

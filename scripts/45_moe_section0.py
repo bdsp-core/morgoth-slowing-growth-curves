@@ -133,7 +133,7 @@ def main():
         fig.suptitle(f"Morgoth EEG-level detection of {name} slowing vs {len(pts)} MoE experts "
                      f"(band-resolved; author excluded; LOO consensus)", fontsize=10.5)
         fig.tight_layout(rect=[0, 0, 1, 0.93])
-        fig.savefig(FIG / f"s0_moe_{name}.png", dpi=150); plt.close(fig)
+        fig.savefig(FIG / f"s0_moe_{name}.png", dpi=300); plt.close(fig)
 
     (RES / "s0_moe.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/story/s0_moe_*.png + results/story/s0_moe.md")

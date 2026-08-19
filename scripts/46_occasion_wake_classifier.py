@@ -150,7 +150,7 @@ def main():
         fig.suptitle(f"Morgoth-FREE wake-segment {name} detector vs {len(pts)} experts (OccasionNoise, LOO-CV)",
                      fontsize=10.5)
         fig.tight_layout(rect=[0, 0, 1, 0.93])
-        fig.savefig(FIG / f"s0_occasion_ours_{name}.png", dpi=150); plt.close(fig)
+        fig.savefig(FIG / f"s0_occasion_ours_{name}.png", dpi=300); plt.close(fig)
 
     (RES / "s0_occasion_ours.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/story/s0_occasion_ours_*.png + results/story/s0_occasion_ours.md")

@@ -138,7 +138,7 @@ def main():
                 a0.legend(frameon=False, fontsize=8, loc="lower right"); a1.legend(frameon=False, fontsize=8, loc="upper right")
                 for a in (a0, a1): a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
                 fig.suptitle(f"ON-100 {tag} — report-trained recording model vs Morgoth vs {len(pts)} experts", fontsize=10.5)
-                fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / f"s0e_{ds}_{tag}.png", dpi=150); plt.close(fig)
+                fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / f"s0e_{ds}_{tag}.png", dpi=300); plt.close(fig)
             else:
                 aum = roc_auc_score(y.values[ok], morg.reindex(idx).values[ok]) if morg is not None else np.nan
                 md.append(f"| {ds} | {tag} | Morgoth | {aum:.3f} | – | – | – |")

@@ -107,7 +107,7 @@ def main():
                  "model-free rolling median, bands p3–p97/p10–p90/p25–p75  (n≈15k/stage)", fontsize=12)
     fig.tight_layout(rect=[0.01, 0, 1, 0.96])
     out = Path("figures/growth_v2/keystone_growth_grid.png"); out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=140, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(out, dpi=300, bbox_inches="tight"); plt.close(fig)
     print("wrote", out)
 
 

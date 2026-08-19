@@ -395,7 +395,7 @@ def main():
     ax.set_ylabel("concordance with report word"); ax.set_ylim(0, 1)
     ax.set_title("Generated descriptor words concordant with the report", fontsize=12)
     ax.grid(alpha=.2, axis="y")
-    fig.tight_layout(); fig.savefig(FIG / "s4_d6.png", dpi=140); plt.close(fig)
+    fig.tight_layout(); fig.savefig(FIG / "s4_d6.png", dpi=300); plt.close(fig)
     md += ["## Component concordance (generated word vs report structured field)",
            "| component | concordance | n | chance | note |", "|---|---|---|---|---|",
            f"| side (L/R/bilateral) | **{a_side*100:.0f}%** | {n_side} | 33% | above chance |",

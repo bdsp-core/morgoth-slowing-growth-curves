@@ -709,7 +709,7 @@ def main():
     Path("figures/growth_v2").mkdir(parents=True, exist_ok=True)
     # the manuscript Figure 6 is the P6 naming bar chart (scripts/fig6_sleep_naming.py -> v4a_wake_sleep.png);
     # this 5-panel is the within-subject deviation analysis behind §3.8, kept under its own name (no collision)
-    fig.savefig("figures/growth_v2/v4a_deviation_panels.png", dpi=130); plt.close(fig)
+    fig.savefig("figures/growth_v2/v4a_deviation_panels.png", dpi=300); plt.close(fig)
     print("wrote results/v4a_wake_sleep.md + figures/growth_v2/v4a_deviation_panels.png")
 
 

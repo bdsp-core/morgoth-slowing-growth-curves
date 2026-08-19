@@ -147,7 +147,7 @@ def evaluate(T, V, name, ax, cols, color):
     a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{name.upper()} — PRC\n{100*pu_pr:.0f}% of {len(fp)} under", fontsize=10)
     a1.legend(frameon=False, fontsize=7.5, loc="upper right"); a1.set_xlim(-.02, 1.02); a1.set_ylim(-.02, 1.02)
     fig.suptitle(f"Morgoth-FREE {'+'.join(STAGESET)} {name} detector vs {len(pts)} experts (LOO-CV)", fontsize=10.5)
-    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / f"s0_occasion_ours_v4_{name}.png", dpi=150); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / f"s0_occasion_ours_v4_{name}.png", dpi=300); plt.close(fig)
     return f"| {name} | {'+'.join(STAGESET)} | {int(y.sum())}/{len(y)} | {auc:.3f} | {ap:.3f} | {len(pts)} | **{100*pu_roc:.0f}%** | **{100*pu_pr:.0f}%** |"
 
 

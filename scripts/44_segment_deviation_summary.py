@@ -86,7 +86,7 @@ def main():
     fig.suptitle("Per-segment deviation field is stage-calibrated (normals ~0) and discriminative "
                  "(abnormals shifted up) — whole head", fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.94])
-    fig.savefig(FIG / "s2_segment_deviation.png", dpi=150); plt.close(fig)
+    fig.savefig(FIG / "s2_segment_deviation.png", dpi=300); plt.close(fig)
     (RES / "s2_segment_deviation.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/story/s2_segment_deviation.png + results/story/s2_segment_deviation.md")
 

@@ -290,7 +290,7 @@ def main():
         md.append(f"**Case {i+1} — {header}**  \n- LENS (brief): {finding}  \n- LENS (full): {paragraph}  \n- Report (structured): {rep}\n")
     fig.suptitle("Example automated slowing reports vs the clinical report — focal & generalized, varying degree & sleep stage",
                  fontsize=12, y=0.995)
-    fig.savefig(FIG / "s4_examples_panel.png", dpi=150, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(FIG / "s4_examples_panel.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     pd.DataFrame(recs).to_parquet(RES / "s4_examples.parquet", index=False)   # for scripts/63 (EEG traces)
     (RES / "s4_examples.md").write_text("\n".join(md))
     print(f"chose {n} examples:", [f"{r.eeg_id}({'F' if r.isfoc else 'G'},{r.domstage},{r.peakz:.1f})" for _, r in ex.iterrows()])

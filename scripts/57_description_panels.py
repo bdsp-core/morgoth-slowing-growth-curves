@@ -79,7 +79,7 @@ def main():
                           ("report: no delta\n(theta only)", sl[~sl.rep_delta].delta_p90)],
                   "Our DELTA measure by report band", "delta-excess z (p90)", ["#c8443c", "#bbb"], ylim=(-2, 5))
     fig.suptitle("Type & amount: LENS band-deviation tracks the report's band word", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d1.png", dpi=140); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d1.png", dpi=300); plt.close(fig)
     pth = mannwhitneyu(sl[sl.rep_theta].theta_p90.dropna(), sl[~sl.rep_theta].theta_p90.dropna()).pvalue
     pdd = mannwhitneyu(sl[sl.rep_delta].delta_p90.dropna(), sl[~sl.rep_delta].delta_p90.dropna()).pvalue
     clean = lambda s: s.replace("\n", " ")
@@ -115,7 +115,7 @@ def main():
     ax[1].set_ylabel("lobe focality  (prominence vs rest of head)"); ax[1].legend(frameon=False, fontsize=8)
     ax[1].set_title("Lobe prominence rises when the report names that lobe", fontsize=10); ax[1].grid(alpha=.2, axis="y")
     fig.suptitle("Laterality tracks the reported side; lobe prominence tracks the reported region", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "s4_d2.png", dpi=140); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "s4_d2.png", dpi=300); plt.close(fig)
     md.append("- region (focality dose-response): " + "; ".join(rl) + "\n")
 
     # ---------- D3 ant-post ----------
@@ -124,7 +124,7 @@ def main():
                   "Our A-P gradient by report topography", "anterior − posterior z  (+ = frontal)", ["#c8443c", "#2c7fb8", "#bbb"], ylim=(-2, 2))
     ax.axhline(0, ls="--", color="#666")
     fig.suptitle("Anterior−posterior gradient tracks report topography", fontsize=12)
-    fig.tight_layout(); fig.savefig(FIG / "s4_d3.png", dpi=140); plt.close(fig)
+    fig.tight_layout(); fig.savefig(FIG / "s4_d3.png", dpi=300); plt.close(fig)
     pap = mannwhitneyu(d[d.gen_topography == "anterior"].antpost.dropna(), d[d.gen_topography == "posterior"].antpost.dropna()).pvalue
     md += ["## D3 — anterior-posterior predominance", "- " + "; ".join(aa) + f"; anterior>posterior p={pap:.1e}\n"]
 
@@ -139,7 +139,7 @@ def main():
     ax[1].hist(np.clip(d[d.slowing].longest_run_min, 0, 30), bins=40, color="#c8443c", alpha=.7)
     ax[1].set_xlabel("longest continuous run (min)"); ax[1].set_ylabel("recordings"); ax[1].set_title("Longest run (report slowing)", fontsize=10)
     fig.suptitle("Persistence: prevalence & run-length (internal; no structured report qualifier)", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d4.png", dpi=140); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d4.png", dpi=300); plt.close(fig)
     md += ["## D4 — persistence vs intermittence",
            f"- prevalence: clean-normal {d[d.clean_normal==True].prevalence.median():.2f} vs report-slowing {d[d.slowing].prevalence.median():.2f}",
            "- no structured report intermittent/continuous field -> shown as internal reasonableness (ACNS-binned prevalence + run length)\n"]
@@ -164,7 +164,7 @@ def main():
     ax[1].set_ylabel("deviation z (median)"); ax[1].set_title("Band deviation by stage (report slowing)", fontsize=10)
     ax[1].legend(frameon=False, fontsize=8); ax[1].grid(alpha=.2)
     fig.suptitle("Stage-resolved: the slowing signal is present in sleep, not only wake", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d5.png", dpi=140); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d5.png", dpi=300); plt.close(fig)
     # under-reporting probe: among report-negative recordings, N2 deviation still sits above clean-normal N2
     neg = Sm[(Sm.clean_normal != True) & (~Sm.slowing)]                                      # abnormal, report does not call slowing
     cnn2 = Sm[(Sm.clean_normal == True) & (Sm.stage == "N2")].prevalence.mean()              # noqa: E712
