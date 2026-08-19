@@ -40,15 +40,27 @@ Jin Jing <jjing@bidmc.harvard.edu>; Chenxi Sun <cxsun@stanford.edu>; Wolfgang Ga
 
 ## Abstract
 
-**Objective.** Existing references for what constitutes pathological EEG background slowing are based on small samples and primarily awake recordings. To address this gap, we built LENS --- lifespan-and-sleep-stage-resolved EEG growth charts.
+**Objective.** Norms for abnormal EEG background slowing rest on small, mostly awake samples. We built LENS:
+lifespan- and sleep-stage-resolved EEG growth charts and the deviation-from-normal field they yield.
 
-**Methods.** 25,536 clinical EEGs (21,757 patients; infancy to \>90 y) were analyzed to extract measurements of spectral power and their ratios, and used to construct sleep-stage × age growth curves (GAMLSS) scored every 15-s segment as a deviation z from its matched normal. LENS was trained on labels extracted from clinical EEG reports to identify and localize pathological focal or generalized slowing (or both), and to provide validated verbal descriptions. LENS was externally validated on two held-out 100-EEG test sets: ON-100 (18 experts) and SAI-100 (14 experts).
+**Methods.** From 25,536 clinical EEGs (21,757 patients; infancy to \>90 y) we estimated age × sleep-stage
+percentile curves (GAMLSS) for spectral power and its ratios, scoring each 15-s segment as a deviation z from
+its matched normal. Logistic detectors trained on report labels identify, localize and describe slowing. Both
+were validated unchanged on two 100-EEG multi-expert sets from outside the training system: ON-100 (18
+experts) and SAI-100 (14 experts, plus SCORE-AI).
 
-**Results.** EEG growth curves captured development and sleep physiology. Against the panel majority LENS reached AUROC 0.946 (generalized) and 0.921 (focal), with most experts under each curve (78%, 71%), beating a foundation-model on both axes and the strongest published slowing index by 0.10--0.13 AUROC; on the external site it matched experts and beat SCORE-AI, a published reader (focal 0.93). Slowing is the least reliable expert judgement (κ 0.37--0.45); generated reports tracked statements in EEG reports. Clinical reports named slowing far less often when it was confined to sleep.
+**Results.** Curves reproduced development and sleep physiology and were calibrated on held-out normals
+(median centile error 1.0 point). Against the ON-100 majority LENS reached AUROC 0.946 (generalized) and
+0.921 (focal), placing 78% and 71% of experts under its curves and exceeding a foundation model and the best
+published index by 0.10--0.13. On SAI-100 it matched experts for focal slowing but ranked last of three for
+generalized. Slowing was the least reliable expert judgement (κ 0.37--0.45), and reports named it far less
+often when confined to sleep (54% vs 75%).
 
-**Conclusions.** A single age- and sleep-stage-matched deviation field --- one measurement layer shared by both detection and description --- identifies EEG slowing at or beyond expert and foundation-model level and yields validated, automated, stage- and age-aware EEG reports. LENS quantifies how far a recording departs from its matched norm; as with a growth chart, establishing the cause of a departure remains a clinical judgement.
+**Conclusions.** One deviation field, shared by detection and description, identifies slowing at expert level
+and yields stage-aware automated reports. As with a growth chart, LENS measures departure from a matched
+norm; establishing its cause remains clinical.
 
-**Significance.** LENS is the first lifespan- and sleep-stage-resolved deviation-from-normal instrument for EEG, enabling reproducible automated reporting.
+**Significance.** The first lifespan- and sleep-stage-resolved deviation-from-normal instrument for EEG.
 
 *Keywords:* EEG; quantitative EEG; slowing; normative modelling; sleep; automated reporting
 
