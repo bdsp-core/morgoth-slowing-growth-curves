@@ -55,7 +55,7 @@ def to_electrodes(chan_series):
 
 
 def render(tab, info, feature):
-    fig, axes = plt.subplots(len(STAGES), len(AGE_BINS), figsize=(1.7 * len(AGE_BINS), 2.3 * len(STAGES)))
+    fig, axes = plt.subplots(len(STAGES), len(AGE_BINS), figsize=(min(7.1, 1.7 * len(AGE_BINS)), min(7.1, 1.7 * len(AGE_BINS)) / (1.7 * len(AGE_BINS)) * 2.3 * len(STAGES)))
     for ri, stage in enumerate(STAGES):
         vals_by_bin = []
         for (lo, hi) in AGE_BINS:
@@ -72,15 +72,15 @@ def render(tab, info, feature):
                                              show=False, cmap="RdYlBu_r", vlim=(vmin, vmax),
                                              contours=4, sensors=True, image_interp="cubic",
                                              extrapolate="head", res=128)
-            ax.set_title(f"{BIN_LABELS[ci]}\nn={nrec}", fontsize=8)
+            ax.set_title(f"{BIN_LABELS[ci]}\nn={nrec}", fontsize=6.5)
             if ci == 0:
-                ax.text(-0.3, 0.5, stage, transform=ax.transAxes, fontsize=12, fontweight="bold",
+                ax.text(-0.3, 0.5, stage, transform=ax.transAxes, fontsize=8, fontweight="bold",
                         rotation=90, va="center")
         if im is not None:
-            fig.colorbar(im, ax=list(axes[ri]), fraction=0.015, pad=0.01).set_label(feature, fontsize=8)
+            fig.colorbar(im, ax=list(axes[ri]), fraction=0.015, pad=0.01).set_label(feature, fontsize=6.5)
     fig.suptitle(f"Regional {feature} across the head by age & sleep stage (normal EEGs, cohort+expansion)\n"
                  f"per 10-20 electrode (median over patients, mean of incident bipolar chains); "
-                 f"n={tab.bdsp_id.nunique()} recordings", fontsize=12)
+                 f"n={tab.bdsp_id.nunique()} recordings", fontsize=7.5)
     out = Path(f"figures/growth_v2/topo_{feature}_by_age_stage.png")
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=300, bbox_inches="tight"); plt.close(fig)
