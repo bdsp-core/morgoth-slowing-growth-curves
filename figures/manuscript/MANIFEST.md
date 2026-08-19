@@ -11,11 +11,11 @@ Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are compo
 | `Figure5_description_contrast.png` | 2 (s4_d2.png, s4_d5.png) | `scripts/57` |
 | `Figure6_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/fig6_sleep_naming (95b stat)` |
 | `FigureS1_architecture.png` | 1 (architecture.png) | `scripts/architecture_diagram` |
-| `FigureS2_deviation_field.png` | 1 (s2_segment_deviation.png) | `scripts/44` |
-| `FigureS3_curvebank.png` | 3 (rel_delta__whole_head.png, TAR__whole_head.png, DAR__whole_head.png) | `scripts/111` |
-| `FigureS4_description_panels.png` | 4 (s4_d1.png, s4_d3.png, s4_d4.png, s4_d6.png) | `scripts/57, 58` |
-| `FigureS5_localized_focal.png` | 1 (s0_occasion_ours_v4_focal.png) | `scripts/49` |
-| `FigureS6_severity_null.png` | 1 (severity_recalibrated.png) | `scripts/109` |
-| `FigureS7_vanputten.png` | 1 (vanputten_panel_s7.png) | `scripts/vanputten_panel_s7` |
-| `FigureS8_topoplot_TAR.png` | 1 (topo_TAR_by_age_stage.png) | `scripts/77` |
-| `FigureS9_centile_calibration.png` | 1 (s9_centile_calibration.png) | `scripts/78` |
+| `FigureS6_deviation_field.png` | 1 (s2_segment_deviation.png) | `scripts/44` |
+| `FigureS4_curvebank.png` | 3 (rel_delta__whole_head.png, TAR__whole_head.png, DAR__whole_head.png) | `scripts/111` |
+| `FigureS8_description_panels.png` | 4 (s4_d1.png, s4_d3.png, s4_d4.png, s4_d6.png) | `scripts/57, 58` |
+| `FigureS7_localized_focal.png` | 1 (s0_occasion_ours_v4_focal.png) | `scripts/49` |
+| `FigureS9_severity_null.png` | 1 (severity_recalibrated.png) | `scripts/109` |
+| `FigureS2_vanputten.png` | 1 (vanputten_panel_s7.png) | `scripts/vanputten_panel_s7` |
+| `FigureS3_topoplot_TAR.png` | 1 (topo_TAR_by_age_stage.png) | `scripts/77` |
+| `FigureS5_centile_calibration.png` | 1 (s9_centile_calibration.png) | `scripts/78` |

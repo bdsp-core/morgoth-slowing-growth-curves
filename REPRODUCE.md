@@ -3,6 +3,15 @@
 Everything is driven by one script, [`scripts/reproduce_story.sh`](scripts/reproduce_story.sh), in three
 tiers (pick by how much you want to rebuild):
 
+**Prerequisites.** Python 3.12+, and — for the `features` and `scratch` tiers — **R with the `gamlss`
+package** (the normative curves in `scripts/115` and `76` are fitted in R; these are the steps marked `[R]`
+below) and **pandoc** (only for `scripts/build_manuscript_docx.py`). On macOS:
+
+```bash
+brew install r pandoc
+Rscript -e 'install.packages("gamlss", repos="https://cloud.r-project.org")'
+```
+
 ```bash
 pip install -e .                                   # or: pip install -r requirements.txt
 bash scripts/reproduce_story.sh results            # FAST  — figures/tables from the derived tables
@@ -16,7 +25,8 @@ The derived tables are git-ignored (72 GB). Pull them from the credentialed pref
 credentialed access + a DUA — see [`DATA_SOURCE.md`](DATA_SOURCE.md)):
 
 ```bash
-export AWS_PROFILE=opendata          # read profile for s3://bdsp-opendata-credentialed
+export AWS_PROFILE=<your-bdsp-profile>   # a profile with read access to s3://bdsp-opendata-credentialed
+                                         # (verify with: aws s3 ls s3://bdsp-opendata-credentialed/morgoth-slowing/)
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/ data/derived/
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/panels/  data/derived/   # ON-100 panel inputs
 aws s3 cp   s3://bdsp-opendata-credentialed/morgoth-slowing/manifest/report_manifest_v6.parquet data/manifest/   # report-recording pairing (de-identified report text; DUA-governed, not committed)
@@ -40,14 +50,14 @@ Figures are assembled into the submission set by
 | **Figure 5** description contrast | `57_description_panels.py` | `description_recording.parquet`, `description_stage.parquet` | `figures/story/{s4_d2,s4_d5}.png` |
 | **Figure 6** sleep under-reporting | `fig6_sleep_naming.py` (stat: `95b_v4a_spindle_check.py`) | `description_stage.parquet`, `results/p6_sleep_underreporting.md` | `figures/growth_v2/v4a_wake_sleep.png` |
 | **Figure S1** architecture | `architecture_diagram.py` | — | `figures/story/architecture.png` |
-| **Figure S2** deviation field | `44_segment_deviation_summary.py` | `segment_deviation/` | `figures/story/s2_segment_deviation.png` |
-| **Figure S3** curve bank | `111_curve_bank_v6.py` | `grid_norm.json` | `figures/stage_curves/*__whole_head.png` |
-| **Figure S4** description panels (D1–D6) | `57_description_panels.py`, `58_description_words.py` | `description_recording.parquet` | `figures/story/s4_d{1,3,4,6}.png` |
-| **Figure S5** localized focal | `49_occasion_allstage_localized.py` | `occasion_features.parquet` | `figures/story/s0_occasion_ours_v4_focal.png` |
-| **Figure S6** severity null | `109_severity_null_v6.py` | `occasion_features.parquet` | `figures/growth_v2/severity_recalibrated.png` |
-| **Figure S7** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
-| **Figure S8** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
-| **Figure S9** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `segment_deviation/`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
+| **Figure S2** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
+| **Figure S3** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
+| **Figure S4** curve bank | `111_curve_bank_v6.py` | `grid_norm.json` | `figures/stage_curves/*__whole_head.png` |
+| **Figure S5** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `segment_deviation/`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
+| **Figure S6** deviation field | `44_segment_deviation_summary.py` | `segment_deviation/` | `figures/story/s2_segment_deviation.png` |
+| **Figure S7** localized focal | `49_occasion_allstage_localized.py` | `occasion_features.parquet` | `figures/story/s0_occasion_ours_v4_focal.png` |
+| **Figure S8** description panels (D1–D6) | `57_description_panels.py`, `58_description_words.py` | `description_recording.parquet` | `figures/story/s4_d{1,3,4,6}.png` |
+| **Figure S9** severity null | `109_severity_null_v6.py` | `occasion_features.parquet` | `figures/growth_v2/severity_recalibrated.png` |
 | **Table 1** cohort | `table1_sap.py` | `labels_unified.parquet`, manifest | `results/table1.md` |
 | **Table S1** van Putten full-coverage | `recompute_vanputten_fullcov.py` | `occasion_features.parquet` | `results/vanputten_fullcoverage.md` |
 | **Table S2** human ceiling | `recompute_human_ceiling_v6.py` | ON-100 panel votes | `results/table5_human_ceiling.md` |

@@ -23,9 +23,9 @@ report cohort and the ON-100 / SAI-100 evaluation sets are described in the manu
 
 | prefix | contents | size |
 |---|---|---|
-| `derived/` | the reproduce cache: `segment_master/` (per-segment × per-channel band powers, hive-partitioned by `eeg_id`), `segment_deviation/` (per-segment age/stage-matched z field), `description_recording.parquet` + `description_stage.parquet`, `single_model_segfeats.parquet`, `occasion_*.parquet`, `grid_norm.json` (GAMLSS norm grids), gate tables | ~72 GB |
-| `panels/` | ON-100 expert-panel inputs / votes | ~2.5 GB |
-| `manifest_build/` | manifest-construction lineage: `report_manifest_v1–v5` + backfill (scripts 121–130 build v6 from these) and the raw report-findings CSVs. Regenerable; kept for provenance, out of git | ~150 MB |
+| `derived/` | the reproduce cache: `segment_master/` (per-segment × per-channel band powers, hive-partitioned by `eeg_id`), `segment_deviation/` (per-segment age/stage-matched z field), `description_recording.parquet` + `description_stage.parquet`, `single_model_segfeats.parquet`, `occasion_*.parquet`, `grid_norm.json` (GAMLSS norm grids), gate tables | 66.7 GiB (164,718 objects, verified 2026-08-19) |
+| `panels/` | ON-100 expert-panel inputs / votes | 2.4 GiB (1,861 objects) |
+| `manifest_build/` | manifest-construction lineage: `report_manifest_v1–v5` + backfill (scripts 121–130 build v6 from these) and the raw report-findings CSVs. Regenerable; kept for provenance, out of git | 147 MiB (13 objects) |
 
 Locally these mirror `data/derived/` (git-ignored; pull with `aws s3 sync`, see `REPRODUCE.md`).
 
@@ -50,5 +50,6 @@ preserved). The data is **DUA-governed** — its canonical home is the credentia
 references it. Committed proximal artifacts (report manifest, findings CSVs, result tables) carry only
 surrogate IDs and de-identified report text.
 
-- **bdsp.io project:** _<slug> — set on publication_
+- **bdsp.io project:** LENS v1.0.0 — https://bdsp.io/content/q8qpxsk3sgq57vkm5abp/1.0.0/
+  (version DOI [10.60508/7060-qq30](https://doi.org/10.60508/7060-qq30), concept DOI [10.60508/wt7m-f443](https://doi.org/10.60508/wt7m-f443))
 - **GitHub:** https://github.com/bdsp-core/morgoth-slowing-growth-curves
