@@ -18,3 +18,4 @@ Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are compo
 | `FigureS6_severity_null.png` | 1 (severity_recalibrated.png) | `scripts/109` |
 | `FigureS7_vanputten.png` | 1 (vanputten_panel_s7.png) | `scripts/vanputten_panel_s7` |
 | `FigureS8_topoplot_TAR.png` | 1 (topo_TAR_by_age_stage.png) | `scripts/77` |
+| `FigureS9_centile_calibration.png` | 1 (s9_centile_calibration.png) | `scripts/78` |

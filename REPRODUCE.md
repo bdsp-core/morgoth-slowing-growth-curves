@@ -47,6 +47,7 @@ Figures are assembled into the submission set by
 | **Figure S6** severity null | `109_severity_null_v6.py` | `occasion_features.parquet` | `figures/growth_v2/severity_recalibrated.png` |
 | **Figure S7** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
 | **Figure S8** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
+| **Figure S9** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `segment_deviation/`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
 | **Table 1** cohort | `table1_sap.py` | `labels_unified.parquet`, manifest | `results/table1.md` |
 | **Table S1** van Putten full-coverage | `recompute_vanputten_fullcov.py` | `occasion_features.parquet` | `results/vanputten_fullcoverage.md` |
 | **Table S2** human ceiling | `recompute_human_ceiling_v6.py` | ON-100 panel votes | `results/table5_human_ceiling.md` |

@@ -169,6 +169,22 @@ The analysis cohort comprised 25,536 recordings from 21,757 patients (Table 1): 
 
 The normative curves recapitulate known maturation patterns: at the central (C3/C4) region, relative delta and the theta/alpha and delta/alpha ratios fall steeply through childhood to an adult plateau by \~30 years, and normal-referenced z-scores center on 0 for controls across the lifespan (**Figure 1a**; solid GAMLSS median tracks the model-free rolling median). The scalp-topography rendering makes the spatial story explicit (**Figure 1b**): relative delta is frontal-predominant, highest in infancy across every sleep stage, and declines monotonically toward adulthood, deepest in N3; these are the regional substrate the localization descriptors rely on; the theta/alpha ratio shows the same developmental pattern (**Figure S8**), so the topographic result is not specific to relative delta. Stage-resolved curves quantify the expected physiology: median relative delta rises with sleep depth W ≈ N1 \< N2 \< N3, REM intermediate (**Figure S3**). The direct clinical consequence is that delta which is abnormal in wake is entirely normal in N2/N3.
 
+**The curves are calibrated on held-out data.** A percentile model is only useful if its percentiles are
+real, so we tested them where they were not fitted (**Figure S9**). The norms are fitted on a seeded
+3,000-recording sample of the clean-normal reference; the remaining **7,216 clean-normal recordings (6,779
+patients)** are therefore held out, and the ON-100 panel recordings the expert majority called neither
+focally nor generally slow (n = 71) provide a second, institutionally external reference. For each held-out
+15-second observation we took the model-predicted centile at that observation's own age, stage, region and
+feature, and asked what fraction of observations actually fell below it. On the internal held-out normals the
+observed and nominal centiles agree closely across every stage and feature --- median absolute discrepancy
+**1.0 percentage point**, maximum 6.7 --- so a segment at our nominal 97th centile really is a 97th-centile
+segment. On the external no-slowing recordings agreement is looser but still close over most cells (median
+2.3 points), with one clear exception: **N1 log TAR**, where the nominal 75th centile captures only 54% of
+external observations, i.e. the external N1 distribution is wider than our norm expects. Deep sleep could not
+be tested externally --- N3 is only 5.4% of segments in these routine recordings, too few for a stable
+estimate. Calibration is thus good internally, good-but-imperfect across institutions, and untested externally
+in N3, which is the same regime §3.8 and §5 identify as the least secure.
+
 ### 3.3 The per-segment deviation field is calibrated and discriminative
 
 Scoring each segment against its own (stage, age) normal yields a field that is both calibrated --- clean-normals sit near z = 0 in every stage (whole-head median +0.24 W to −0.04 N3 for delta excess) --- and discriminative --- abnormal recordings are shifted up in every stage, most in W/N1 (delta excess +0.83 W, +1.57 N1; TAR +1.03 W, +1.25 N1) (**Figure S2**).
@@ -278,6 +294,13 @@ We present LENS (Lifespan EEG Normative Scoring), which is to our knowledge the 
 - **Figure S7 --- van Putten indices vs LENS vs the Morgoth gate on the clean ON-100 panel** (ROC per axis, expert-majority labels). LENS is the best detector on both axes --- generalized 0.946, focal 0.921 --- beating the best hand-crafted index by +0.13 / +0.10 and edging the foundation-model gate (`figures/figs/vanputten_panel_s7.png`; `scripts/vanputten_panel_s7.py`).
 
 - **Figure S8 --- Scalp topography of the theta/alpha ratio (TAR) by age × sleep stage** (`figures/growth_v2/topo_TAR_by_age_stage.png`; `scripts/77`). The TAR companion to Figure 1b, confirming that the regional development pattern is not specific to relative delta.
+
+- **Figure S9 --- Held-out centile calibration of the normative curves.** Observed versus nominal centile for
+data never used to fit the curves, faceted by sleep stage (rows) and feature (columns); the dashed diagonal is
+perfect calibration and bands are patient-clustered bootstrap 95% CIs. Blue: 7,216 held-out clean-normal
+recordings (6,779 patients), the complement of the seeded sample the norms are fitted on. Orange: the 71
+ON-100 recordings with no expert-majority slowing, an institutionally external reference
+(`figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md`; `scripts/78`).
 
 *Supplementary tables:*
 

@@ -33,6 +33,7 @@ FIGS = {
     "FigureS6_severity_null.png":    ([f"{G}/severity_recalibrated.png"], 1, "109"),
     "FigureS7_vanputten.png":        (["figures/figs/vanputten_panel_s7.png"], 1, "vanputten_panel_s7"),
     "FigureS8_topoplot_TAR.png":     ([f"{G}/topo_TAR_by_age_stage.png"], 1, "77"),
+    "FigureS9_centile_calibration.png": ([f"{STY}/s9_centile_calibration.png"], 1, "78"),
 }
 COLW = 7.0                                                       # inches per panel column
 SHRINK_WARN = 0.70   # a source authored wider than COLW/SHRINK_WARN has its text shrunk below legibility
