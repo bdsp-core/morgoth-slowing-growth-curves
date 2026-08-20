@@ -102,11 +102,37 @@ def report_flags():
     return _report_flags_from_text()
 
 
+def _report_chunks():
+    """Chunks carrying SiteID / BDSPPatientID / StartTime / reports / impression.
+
+    Prefers the committed report manifest. The original source was a CSV in a Claude scratch directory
+    belonging to another machine, which no longer exists anywhere, so this analysis could not run at all.
+    The manifest carries the same de-identified report text keyed by patient and recording datetime.
+    """
+    if Path(SC).exists():
+        yield from pd.read_csv(SC, usecols=["SiteID", "BDSPPatientID", "StartTime", "reports", "impression"],
+                               chunksize=50000, dtype=str, low_memory=False)
+        return
+    man = Path("data/manifest/report_manifest_v6.parquet")
+    if not man.exists():
+        raise FileNotFoundError(f"neither {SC} nor {man} is available for report text")
+    m = pd.read_parquet(man, columns=["patient_id", "eeg_datetime", "report_text", "report_impression"])
+    m = m.dropna(subset=["patient_id"])
+    out = pd.DataFrame({
+        "SiteID": "",                                   # patient_id already carries the site prefix
+        "BDSPPatientID": m.patient_id.astype(str),
+        "StartTime": pd.to_datetime(m.eeg_datetime.astype(str), format="%Y%m%d%H%M%S",
+                                    errors="coerce").astype(str),
+        "reports": m.report_text.fillna("").astype(str),
+        "impression": m.report_impression.fillna("").astype(str)})
+    for i in range(0, len(out), 50000):
+        yield out.iloc[i:i + 50000]
+
+
 def _report_flags_from_text():
     """One row per (bdsp_id, date): names_slowing, mentions_sleep_slowing. Text NEVER written/printed."""
     rows = []
-    for ch in pd.read_csv(SC, usecols=["SiteID", "BDSPPatientID", "StartTime", "reports", "impression"],
-                          chunksize=50000, dtype=str, low_memory=False):
+    for ch in _report_chunks():
         t = (ch.reports.fillna("") + " " + ch.impression.fillna(""))
         m = t.str.contains("slow", case=False, na=False)
         if not m.any():
@@ -657,7 +683,7 @@ def main():
         recz = recz.merge(rec[f][["z_wake", "z_sleep"]].rename(
             columns={"z_wake": f"zwake_{f}", "z_sleep": f"zsleep_{f}"}), left_on="bdsp_id", right_index=True, how="left")
     recz.to_parquet(HANDOFF / "v4a_recz.parquet")
-    print(f"wrote {scratch/'v4a_groups.parquet'}, v4a_ref_n2.npz, v4a_recz.parquet for the spindle test")
+    print(f"wrote {HANDOFF/'v4a_groups.parquet'}, v4a_ref_n2.npz, v4a_recz.parquet for the spindle test")
 
     # ---- figure --------------------------------------------------------------------------------
     pr = rec[PRIMARY]

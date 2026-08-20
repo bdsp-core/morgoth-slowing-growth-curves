@@ -39,8 +39,10 @@ warnings.filterwarnings("ignore")
 C3P3_IDX, C4P4_IDX = 10, 14        # bipolar channel indices (recording.CH_NAMES): "C3-P3", "C4-P4"
 ALIGN_TOL = 0.02                   # max |Δ rel_delta| over segs 0..9 to accept an offset (feature-match gate)
 
-SC = Path("/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
-          "543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad")
+# Working artefacts. Previously a Claude scratch directory belonging to another machine, which no longer
+# exists, so this script could not write anywhere. Repo-relative and git-ignored; override with V4A_WORK.
+SC = Path(os.environ.get("V4A_WORK", "data/derived/v4a_work"))
+SC.mkdir(parents=True, exist_ok=True)
 RCLONE = os.environ.get("RCLONE_BIN", "rclone")
 REMOTE = "s3:"
 REPO = "bdsp-opendata-repository/EEG"
@@ -144,21 +146,38 @@ def edf_local(resolved_path, workdir):
     """Return (local_path, status). `resolved_path` is the manifest's rclone path to this recording's EDF; we
     list its directory, pick the smallest *_eeg.edf, size-check, then download. Skips oversized EDFs."""
     d = resolved_path.rsplit("/", 1)[0]              # the eeg/ directory (already carries the 's3:' remote prefix)
-    out = subprocess.run([RCLONE, "lsjson", d, "--contimeout", "15s", "--timeout", "30s",
-                          "--low-level-retries", "1", "--retries", "1"], capture_output=True, text=True)
-    try:
-        items = json.loads(out.stdout)
-    except Exception:
-        return None, "lsjson_fail"
+    # Prefer the aws CLI when the path is on S3: rclone is an undocumented, separately-configured dependency
+    # and everything else in this project already reaches the bucket with plain AWS credentials.
+    s3d = ("s3://" + d[3:]) if d.startswith("s3:") and not d.startswith("s3://") else d
+    if s3d.startswith("s3://"):
+        out = subprocess.run(["aws", "s3", "ls", s3d.rstrip("/") + "/"], capture_output=True, text=True)
+        items = []
+        for line in out.stdout.splitlines():
+            parts = line.split()
+            if len(parts) >= 4 and parts[-1].endswith(".edf"):
+                items.append({"Name": parts[-1], "Size": int(parts[2])})
+        if not items:
+            return None, "lsjson_fail"
+    else:
+        out = subprocess.run([RCLONE, "lsjson", d, "--contimeout", "15s", "--timeout", "30s",
+                              "--low-level-retries", "1", "--retries", "1"], capture_output=True, text=True)
+        try:
+            items = json.loads(out.stdout)
+        except Exception:
+            return None, "lsjson_fail"
     edfs = [x for x in items if x["Name"].endswith("_eeg.edf")] or [x for x in items if x["Name"].endswith(".edf")]
     if not edfs:
         return None, "no_edf"
     e = min(edfs, key=lambda x: x["Size"])           # smallest EDF (avoid concatenated/long variants)
     if e["Size"] / 1e6 > MAX_EDF_MB:
         return None, "too_big"
-    subprocess.run([RCLONE, "copy", f"{d}/{e['Name']}", str(workdir), "--contimeout", "20s",
-                    "--timeout", "300s", "--low-level-retries", "2", "--retries", "2"], check=True,
-                   capture_output=True)
+    if s3d.startswith("s3://"):
+        subprocess.run(["aws", "s3", "cp", f"{s3d.rstrip('/')}/{e['Name']}", str(workdir / e["Name"])],
+                       check=True, capture_output=True, timeout=1800)
+    else:
+        subprocess.run([RCLONE, "copy", f"{d}/{e['Name']}", str(workdir), "--contimeout", "20s",
+                        "--timeout", "300s", "--low-level-retries", "2", "--retries", "2"], check=True,
+                       capture_output=True)
     return workdir / e["Name"], "ok"
 
 
@@ -376,7 +395,7 @@ def report(res, limit):
 
     # --- does the routine-only restriction bias the case conclusion? (no downloads) --------------
     try:
-        sizes = pd.read_parquet(SC / "v4a_edf_sizes.parquet"); reczF = pd.read_parquet(SC / "v4a_recz.parquet")
+        sizes = pd.read_parquet(HANDOFF / "v4a_edf_sizes.parquet"); reczF = pd.read_parquet(HANDOFF / "v4a_recz.parquet")
         dd = reczF.merge(sizes, on="bdsp_id", how="left"); dd["short"] = dd.edf_mb <= 250
         cc = dd[dd.group == "case"]
         L.append("**Does restricting to routine-length bias the case side? (whole V4a case set, main-analysis "
@@ -401,7 +420,7 @@ def report(res, limit):
 
     # --- representativeness of the survivors (main-analysis z_sleep, N2/N3) --------------------
     try:
-        recz = pd.read_parquet(SC / "v4a_recz.parquet"); usable = set(ok.bdsp_id)
+        recz = pd.read_parquet(HANDOFF / "v4a_recz.parquet"); usable = set(ok.bdsp_id)
         L.append("**The survivors are not a random draw.** Main-analysis z_sleep (N2/N3) medians, full V4a group "
                  "vs the usable subset:\n")
         L.append("| feature | case full -> usable | control full -> usable | case-control gap full -> usable |")
