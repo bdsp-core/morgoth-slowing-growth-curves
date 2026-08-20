@@ -59,12 +59,43 @@ def reported_slow_hz(text: str) -> float | None:
 
 
 def ex_peak(freqs, psd, band) -> float:
+    """Raw PSD argmax in a band. Kept only as the negative control -- see slow_freq()."""
     m = (freqs >= band[0]) & (freqs <= band[1])
     return float(freqs[m][int(np.argmax(psd[:, m].mean(axis=0)))])
 
 
-def measure(edf_uri: str) -> tuple[float, float] | None:
-    """(slow-band peak Hz, full-band peak Hz) for one recording, from its first MAX_S seconds."""
+def slow_freq(freqs, psd, band=SLOW_BAND) -> tuple[float, float]:
+    """(median frequency, 1/f-detrended peak) within `band`.
+
+    A raw argmax is useless here. EEG power falls off as roughly 1/f^a, so the largest value inside any low
+    band is almost always its lowest bin: measured that way every recording returns 1.0 Hz and the
+    correlation with the reported frequency is nil. Two estimators that are not dominated by the aperiodic
+    background:
+
+      median frequency  the frequency dividing band power in half -- a centre-of-mass measure, which is
+                        closer to what a reader means by "3-5 Hz slowing" than any single peak.
+      detrended peak    argmax after dividing out a log-log linear fit of the aperiodic background, so the
+                        maximum reflects a periodic bump rather than the 1/f slope.
+    """
+    m = (freqs >= band[0]) & (freqs <= band[1])
+    f = freqs[m]
+    p = psd[:, m].mean(axis=0)
+    if not np.isfinite(p).all() or p.sum() <= 0:
+        return float("nan"), float("nan")
+    c = np.cumsum(p) / p.sum()
+    med = float(np.interp(0.5, c, f))
+    ok = (f > 0) & (p > 0)
+    if ok.sum() >= 4:
+        sl, ic = np.polyfit(np.log(f[ok]), np.log(p[ok]), 1)
+        resid = np.log(p[ok]) - (sl * np.log(f[ok]) + ic)
+        peak = float(f[ok][int(np.argmax(resid))])
+    else:
+        peak = float("nan")
+    return med, peak
+
+
+def measure(edf_uri: str) -> tuple[float, float, float] | None:
+    """(slow median Hz, 1/f-detrended slow peak Hz, full-band peak Hz) from the first MAX_S seconds."""
     with tempfile.TemporaryDirectory() as td:
         local = Path(td) / "rec.edf"
         uri = ("s3://" + edf_uri[3:]) if edf_uri.startswith("s3:") and not edf_uri.startswith("s3://") else edf_uri
@@ -77,7 +108,7 @@ def measure(edf_uri: str) -> tuple[float, float] | None:
         return None
     bip = ex.to_bipolar(ex.preprocess(data, fs), chs)      # same HP + notch + montage as scripts/31
     n = int(SEG_LEN_S * fs)
-    slow, full = [], []
+    slow, dpeak, full = [], [], []
     for s in range(0, min(len(bip), int(MAX_S * fs)) - n, n):
         seg = bip[s:s + n]
         if np.nanstd(seg) < 1e-9:
@@ -85,11 +116,17 @@ def measure(edf_uri: str) -> tuple[float, float] | None:
         freqs, psd = ex.multitaper_psd(np.asarray(seg).T, fs)
         if not np.isfinite(psd).all():
             continue
-        slow.append(ex_peak(freqs, psd, SLOW_BAND))
+        med, dpk = slow_freq(freqs, psd)
+        if np.isfinite(med):
+            slow.append(med)
+        if np.isfinite(dpk):
+            dpeak.append(dpk)
         full.append(ex_peak(freqs, psd, (1.0, 45.0)))
     if not slow:
         return None
-    return float(np.median(slow)), float(np.median(full))
+    return (float(np.median(slow)),
+            float(np.median(dpeak)) if dpeak else float("nan"),
+            float(np.median(full)))
 
 
 def main() -> None:
@@ -114,7 +151,7 @@ def main() -> None:
         got = measure(str(r.resolved_path))
         if got:
             rows.append(dict(eeg_id=r.eeg_id, reported_hz=float(r.reported_hz),
-                             slow_peak_hz=got[0], full_peak_hz=got[1]))
+                             slow_median_hz=got[0], slow_detrended_hz=got[1], full_peak_hz=got[2]))
         if k % 25 == 0:
             print(f"   {k}/{len(samp)} ({len(rows)} measured)", flush=True)
     d = pd.DataFrame(rows)
@@ -123,29 +160,36 @@ def main() -> None:
         return
     d.to_parquet("data/derived/slow_peak_freq_sample.parquet")
 
-    from scipy.stats import spearmanr, pearsonr
-    rs, ps = spearmanr(d.reported_hz, d.slow_peak_hz)
-    rp, _ = pearsonr(d.reported_hz, d.slow_peak_hz)
-    rs_full, ps_full = spearmanr(d.reported_hz, d.full_peak_hz)
-    mae = float(np.abs(d.slow_peak_hz - d.reported_hz).median())
-    lines = ["# Slow-band dominant frequency vs the frequency the report states (C146-c)", "",
+    from scipy.stats import spearmanr
+    lines = ["# Slow-band frequency vs the frequency the report states (C146-c)", "",
              f"Measured on **{len(d):,}** recordings that state a slowing frequency in a slowing clause "
              f"(cohort-wide, {len(gt):,} such recordings exist).", "",
-             "| comparison | Spearman rho | p | Pearson r |", "|---|---|---|---|",
-             f"| **slow-band peak (1-8 Hz)** vs reported | **{rs:.3f}** | {ps:.2g} | {rp:.3f} |",
-             f"| full-band peak (1-45 Hz) vs reported | {rs_full:.3f} | {ps_full:.2g} | — |", "",
-             f"Median absolute error of the slow-band peak against the reported frequency: "
-             f"**{mae:.2f} Hz**.", "",
-             f"Measured slow-band peak: median {d.slow_peak_hz.median():.2f} Hz "
-             f"(IQR {d.slow_peak_hz.quantile(.25):.2f}-{d.slow_peak_hz.quantile(.75):.2f}); "
-             f"reported: median {d.reported_hz.median():.2f} Hz "
-             f"(IQR {d.reported_hz.quantile(.25):.2f}-{d.reported_hz.quantile(.75):.2f}).", "",
-             "The full-band peak is shown to make the point that the stored `peak_freq` cannot substitute: "
-             "over 1-45 Hz the argmax lands on the posterior dominant rhythm whenever the record has one, "
-             "so it tracks the alpha frequency rather than the slowing."]
+             "| estimator | Spearman rho | p | median \\|error\\| |", "|---|---|---|---|"]
+    best = None
+    for col, name in [("slow_median_hz", "**slow-band median frequency (1-8 Hz)**"),
+                      ("slow_detrended_hz", "slow-band 1/f-detrended peak"),
+                      ("full_peak_hz", "full-band peak (1-45 Hz), the stored `peak_freq`")]:
+        sub = d.dropna(subset=[col])
+        if len(sub) < 10:
+            lines.append(f"| {name} | insufficient | — | — |"); continue
+        rho, pv = spearmanr(sub.reported_hz, sub[col])
+        mae = float(np.abs(sub[col] - sub.reported_hz).median())
+        lines.append(f"| {name} | {rho:.3f} | {pv:.2g} | {mae:.2f} Hz |")
+        print(f"  {name:52s} rho={rho:+.3f} (p={pv:.2g})  median |err| {mae:.2f} Hz")
+        if best is None or abs(rho) > abs(best[1]):
+            best = (name, rho, mae)
+    lines += ["", f"Reported frequency: median {d.reported_hz.median():.2f} Hz "
+                  f"(IQR {d.reported_hz.quantile(.25):.2f}-{d.reported_hz.quantile(.75):.2f}); "
+                  f"measured slow-band median {d.slow_median_hz.median():.2f} Hz "
+                  f"(IQR {d.slow_median_hz.quantile(.25):.2f}-{d.slow_median_hz.quantile(.75):.2f}).", "",
+              "A raw PSD argmax inside the slow band is NOT usable and is excluded: EEG power falls off as "
+              "roughly 1/f^a, so the largest value in any low band is its lowest bin. Measured that way every "
+              "recording returns 1.0 Hz exactly and the correlation with the reported frequency is nil "
+              "(rho = -0.10). Both estimators above are constructed not to be dominated by that aperiodic "
+              "background.", "",
+              "The full-band peak is reported to show that the stored `peak_freq` cannot substitute: over "
+              "1-45 Hz the argmax lands on the posterior dominant rhythm whenever the record has one."]
     (RES / "slow_peak_frequency.md").write_text("\n".join(lines) + "\n")
-    print(f"\nslow-band peak vs reported: rho={rs:.3f} (p={ps:.2g}), median |error| {mae:.2f} Hz")
-    print(f"full-band peak vs reported: rho={rs_full:.3f}")
     print(f"wrote {RES/'slow_peak_frequency.md'}")
 
 

@@ -120,8 +120,12 @@ def report_cohort():
     d["split"] = d.patient_id.map(pat.split)
     # stratified sample of recordings per split (bound compute)
     def samp(sub, n):
-        return sub.groupby("cls", group_keys=False).apply(
-            lambda g: g.sample(min(len(g), max(1, int(n * len(g) / len(sub)))), random_state=0))
+        # Built with an explicit loop rather than groupby.apply: from pandas 3.0 the grouping column is
+        # excluded from the frame handed to apply, so "cls" silently disappeared from the result and
+        # main() then failed on rep.cls. Same stratified sample, same seed.
+        parts = [g.sample(min(len(g), max(1, int(n * len(g) / len(sub)))), random_state=0)
+                 for _, g in sub.groupby("cls", observed=True)]
+        return pd.concat(parts) if parts else sub.iloc[:0]
     tr = samp(d[d.split == "train"], N_TRAIN); te = samp(d[d.split == "test"], N_TEST)
     return pd.concat([tr, te])
 

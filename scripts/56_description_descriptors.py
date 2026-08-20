@@ -21,7 +21,10 @@ import numpy as np, pandas as pd
 
 DEV = "data/derived/segment_deviation"
 SM = "data/derived/segment_master"                     # per-channel band power (for within-region electrode read-off)
-REGIONS = ["anterior", "posterior", "L_temporal", "R_temporal", "L_parasagittal", "R_parasagittal"]
+# Review C51: the lateralized quadrants let the description say "left frontal" or "right posterior"
+# instead of routing every such focus through the temporal/parasagittal split.
+REGIONS = ["anterior", "posterior", "L_temporal", "R_temporal", "L_parasagittal", "R_parasagittal",
+           "L_anterior", "R_anterior", "L_posterior", "R_posterior"]
 SEG_MIN = 14.0 / 60.0                                   # 15 s epoch, 14 s step -> minutes per segment
 THR = 1.5                                               # a segment is "abnormal" for a band when its z exceeds this
 
@@ -109,8 +112,11 @@ def one(eid):
         return float(x.mean()) if len(x) else np.nan
     rec["lat_temporal"] = diff("L_temporal", "R_temporal", "log_delta")
     rec["lat_parasag"] = diff("L_parasagittal", "R_parasagittal", "log_delta")
-    lt, lp = rec["lat_temporal"], rec["lat_parasag"]
-    rec["lat_signed"] = lt if abs(np.nan_to_num(lt)) >= abs(np.nan_to_num(lp)) else lp   # dominant asymmetry, +=left
+    rec["lat_anterior"] = diff("L_anterior", "R_anterior", "log_delta")
+    rec["lat_posterior"] = diff("L_posterior", "R_posterior", "log_delta")
+    # dominant asymmetry over all four homologous pairs, + = left
+    _lats = {k: rec[k] for k in ("lat_temporal", "lat_parasag", "lat_anterior", "lat_posterior")}
+    rec["lat_signed"] = _lats[max(_lats, key=lambda k: abs(np.nan_to_num(_lats[k])))]
     rec["antpost"] = diff("anterior", "posterior", "log_delta")                           # + = frontal-predominant
     # peak region by delta p90, and per-region magnitude (for region dose-response, not a confusion matrix)
     reg_score = {}
@@ -125,6 +131,11 @@ def one(eid):
         rec["lobe_temporal"] = float(max(reg_score.get("L_temporal", np.nan), reg_score.get("R_temporal", np.nan)))
         rec["lobe_frontal"] = float(reg_score.get("anterior", np.nan))
         rec["lobe_posterior"] = float(reg_score.get("posterior", np.nan))
+        # lateralized quadrant magnitudes, so a frontal or posterior focus can be sided directly
+        rec["lobe_L_frontal"] = float(reg_score.get("L_anterior", np.nan))
+        rec["lobe_R_frontal"] = float(reg_score.get("R_anterior", np.nan))
+        rec["lobe_L_posterior"] = float(reg_score.get("L_posterior", np.nan))
+        rec["lobe_R_posterior"] = float(reg_score.get("R_posterior", np.nan))
     # persistence on "any slowing" (delta OR theta abnormal)
     ab = ((wh(d, "log_delta") > THR) | (wh(d, "log_theta") > THR))
     rec["prevalence"] = float(np.mean(ab))

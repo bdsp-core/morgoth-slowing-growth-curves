@@ -5,7 +5,8 @@
 # converge; a cell that fails both is simply omitted (Python falls back to a log-age kernel for it).
 #
 # Usage: Rscript gamlss_norm_grid.R <in.csv> <out.csv> <mu_df>
-#   in.csv : cell, t, val         (cell = "stage|region|feature")
+#   in.csv : cell, t, val, w      (cell = "stage|region|feature"; w = observation weight, so each
+#                                 RECORDING contributes total weight 1 regardless of length -- review C63)
 #   out.csv: cell, t, mu, sigma, nu, tau, fam
 suppressMessages(library(gamlss))
 args <- commandArgs(trailingOnly = TRUE)
@@ -17,6 +18,7 @@ NG <- 120                                   # grid points per cell
 
 d <- read.csv(inp)
 d <- d[is.finite(d$t) & is.finite(d$val) & d$val > 0, ]
+if (is.null(d$w)) d$w <- 1                    # tolerate unweighted input
 res <- list()
 ctl <- gamlss.control(trace = FALSE, n.cyc = 200)
 
@@ -31,7 +33,8 @@ for (cell in unique(d$cell)) {
   # penalized-spline variants (data chooses smoothness) are robust where a fixed-df cs() will not converge
   fmu_pb <- val ~ pb(t); fsig_pb <- ~ pb(t); fnu_pb <- ~ pb(t)
   tryfit <- function(fm, fs, fn, fam) tryCatch(
-    gamlss(fm, sigma.formula = fs, nu.formula = fn, family = fam, data = sub, control = ctl),
+    gamlss(fm, sigma.formula = fs, nu.formula = fn, family = fam, data = sub, weights = sub$w,
+           control = ctl),
     error = function(e) NULL)
   # BCT cs(df) -> BCT pb() -> BCCG cs(df) -> BCCG pb(); fall through to Python log-age kernel if all fail
   m <- tryfit(fmu, fsig, fnu, BCT);                 fam <- "BCT"

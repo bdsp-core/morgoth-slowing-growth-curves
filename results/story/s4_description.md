@@ -1,20 +1,20 @@
 # §4 Description — reading the deviation field, validated by contrast vs the report
 
 ## D1 — type & amount
-- THETA: report: theta (theta/mixed) median=1.39 (n=7446) vs report: no theta (delta only) median=1.08 (n=3510); Cohen d=0.29, p=3.6e-45
-- DELTA: report: delta (delta/mixed) median=1.63 (n=7946) vs report: no delta (theta only) median=1.32 (n=3010); Cohen d=0.26, p=5.6e-47
+- THETA: report: theta (theta/mixed) median=1.41 (n=7446) vs report: no theta (delta only) median=1.11 (n=3510); Cohen d=0.27, p=8.5e-41
+- DELTA: report: delta (delta/mixed) median=1.60 (n=7946) vs report: no delta (theta only) median=1.33 (n=3010); Cohen d=0.23, p=1.7e-37
 
 ## D2 — laterality & region
-- laterality: left median=0.36 (n=3129); bilateral median=0.03 (n=2365); right median=-0.44 (n=2099)
-- region (focality dose-response): temporal +0.30 vs +0.20 (p=3e-38); frontal -0.17 vs -0.26 (p=3e-07); posterior +0.13 vs -0.01 (p=2e-15)
+- laterality: left median=0.43 (n=3129); bilateral median=0.09 (n=2365); right median=-0.53 (n=2099)
+- region (focality dose-response): temporal +0.28 vs +0.19 (p=3e-31); frontal -0.11 vs -0.22 (p=2e-07); posterior +0.08 vs -0.04 (p=1e-11)
 
 ## D3 — anterior-posterior predominance
-- anterior median=-0.07 (n=666); posterior median=-0.22 (n=974); unspec median=-0.11 (n=6194); anterior>posterior p=9.2e-06
+- anterior median=-0.03 (n=666); posterior median=-0.18 (n=974); unspec median=-0.09 (n=6194); anterior>posterior p=1.0e-05
 
 ## D4 — persistence vs intermittence
-- prevalence: clean-normal 0.05 vs report-slowing 0.19
+- prevalence: clean-normal 0.06 vs report-slowing 0.18
 - no structured report intermittent/continuous field -> shown as internal reasonableness (ACNS-binned prevalence + run length)
 
 ## D5 — by sleep stage
-- mean slowing prevalence, report-slowing vs clean-normal (gap holds at every stage): W 0.31/0.14, N1 0.46/0.16, N2 0.32/0.12, N3 0.19/0.08, REM 0.44/0.17
-- under-reporting probe: among recordings the report does NOT call slowing, mean N2 prevalence 0.225 vs clean-normal N2 0.117 — sleep slowing left out of the wake-centric read (the established V4a spindle-verified result is the rigorous version)
+- mean slowing prevalence, report-slowing vs clean-normal (gap holds at every stage): W 0.31/0.15, N1 0.43/0.15, N2 0.33/0.12, N3 0.17/0.09, REM 0.50/0.21
+- under-reporting probe: among recordings the report does NOT call slowing, mean N2 prevalence 0.233 vs clean-normal N2 0.119 — sleep slowing left out of the wake-centric read (the established V4a spindle-verified result is the rigorous version)

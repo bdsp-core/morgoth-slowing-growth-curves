@@ -121,13 +121,13 @@ def bct_z(y, mu, sigma, nu, tau):
 # log_DAR 6%), so a positive-support BCT cannot model them. They get an age-varying NORMAL in log-age
 # (GAMLSS family NO: z=(y-mu)/sigma) instead. Only the strictly-positive rel_* features go to BCT.
 POSITIVE_FEATS = {"rel_delta", "rel_theta", "rel_alpha"}
-# Segments contributed per recording per (region, stage). Review C63: the unit of observation is the 15-s
-# segment, so before this a 12-hour recording could carry up to 250x the weight of a short routine study in
-# the normative fit. Bounding BOTH ends caps that ratio at SEG_PER_REC/MIN_SEG_PER_REC = 3:1. Recordings
-# with fewer than the minimum in a cell contribute nothing to THAT cell (they still contribute elsewhere),
-# which is preferable to duplicating their segments to make up the weight.
-SEG_PER_REC = int(os.environ.get("SEG_PER_REC", "60"))
-MIN_SEG_PER_REC = int(os.environ.get("MIN_SEG_PER_REC", "20"))
+# Review C63: the unit of observation is the 15-s segment, so a 12-hour recording would otherwise carry
+# hundreds of times the weight of a short routine study. That is fixed with GAMLSS observation WEIGHTS --
+# every segment gets weight 1/(segments that recording contributes to this cell), so each recording sums to
+# exactly 1 regardless of length. Subsampling to equalise instead was tried and is worse: it throws away
+# precisely the long overnight recordings that carry N3, and internal N3 calibration degraded from 1.0 to
+# 5.3 median centile points. Weighting keeps every segment.
+SEG_PER_REC = int(os.environ.get("SEG_PER_REC", "250"))
 
 
 def fit_gaussian_logage(age, val, bw=0.08, trim=(0.002, 0.998)):
@@ -191,8 +191,6 @@ def _norm_one(args):
         if len(sub) > SEG_PER_REC:
             sub = sub.sample(SEG_PER_REC, random_state=0)
         for st, ss in sub.groupby("stage", observed=True):
-            if len(ss) < MIN_SEG_PER_REC:
-                continue                       # too few segments in this cell to carry a full unit of weight
             for ft in FEATS:
                 v = ss[ft].values
                 v = v[np.isfinite(v)]
@@ -238,17 +236,19 @@ def build_norms(ref_ids, ages):
         feat = key[2]
         a = np.concatenate([np.full(len(v), ag) for ag, v in lst])
         v = np.concatenate([x for _, x in lst])
+        # equal weight per RECORDING: each contributes total weight 1 to this cell (review C63)
+        w = np.concatenate([np.full(len(x), 1.0 / max(len(x), 1)) for _, x in lst])
         fin = np.isfinite(a) & np.isfinite(v)
-        a, v = a[fin], v[fin]
+        a, v, w = a[fin], v[fin], w[fin]
         if feat in POSITIVE_FEATS:
             keep = v > 0
             if keep.sum() >= 200:
-                pos[key] = (a[keep], v[keep])
+                pos[key] = (a[keep], v[keep], w[keep])
         elif len(v) >= 200:
-            real[key] = (a, v)
+            real[key] = (a, v, w)
 
     # --- real-line features: age-varying normal in log-age (pure Python) ---
-    for key, (a, v) in real.items():
+    for key, (a, v, w) in real.items():
         g = fit_gaussian_logage(a, v)
         if g is not None:
             norm[key] = g
@@ -257,12 +257,12 @@ def build_norms(ref_ids, ages):
     nbct = nbccg = n_fb = 0
     if pos:
         frames = []
-        for key, (a, v) in pos.items():
+        for key, (a, v, w) in pos.items():
             t = a2t(a)
             if len(t) > 40000:
                 idx = np.random.default_rng(0).choice(len(t), 40000, replace=False)
-                t, v = t[idx], v[idx]
-            frames.append(pd.DataFrame({"cell": "|".join(key), "t": t, "val": v}))
+                t, v, w = t[idx], v[idx], w[idx]
+            frames.append(pd.DataFrame({"cell": "|".join(key), "t": t, "val": v, "w": w}))
         big = pd.concat(frames, ignore_index=True)
         RS = os.environ.get("RSCRIPT") or shutil.which("Rscript") or "Rscript"
         cells = list(big.cell.unique())
@@ -291,7 +291,7 @@ def build_norms(ref_ids, ages):
                                            g.nu.values, g.tau.values, g.fam.iloc[0])
             nbct += g.fam.iloc[0] == "BCT"; nbccg += g.fam.iloc[0] == "BCCG"
         # any positive cell R could not fit -> log-age normal fallback
-        for key, (a, v) in pos.items():
+        for key, (a, v, w) in pos.items():
             if key in norm:
                 continue
             fb = fit_gaussian_logage(a, v)
