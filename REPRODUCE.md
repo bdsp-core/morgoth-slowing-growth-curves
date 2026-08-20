@@ -50,10 +50,10 @@ Figures are assembled into the submission set by
 | **Figure 5** description contrast | `57_description_panels.py` | `description_recording.parquet`, `description_stage.parquet` | `figures/story/{s4_d2,s4_d5}.png` |
 | **Figure 6** sleep under-reporting | `fig6_sleep_naming.py` (stat: `95b_v4a_spindle_check.py`) | `description_stage.parquet`, `results/p6_sleep_underreporting.md` | `figures/growth_v2/v4a_wake_sleep.png` |
 | **Figure S1** architecture | `architecture_diagram.py` | — | `figures/story/architecture.png` |
-| **Figure S2** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
-| **Figure S3** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
-| **Figure S4** curve bank | `111_curve_bank_v6.py` | `grid_norm.json` | `figures/stage_curves/*__whole_head.png` |
-| **Figure S5** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `segment_deviation/`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
+| **Figure S2** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `segment_deviation/`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
+| **Figure S3** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
+| **Figure S4** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
+| **Figure S5** curve bank | `111_curve_bank_v6.py` | `grid_norm.json` | `figures/stage_curves/*__whole_head.png` |
 | **Figure S6** deviation field | `44_segment_deviation_summary.py` | `segment_deviation/` | `figures/story/s2_segment_deviation.png` |
 | **Figure S7** localized focal | `49_occasion_allstage_localized.py` | `occasion_features.parquet` | `figures/story/s0_occasion_ours_v4_focal.png` |
 | **Figure S8** description panels (D1–D6) | `57_description_panels.py`, `58_description_words.py` | `description_recording.parquet` | `figures/story/s4_d{1,3,4,6}.png` |

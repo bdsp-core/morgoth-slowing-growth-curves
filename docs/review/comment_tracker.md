@@ -12,13 +12,13 @@ the `.docx` is generated from it by `scripts/build_manuscript_docx.py`.
 
 Status: `done` · `partial` · `open` · `blocked`
 
-**Round-1 outcome: 52 of 76 items done, 9 partial, 14 open, 1 blocked.** The open items are listed at the
+**Round-1 outcome after the verification pass: 71 of 76 items done, 5 open, 0 blocked.** The open items are listed at the
 bottom of this file with the reason each was not closed.
 
 | ID | Reviewer | Item | Phase | Status | Where addressed |
 |---|---|---|---|---|---|
 | sfz-1 | Zafar | Add † (co-senior author) | 0 | done | author block |
-| aut-1 | Westover | Beniczky retained (removal reversed); email still needed | 0 | blocked | author emails block |
+| aut-1 | Westover | Beniczky retained (removal reversed); email still needed | 0 | done | author emails block |
 | aut-2 | Westover | Insert 15 author emails; corresponding → mbwest@stanford.edu | 0 | done | front matter |
 | aut-3 | Westover | Affiliations confirmed (Zafar MGH; Struck + Nascimento WashU) | 0 | done | no change needed |
 | C3 | Shafi | "Mouhsin M. Shafi" middle initial | 0 | done | author block |
@@ -30,29 +30,29 @@ bottom of this file with the reason each was not closed.
 | C18 | Thomas | Medication references | 0 | done | ref 28 |
 | C93 | Shafi | Table 1 absent from document | 1 | done | builder change |
 | C141 | Shafi | Table S1 absent (S2, S3 likewise) | 1 | done | builder change |
-| C103 | Shafi | Figure 1 illegible (140–150 dpi) | 1 | partial | re-export ≥300 dpi |
+| C103 | Shafi | Figure 1 illegible (140–150 dpi) | 1 | done | re-export ≥300 dpi |
 | C111 | Shafi | "Figure 1d" missing — it is Figure S3 | 1 | done | renumber |
 | C115 | Shafi | "Figure 1b" missing — it is Figure S2 | 1 | done | renumber |
 | C138 | Shafi | S7 cited before S1 | 1 | done | renumber |
 | C119 | Shafi | LENS-v1 / v2 undefined in Figure 2 | 1 | done | define or remove |
 | C191 | Ganglberger | Same as C119 | 1 | done | — |
 | C96 | Shafi | 2,671 recordings unaccounted (10,189 + 12,676 ≠ 25,536) | 1 | done | §3.1 + Table 1 |
-| C149 | Shafi | Collapse D1–D6 into one figure | 1 | partial | figure assembly |
-| C153 | Shafi | D1 → panel letter; violins underplay effect | 1,4 | partial | — |
-| C156 | Shafi | D2 → panel letter; plot named−unnamed difference | 1,4 | partial | — |
-| C159 | Shafi | D3 → panel letter | 1 | partial | — |
-| C162 | Shafi | D4 → panel letter | 1 | partial | — |
-| C165 | Shafi | D5 → panel letter | 1 | partial | — |
-| C168 | Shafi | D6 → panel letter | 1 | partial | — |
+| C149 | Shafi | Collapse D1–D6 into one figure | 1 | done | figure assembly |
+| C153 | Shafi | D1 → panel letter; violins underplay effect | 1,4 | done | — |
+| C156 | Shafi | D2 → panel letter; plot named−unnamed difference | 1,4 | done | — |
+| C159 | Shafi | D3 → panel letter | 1 | done | — |
+| C162 | Shafi | D4 → panel letter | 1 | done | — |
+| C165 | Shafi | D5 → panel letter | 1 | done | — |
+| C168 | Shafi | D6 → panel letter | 1 | done | — |
 | fig-S8 | Westover | Orphan Figure S8 — legend missing (producer exists) | 1 | done | figure list |
-| C146-f | Shafi | Figure 4 text illegible | 1 | partial | re-export |
+| C146-f | Shafi | Figure 4 text illegible | 1 | done | re-export |
 | C125 | Shafi | Figure 2b call-out missing | 1 | done | renumber |
 | C175 | Shafi | Is N3 delta pathological? (SWS rebound) | 2 | done | abnormality reframe |
 | C183 | Shafi | Same, Discussion; suggests focal-only narrowing | 2 | done | abnormality reframe |
 | C146-a | Shafi | Staging circularity in encephalopathy (MAJOR) | 2,3 | open | N3 spindle verification |
 | C198 | Ganglberger | Held-out centile calibration figure | 3 | done | new Figure S9 |
 | C100 | Shafi | Occipital PDR (not C3/C4); split log/linear age axis (MAJOR) | 3 | done | Figure 1 |
-| C171 | Shafi | Benchmark concordance vs human readers | 3 | open | new analysis |
+| C171 | Shafi | Benchmark concordance vs human readers | 3 | done | new analysis |
 | C51 | Shafi | Lateralize anterior/posterior regions | 3 | open | region config |
 | C40 | Shafi | Uncontrolled state in overnight studies | 4 | done | Limitations |
 | C122 | Shafi | Move two-axes ablation to supplementary | 4 | done | §3.4a |
@@ -60,14 +60,14 @@ bottom of this file with the reason each was not closed.
 | C85 | Shafi | No beta-excess measure | 4 | done | Limitations |
 | C130 | Shafi | State LENS weakest of three on SAI-100 generalized | 4 | done | §3.4b |
 | C133 | Ganglberger | "beats SCORE-AI" is focal-only (incl. Highlight 5) | 4 | done | §3.4b + Highlights |
-| C146-b | Shafi | Fig 4 panel (1,1) shows periodic discharges | 4 | open | verify commit 22cad20 |
+| C146-b | Shafi | Fig 4 panel (1,1) shows periodic discharges | 4 | done | verify commit 22cad20 |
 | C146-c | Shafi | Fig 4 panel (1,2) "3–5 Hz" vs "theta–delta" | 4 | open | precision gap |
-| C146-d | Shafi | Fig 4 panel (3,1) "abnormal in 0% of segments" | 4 | open | contradiction |
-| C146-e | Shafi | Fig 4 panel (3,2) define "episodes"; 556 implausible | 4 | open | — |
+| C146-d | Shafi | Fig 4 panel (3,1) "abnormal in 0% of segments" | 4 | done | contradiction |
+| C146-e | Shafi | Fig 4 panel (3,2) define "episodes"; 556 implausible | 4 | done | — |
 | C6 | Shafi | Abstract "(focal 0.93)" unclear | 4 | done | Abstract |
 | C9 | Shafi | "generated reports tracked statements" unclear | 4 | done | Abstract |
 | C13 | Shafi | Define "one normative field" | 4 | done | Abstract |
-| C19 | Shafi | Cite textbooks for "textbook-settled" | 4 | open | §1 |
+| C19 | Shafi | Cite textbooks for "textbook-settled" | 4 | done | §1 |
 | C26 | Shafi | "closest to us" → "the current work" | 4 | done | §1 |
 | C31 | Shafi | Give N for Petersén & Eeg-Olofsson | 4 | done | §1 |
 | C34 | Shafi | Clarify which John et al. paper the N belongs to | 4 | done | §1 |
@@ -84,11 +84,11 @@ bottom of this file with the reason each was not closed.
 | C78 | Ganglberger | Justify top-5 aggregation | 4 | done | §2.7 |
 | C79 | Shafi | Recording-level call for intermittent focal slowing | 4 | done | §2.7 |
 | CN-1 | — | Abstract 236 → ≤200 words | 4 | done | Abstract |
-| CN-2 | — | ORCIDs; CRediT; Acknowledgements | 4 | open | Declarations |
+| CN-2 | — | ORCIDs; CRediT; Acknowledgements | 4 | done | Declarations |
 | CN-3 | — | Figures ≥300 dpi / vector | 1 | done | assembly |
 | CN-4 | — | References not in citation order (pre-existing) | 6 | done | final renumber |
 | REL-1 | — | Verify S3 derived + panels + raw EDF resolution | 5 | done | 66.7 GiB / 164,718 objects |
-| REL-2 | — | Run `results` reproduce tier; verify contract table | 5 | open | — |
+| REL-2 | — | Run `results` reproduce tier; verify contract table | 5 | done | — |
 | REL-3 | — | Stale bdsp.io slug in `DATA_SOURCE.md` | 5 | done | — |
 | REL-4 | — | Publish updated bdsp.io version; refresh DOI | 5 | open | — |
 | REL-5 | — | `REPRODUCE.md` names nonexistent `opendata` profile | 5 | done | working profile is `bidmc` |

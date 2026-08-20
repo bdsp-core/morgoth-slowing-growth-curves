@@ -27,13 +27,13 @@ FIGS = {
     # ---- SUPPLEMENTARY ----
     "FigureS1_architecture.png":     ([f"{STY}/architecture.png"], 1, "architecture_diagram"),
     "FigureS6_deviation_field.png":  ([f"{STY}/s2_segment_deviation.png"], 1, "44"),
-    "FigureS4_curvebank.png":        ([f"{SC}/rel_delta__whole_head.png", f"{SC}/TAR__whole_head.png", f"{SC}/DAR__whole_head.png"], 1, "111"),
+    "FigureS5_curvebank.png":        ([f"{SC}/rel_delta__whole_head.png", f"{SC}/TAR__whole_head.png", f"{SC}/DAR__whole_head.png"], 1, "111"),
     "FigureS8_description_panels.png": ([f"{STY}/s4_d1.png", f"{STY}/s4_d3.png", f"{STY}/s4_d4.png", f"{STY}/s4_d6.png"], 1, "57, 58"),
     "FigureS7_localized_focal.png":  ([f"{STY}/s0_occasion_ours_v4_focal.png"], 1, "49"),
     "FigureS9_severity_null.png":    ([f"{G}/severity_recalibrated.png"], 1, "109"),
-    "FigureS2_vanputten.png":        (["figures/figs/vanputten_panel_s7.png"], 1, "vanputten_panel_s7"),
-    "FigureS3_topoplot_TAR.png":     ([f"{G}/topo_TAR_by_age_stage.png"], 1, "77"),
-    "FigureS5_centile_calibration.png": ([f"{STY}/s9_centile_calibration.png"], 1, "78"),
+    "FigureS3_vanputten.png":        (["figures/figs/vanputten_panel_s7.png"], 1, "vanputten_panel_s7"),
+    "FigureS4_topoplot_TAR.png":     ([f"{G}/topo_TAR_by_age_stage.png"], 1, "77"),
+    "FigureS2_centile_calibration.png": ([f"{STY}/s9_centile_calibration.png"], 1, "78"),
 }
 COLW = 7.0                                                       # inches per panel column
 PAGE_W = 7.0         # the journal prints a figure at this width whatever the composite measures
