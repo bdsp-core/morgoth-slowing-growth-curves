@@ -38,7 +38,15 @@ LOBES = {"L_temporal": ["Fp1-F7", "F7-T3", "T3-T5", "T5-O1"],
          "R_temporal": ["Fp2-F8", "F8-T4", "T4-T6", "T6-O2"],
          "L_parasagittal": ["Fp1-F3", "F3-C3", "C3-P3", "P3-O1"],
          "R_parasagittal": ["Fp2-F4", "F4-C4", "C4-P4", "P4-O2"]}
-REGIONS = {"whole_head": None, "anterior": ANT, "posterior": POS, **LOBES}
+# Review C51: anterior/posterior were whole-scalp, so a lateralized frontal or posterior focus could only be
+# described through the temporal/parasagittal split. Add the four lateralized quadrants. Regions are just
+# channel groupings applied to the per-channel segment table, so this needs a norms refit and a deviation
+# rebuild, not a re-extraction.
+LAT = {"L_anterior":  ["Fp1-F7", "F7-T3", "Fp1-F3", "F3-C3"],
+       "R_anterior":  ["Fp2-F8", "F8-T4", "Fp2-F4", "F4-C4"],
+       "L_posterior": ["T3-T5", "T5-O1", "C3-P3", "P3-O1"],
+       "R_posterior": ["T4-T6", "T6-O2", "C4-P4", "P4-O2"]}
+REGIONS = {"whole_head": None, "anterior": ANT, "posterior": POS, **LOBES, **LAT}
 
 NORM = None                                                     # (stage,region,feat) -> (t,mu,sigma,nu,tau,fam)
 

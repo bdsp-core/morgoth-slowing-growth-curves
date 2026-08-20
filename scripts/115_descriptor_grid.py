@@ -57,8 +57,17 @@ LOBES = {"L_temporal": ["Fp1-F7", "F7-T3", "T3-T5", "T5-O1"],
          "R_temporal": ["Fp2-F8", "F8-T4", "T4-T6", "T6-O2"],
          "L_parasagittal": ["Fp1-F3", "F3-C3", "C3-P3", "P3-O1"],
          "R_parasagittal": ["Fp2-F4", "F4-C4", "C4-P4", "P4-O2"]}
-REGIONS = {"whole_head": None, "anterior": ANT, "posterior": POS, **LOBES}
-PAIRS = [("L_temporal", "R_temporal"), ("L_parasagittal", "R_parasagittal")]
+# Review C51: anterior/posterior were whole-scalp, so a lateralized frontal or posterior focus could only be
+# described through the temporal/parasagittal split. Add the four lateralized quadrants. Regions are just
+# channel groupings applied to the per-channel segment table, so this needs a norms refit and a deviation
+# rebuild, not a re-extraction.
+LAT = {"L_anterior":  ["Fp1-F7", "F7-T3", "Fp1-F3", "F3-C3"],
+       "R_anterior":  ["Fp2-F8", "F8-T4", "Fp2-F4", "F4-C4"],
+       "L_posterior": ["T3-T5", "T5-O1", "C3-P3", "P3-O1"],
+       "R_posterior": ["T4-T6", "T6-O2", "C4-P4", "P4-O2"]}
+REGIONS = {"whole_head": None, "anterior": ANT, "posterior": POS, **LOBES, **LAT}
+PAIRS = [("L_temporal", "R_temporal"), ("L_parasagittal", "R_parasagittal"),
+         ("L_anterior", "R_anterior"), ("L_posterior", "R_posterior")]
 
 # X grid: the SEGMENT threshold, in z units. scripts/116 picks one (and a Y) to match Morgoth.
 XG = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
@@ -112,6 +121,13 @@ def bct_z(y, mu, sigma, nu, tau):
 # log_DAR 6%), so a positive-support BCT cannot model them. They get an age-varying NORMAL in log-age
 # (GAMLSS family NO: z=(y-mu)/sigma) instead. Only the strictly-positive rel_* features go to BCT.
 POSITIVE_FEATS = {"rel_delta", "rel_theta", "rel_alpha"}
+# Segments contributed per recording per (region, stage). Review C63: the unit of observation is the 15-s
+# segment, so before this a 12-hour recording could carry up to 250x the weight of a short routine study in
+# the normative fit. Bounding BOTH ends caps that ratio at SEG_PER_REC/MIN_SEG_PER_REC = 3:1. Recordings
+# with fewer than the minimum in a cell contribute nothing to THAT cell (they still contribute elsewhere),
+# which is preferable to duplicating their segments to make up the weight.
+SEG_PER_REC = int(os.environ.get("SEG_PER_REC", "60"))
+MIN_SEG_PER_REC = int(os.environ.get("MIN_SEG_PER_REC", "20"))
 
 
 def fit_gaussian_logage(age, val, bw=0.08, trim=(0.002, 0.998)):
@@ -169,9 +185,14 @@ def _norm_one(args):
     rows = []
     for reg, g in out.items():
         sub = g.join(base.rename("stage"))
-        if len(sub) > 250:
-            sub = sub.sample(250, random_state=0)
+        # Review C63: the fit's unit of observation is the 15-s segment, so a long recording used to
+        # contribute up to 250x the weight of a short one. Cap PER RECORDING so every recording carries
+        # equal weight in the normative fit regardless of how long it ran.
+        if len(sub) > SEG_PER_REC:
+            sub = sub.sample(SEG_PER_REC, random_state=0)
         for st, ss in sub.groupby("stage", observed=True):
+            if len(ss) < MIN_SEG_PER_REC:
+                continue                       # too few segments in this cell to carry a full unit of weight
             for ft in FEATS:
                 v = ss[ft].values
                 v = v[np.isfinite(v)]
@@ -182,8 +203,8 @@ def _norm_one(args):
         if a not in out or b not in out:
             continue
         j = out[a].join(out[b], lsuffix="_L", rsuffix="_R").join(base.rename("stage"))
-        if len(j) > 250:
-            j = j.sample(250, random_state=0)
+        if len(j) > SEG_PER_REC:
+            j = j.sample(SEG_PER_REC, random_state=0)
         for st, ss in j.groupby("stage", observed=True):
             for ft in FEATS:
                 v = (ss[f"{ft}_L"] - ss[f"{ft}_R"]).values

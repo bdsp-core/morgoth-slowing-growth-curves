@@ -677,13 +677,18 @@ def main():
     np.savez(HANDOFF / "v4a_ref_n2.npz", grid=grid,
              **{f"mus_{f}": refs[f].get((REGION, "N2"), (np.full_like(grid, np.nan),) * 2)[0] for f in ART},
              **{f"sds_{f}": refs[f].get((REGION, "N2"), (np.full_like(grid, np.nan),) * 2)[1] for f in ART})
+    # N3 reference too: the N3 arm of the spindle test (docs/n3_staging_adjudication.md) scores N3 segments
+    # against N3 norms, exactly as the N2 arm scores N2 against N2.
+    np.savez(HANDOFF / "v4a_ref_n3.npz", grid=grid,
+             **{f"mus_{f}": refs[f].get((REGION, "N3"), (np.full_like(grid, np.nan),) * 2)[0] for f in ART},
+             **{f"sds_{f}": refs[f].get((REGION, "N3"), (np.full_like(grid, np.nan),) * 2)[1] for f in ART})
     # per-recording z_sleep/z_wake (log_delta, DAR) for the representativeness check in scripts/95b
     recz = grp_df[["bdsp_id", "group"]].copy()
     for f in ART:
         recz = recz.merge(rec[f][["z_wake", "z_sleep"]].rename(
             columns={"z_wake": f"zwake_{f}", "z_sleep": f"zsleep_{f}"}), left_on="bdsp_id", right_index=True, how="left")
     recz.to_parquet(HANDOFF / "v4a_recz.parquet")
-    print(f"wrote {HANDOFF/'v4a_groups.parquet'}, v4a_ref_n2.npz, v4a_recz.parquet for the spindle test")
+    print(f"wrote {HANDOFF/'v4a_groups.parquet'}, v4a_ref_n2.npz, v4a_ref_n3.npz, v4a_recz.parquet for the spindle test")
 
     # ---- figure --------------------------------------------------------------------------------
     pr = rec[PRIMARY]

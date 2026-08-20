@@ -223,6 +223,8 @@ def main():
     pm = man.sort_values("clean_pair", ascending=False).drop_duplicates("bdsp_id")[["bdsp_id", "resolved_path"]]
     grp = grp.merge(pm, on="bdsp_id", how="left").dropna(subset=["resolved_path"])
     ref = np.load(HANDOFF / "v4a_ref_n2.npz"); grid = ref["grid"]
+    p3 = HANDOFF / "v4a_ref_n3.npz"
+    ref3 = np.load(p3) if p3.exists() else None      # N3 arm is skipped if scripts/95 has not emitted it
 
     # stage tables: N2 segments per recording
     sn = pd.read_parquet("data/derived/segment_stages.parquet")[["bdsp_id", "segment", "stage"]]
@@ -313,9 +315,12 @@ def main():
                 rec["status"] = "no_n2"; rows.append(rec); continue
             base = np.median(np.concatenate(envs)); thr = THR_K * base
             zvals = {f: [] for f in ART}; zvals_sp = {f: [] for f in ART}; npos = 0
+            sp_segments = set()
             for i, (s, e) in segwins.items():
                 sp = spindle_pos(C3P3[s:e], fs, thr, b, a) or spindle_pos(C4P4[s:e], fs, thr, b, a)
                 npos += int(sp)
+                if sp:
+                    sp_segments.add(i)
                 if i not in gi.index:
                     continue
                 for f in ART:
@@ -325,6 +330,33 @@ def main():
                         zvals[f].append(z)
                         if sp:
                             zvals_sp[f].append(z)
+            # ---- N3 arm (review C146-a) ------------------------------------------------------
+            # Spindles cannot verify N3 directly -- they are the defining graphoelement of N2 and are sparse
+            # to absent in N3, so requiring one inside an N3 epoch would reject correctly-staged N3. But the
+            # charge is "is this patient asleep at all, or is an encephalopathic waking record being called
+            # sleep?", and that IS answerable without delta: accept an N3 segment when the maximally
+            # contiguous NON-WAKE block containing it also contains a spindle-positive N2 segment. A spindle
+            # anywhere in the block establishes genuine sleep on evidence independent of delta, which is
+            # exactly what the encephalopathic-wake alternative predicts against.
+            if ref3 is not None:
+                allst = stages[stages.bdsp_id == r.bdsp_id].sort_values("segment")
+                nonwake = allst[allst.stage.isin(["N1", "N2", "N3", "REM"])].segment.tolist()
+                blocks, cur = [], []
+                for seg_i in nonwake:
+                    if cur and seg_i != cur[-1] + 1:
+                        blocks.append(cur); cur = []
+                    cur.append(seg_i)
+                if cur:
+                    blocks.append(cur)
+                verified = {i for blk in blocks if sp_segments & set(blk) for i in blk}
+                n3_all = allst[allst.stage == "N3"].segment.tolist()
+                n3_ok = [i for i in n3_all if i in verified and i in gi.index]
+                rec["n_n3"] = len(n3_all); rec["n_n3_verified"] = len(n3_ok)
+                for f in ART:
+                    mu3 = np.interp(r.age, grid, ref3[f"mus_{f}"]); sd3 = np.interp(r.age, grid, ref3[f"sds_{f}"])
+                    zz = [(float(gi.loc[i, f]) - mu3) / sd3 for i in n3_ok]
+                    zz = [x for x in zz if np.isfinite(x)]
+                    rec[f"z_n3v_{f}"] = float(np.median(zz)) if zz else np.nan
             rec["n_n2"] = len(segwins); rec["n_spindle"] = npos; rec["status"] = "ok"
             for f in ART:
                 rec[f"z_all_{f}"] = float(np.median(zvals[f])) if zvals[f] else np.nan
@@ -468,6 +500,36 @@ def report(res, limit):
              f"bounds clear chance by a wide margin (DAR {dr['lo']:.3f}, log_delta {ld['lo']:.3f}; p~1e-10). This is "
              f"the decisive evidence that the sleep elevation is real sleep slowing, not slow wake misclassified "
              f"as N2.\n")
+
+    # --- N3 arm: sleep-verified deep sleep (review C146-a) -------------------------------------
+    n3cols = [f"z_n3v_{f}" for f in ART if f"z_n3v_{f}" in ok.columns]
+    if n3cols:
+        L.append("\n## Sleep-verified N3 (the staging-circularity charge)\n")
+        L.append("Spindles define N2 and are sparse to absent in N3, so they cannot verify an N3 epoch "
+                 "directly. Instead an N3 segment is accepted when the maximally contiguous NON-WAKE block "
+                 "containing it also contains a spindle-positive N2 segment: a spindle anywhere in the block "
+                 "establishes genuine sleep on evidence independent of delta, which is what the "
+                 "encephalopathic-wake alternative predicts against.\n")
+        L.append("| feature | AUROC case vs control [95% CI] | p | n case/control |")
+        L.append("|---|---|---|---|")
+        any_n3 = False
+        for f in ART:
+            c_ = ok[(ok.group == "case")][f"z_n3v_{f}"].dropna() if f"z_n3v_{f}" in ok else []
+            k_ = ok[(ok.group == "control")][f"z_n3v_{f}"].dropna() if f"z_n3v_{f}" in ok else []
+            if len(c_) < 5 or len(k_) < 5:
+                L.append(f"| {f} | insufficient sleep-verified N3 | — | {len(c_)}/{len(k_)} |")
+                continue
+            any_n3 = True
+            au, lo, hi, pv, _nc, _nk = _auc_ci(list(c_), list(k_))
+            L.append(f"| {f} | {au:.3f} [{lo:.3f},{hi:.3f}] | {pv:.2g} | {len(c_)}/{len(k_)} |")
+        tot3 = int(ok.get("n_n3", pd.Series(dtype=float)).fillna(0).sum())
+        ver3 = int(ok.get("n_n3_verified", pd.Series(dtype=float)).fillna(0).sum())
+        L.append(f"\nN3 segments: {tot3:,} staged, {ver3:,} inside a spindle-verified sleep block "
+                 f"({100*ver3/max(tot3,1):.0f}%).\n")
+        if not any_n3:
+            L.append("**Too few recordings carry sleep-verified N3 to adjudicate this arm.** These are "
+                     "routine-length daytime studies, in which N3 is scarce; the arm needs overnight "
+                     "recordings to be conclusive.\n")
 
     # --- align_fail diagnosis -----------------------------------------------------------------
     read = res[res.status.isin(["ok", "align_fail", "no_n2"])]
