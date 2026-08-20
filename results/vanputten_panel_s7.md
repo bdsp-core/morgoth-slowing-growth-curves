@@ -8,5 +8,5 @@ LENS = production code path (gen: scripts/54 MIL top-5; focal: scripts/66), iden
 | focal | LENS | 0.921 [0.824, 0.988] | 71% |
 | focal | Morgoth | 0.908 [0.828, 0.974] | 41% |
 | generalized | best van Putten index (DAR) | 0.817 [0.707, 0.913] | 11% |
-| generalized | LENS | 0.946 [0.887, 0.990] | 78% |
+| generalized | LENS | 0.971 [0.933, 0.997] | 94% |
 | generalized | Morgoth | 0.853 [0.750, 0.934] | 11% |

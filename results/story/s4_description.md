@@ -1,8 +1,8 @@
 # §4 Description — reading the deviation field, validated by contrast vs the report
 
 ## D1 — type & amount
-- THETA: report: theta (theta/mixed) median=1.39 (n=7446) vs report: no theta (delta only) median=1.08 (n=3510); Cohen d=0.29, p=2.8e-45
-- DELTA: report: delta (delta/mixed) median=1.63 (n=7946) vs report: no delta (theta only) median=1.32 (n=3010); Cohen d=0.26, p=0.0e+00
+- THETA: report: theta (theta/mixed) median=1.39 (n=7446) vs report: no theta (delta only) median=1.08 (n=3510); Cohen d=0.29, p=3.6e-45
+- DELTA: report: delta (delta/mixed) median=1.63 (n=7946) vs report: no delta (theta only) median=1.32 (n=3010); Cohen d=0.26, p=5.6e-47
 
 ## D2 — laterality & region
 - laterality: left median=0.36 (n=3129); bilateral median=0.03 (n=2365); right median=-0.44 (n=2099)

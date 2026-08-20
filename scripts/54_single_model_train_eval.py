@@ -17,6 +17,7 @@ Writes results/story/s0d_single_model.md + figures/story/s0d_single_{occasion,mo
 Run: PYTHONPATH=src MPLBACKEND=Agg python3 scripts/54_single_model_train_eval.py
 """
 from __future__ import annotations
+import os
 import importlib.util
 from pathlib import Path
 import numpy as np, pandas as pd
@@ -34,7 +35,13 @@ m46 = m49.m46
 FEATS = m49.FEATS; FOC_F = m49.FOC_F
 AMT = [f"amt_{ft}" for ft in FEATS] + ["age"]
 FOC = [f"{p}_{ft}" for ft in FOC_F for p in ("peak", "foc", "asym")] + ["age"]
-K = 5
+# Recording score = mean of the top-K segment scores. Raised 5 -> 20 after the round-1 review asked for
+# the sweep behind the original value (scripts/80). AUROC rises monotonically with K on BOTH the internal
+# report-test split and externally, but SEG_CAP caps each recording at 80 sampled segments (median 40), so
+# beyond ~k=30 the "top-k mean" quietly degenerates into the plain mean for most recordings. k=20 keeps
+# >=90% of recordings with at least k segments, so it remains a genuine top-k, and takes most of the gain.
+# Chosen on the internal split and on that feasibility bound, never on ON-100 or SAI-100.
+K = int(os.environ.get("TOPK", "20"))
 FIG = Path("figures/story"); RES = Path("results/story")
 from morgoth_slowing.viz.palette import MORGOTH, OURS, OURS_ALT
 C_MORG, C_OURS = MORGOTH, OURS
