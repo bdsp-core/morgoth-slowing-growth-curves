@@ -45,8 +45,28 @@ def fleiss_kappa(counts):
     return (P_bar - P_e) / (1 - P_e) if (1 - P_e) > 0 else np.nan
 
 
+VOTES_PARQUET = "data/derived/occasion_expert_votes.parquet"
+
+
+def _panel_db() -> pd.DataFrame:
+    """Per-(recording, rater) panel votes, both readings.
+
+    Prefer the committed parquet over the source workbook. The workbook lived only in one developer's
+    temporary scratch directory, which no longer exists anywhere, so reading it first made Table S2
+    unreproducible for everybody. The parquet carries the same fid / rater / r{1,2}.{FN,GN} columns.
+    """
+    if Path(VOTES_PARQUET).exists():
+        db = pd.read_parquet(VOTES_PARQUET)
+        return db.rename(columns={"rater": "uid"})
+    if Path(XLS).exists():
+        return pd.ExcelFile(XLS).parse("DB")
+    raise FileNotFoundError(
+        f"neither {VOTES_PARQUET} nor the source workbook {XLS} is available; "
+        "set PANEL_SCRATCH to a directory containing moe/occ/Occasion.xlsx")
+
+
 def expert_votes():
-    db = pd.ExcelFile(XLS).parse("DB")
+    db = _panel_db()
     out = {}
     for read, tag in [("r1", "read1"), ("r2", "read2")]:
         d = db[["fid", "uid", f"{read}.FN", f"{read}.GN"]].dropna(subset=[f"{read}.FN", f"{read}.GN"])

@@ -18,6 +18,7 @@ Writes results/story/s0e_recording_model.md + figures/story/s0e_{occasion,moe}_{
 Run: PYTHONPATH=src MPLBACKEND=Agg python3 scripts/55_recording_model.py
 """
 from __future__ import annotations
+import os
 import importlib.util
 from pathlib import Path
 import numpy as np, pandas as pd
@@ -33,7 +34,7 @@ FOC0 = [f"{p}_{ft}" for ft in m54.FOC_F for p in ("peak", "foc", "asym")]
 FIG = Path("figures/story"); RES = Path("results/story")
 from morgoth_slowing.viz.palette import MORGOTH, OURS
 C_MORG, C_OURS = MORGOTH, OURS
-MOE_XL = ("/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
+MOE_XL = os.environ.get("MOE_XL") or ("/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
           "543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/moe/Morgoth_test_list_MoE.xlsx")
 
 
@@ -53,6 +54,13 @@ def aggregate(S):
 
 
 def moe_expert_consensus():
+    """MoE Experts-sheet consensus. Loaded LAZILY: MoE was cut from the paper (see the dataset loop below),
+    and its annotation workbook is not redistributable with the project, so eagerly reading it here made a
+    figure the paper DOES use unreproducible for anyone without that one file."""
+    if not Path(MOE_XL).exists():
+        raise FileNotFoundError(
+            f"MoE expert workbook not found at {MOE_XL}. It is only needed for the MoE evaluation arm, "
+            "which is not part of the manuscript. Set MOE_XL to a local copy to re-enable it.")
     E = pd.read_excel(MOE_XL, sheet_name="Experts"); E["eeg_id"] = "MOE_" + E.file_name.astype(str)
     return E.set_index("eeg_id")
 
@@ -80,7 +88,7 @@ def main():
         fs = m66.focal_score(on); R.loc[fs.index, "score_focal"] = fs.values
 
     head = pd.read_parquet("data/derived/gate_eeg_level_rerun.parquet").drop_duplicates("eeg_id").set_index("eeg_id")
-    E = moe_expert_consensus()
+    E = None                                   # populated on demand; MoE is not part of the manuscript
     md = ["# ONE recording-level Morgoth-free model (aggregated features) — report-trained, tested on all\n",
           "Per-segment features aggregated per recording as {mean,p90,max,prev}; degrades to a single clip. "
           "Trained on report-train. MoE truth = canonical Experts-sheet consensus.\n",
@@ -105,6 +113,8 @@ def main():
                 wide = wide.loc[keep]; y = (wide.mean(axis=1) >= 0.5).astype(int); pts = m46.expert_points(wide)
                 morg = None; idx = keep
             else:
+                if E is None:
+                    E = moe_expert_consensus()
                 keep = E.index.intersection(sub.index)
                 yy = (E.loc[keep, ecol] >= 0.5).astype(int)
                 if ds == "moe_noBS":                       # drop burst-suppression from the NEGATIVES
