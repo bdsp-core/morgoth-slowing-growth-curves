@@ -43,7 +43,10 @@ def collapse(nums: list[int]) -> str:
         j = i
         while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
             j += 1
-        parts.append(str(nums[i]) if j - i < 2 else f"{nums[i]}--{nums[j]}")
+        run = nums[i:j + 1]
+        # a 2-long run must stay a comma pair: "23,24". Collapsing it to a range is wrong, and emitting
+        # only its first element silently DROPS a citation.
+        parts.append(f"{run[0]}--{run[-1]}" if len(run) >= 3 else ",".join(str(n) for n in run))
         i = j + 1
     return ",".join(parts)
 
@@ -68,7 +71,11 @@ def renumber_refs(body: str, refs: str) -> tuple[str, str, dict[int, int]]:
         sys.exit(f"in the reference list but never cited: {uncited}")
     mapping = {old: new for new, old in enumerate(order, 1)}
 
+    before = sum(len(expand(m.group(1))) for m in CITE.finditer(body))
     body = CITE.sub(lambda m: "\\[" + collapse([mapping[n] for n in expand(m.group(1))]) + "\\]", body)
+    after = sum(len(expand(m.group(1))) for m in CITE.finditer(body))
+    if after != before:
+        sys.exit(f"citation count changed during renumber: {before} -> {after} (a citation was dropped)")
 
     # split the list into entries, reorder, renumber
     entries: dict[int, str] = {}
