@@ -485,7 +485,7 @@ def report(res, limit):
     # Target must be met by the ANALYSED sample (rows that contribute a spindle-verified z), not merely by
     # the alignment-verified 'usable' count: cases with zero spindle-positive N2 segments yield no z, so
     # counting them inflates N. scripts/95 derives the same verdict from the same rule.
-    hit_target = (dr["n_case"] >= 60 and dr["n_ctrl"] >= 60)
+    hit_target = (dr["nc"] >= 60 and dr["nk"] >= 60)   # keys are nc/nk (see line ~462); n_case/n_ctrl never existed
     if excludes_chance and hit_target:
         tag = f"ESTABLISHED for {POP}"
     elif excludes_chance:
