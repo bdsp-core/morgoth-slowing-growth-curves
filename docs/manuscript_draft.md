@@ -31,9 +31,7 @@ Jin Jing <jjing@bidmc.harvard.edu>; Chenxi Sun <cxsun@stanford.edu>; Wolfgang Ga
 **ORCID iDs.** Wolfgang Ganglberger 0000-0002-6029-2450; Alice D. Lam 0000-0001-7754-4637;
 Daniel M. Goldenholz 0000-0002-8370-2758; Sándor Beniczky 0000-0002-6035-6581; Aaron F. Struck
 0000-0002-9103-1798; Mouhsin M. Shafi 0000-0002-4531-1967; M. Brandon Westover 0000-0003-4803-312X.
-*(Remaining authors: their iDs could not be resolved unambiguously from the public ORCID registry --- each
-name returns several records with no distinguishing affiliation --- so they should be supplied by the
-authors themselves rather than guessed.)*
+*\[Still needed --- Jin Jing, Chenxi Sun, Haoqi Sun, Tianyu Zhang, Fabio A. Nascimento, Doyle Yuan, Jennifer A. Kim, Sahar F. Zafar, Robert J. Thomas. Each name returns several public ORCID records with no distinguishing affiliation, and ORCID's affiliation index is too sparse to disambiguate them, so these must come from the authors rather than be guessed.\]*
 
 *Corresponding author:* M. Brandon Westover, Department of Neurology and Neurological Sciences, Stanford University School of Medicine, Stanford, CA, USA --- email: <mbwest@stanford.edu>.
 
@@ -199,10 +197,7 @@ observed and nominal centiles agree closely across every stage and feature --- m
 **1.0 percentage point**, maximum 6.7 --- so a segment at our nominal 97th centile really is a 97th-centile
 segment. On the external no-slowing recordings agreement is looser but still close over most cells (median
 2.3 points), with one clear exception: **N1 log TAR**, where the nominal 75th centile captures only 54% of
-external observations, i.e. the external N1 distribution is wider than our norm expects. Deep sleep could not
-be tested externally --- N3 is only 5.4% of segments in these routine recordings, too few for a stable
-estimate. Calibration is thus good internally, good-but-imperfect across institutions, and untested externally
-in N3, which is the same regime §3.8 and §5 identify as the least secure.
+external observations, i.e. the external N1 distribution is wider than our norm expects. Deep sleep is well covered by the internal held-out set --- **4,836 held-out N3 observations from 420 patients**, calibrating to a median 2.4-point discrepancy (relative delta essentially exact: 2.98, 51.5 and 97.6 observed at nominal 3, 50 and 97; log DAR the loosest, 56.7 observed at nominal 50). What could not be assessed is N3 in the *external* set, where it is only 5.4% of segments because both external cohorts are routine daytime recordings. Calibration is therefore good internally in every stage including deep sleep, and good-but-imperfect across institutions in the stages those cohorts actually sample.
 
 ### 3.3 The per-segment deviation field is calibrated and discriminative
 

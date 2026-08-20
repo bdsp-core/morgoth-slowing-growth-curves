@@ -64,6 +64,27 @@ def resolve(token: str) -> tuple[bool, str]:
     return False, tok
 
 
+# Inputs whose CARDINALITY matters, not just their existence. A partially-synced panel silently changes
+# results rather than failing: Table S2 recomputed on 60 of 100 ON-100 sidecars gave Morgoth AUROC 0.895
+# instead of 0.86, which looked like a discrepancy in the paper and was really a half-finished download.
+COVERAGE = [
+    ("ON-100 segment_master partitions", "data/derived/segment_master/eeg_id=ON_*", 100),
+    ("ON-100 .done sidecars", "data/derived/segment_master/_done/ON_*.done", 100),
+    ("ON-100 segment_summary partitions", "data/derived/segment_summary/eeg_id=ON_*", 100),
+    ("ON-100 deviation partitions", "data/derived/segment_deviation/eeg_id=ON_*", 100),
+    ("SAI-100 segment_master partitions", "data/derived/segment_master/eeg_id=SB_*", 98),
+]
+
+
+def check_coverage() -> list[str]:
+    bad = []
+    for name, pattern, expect in COVERAGE:
+        got = len(list(Path().glob(pattern)))
+        if got != expect:
+            bad.append(f"{name}: {got} of {expect}")
+    return bad
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
@@ -116,12 +137,19 @@ def main() -> None:
             print(f"             missing script: {s}")
         for t in i["missing_inputs"]:
             print(f"             missing input : {t}")
+    cov = check_coverage()
+    if cov:
+        print(f"\n  INCOMPLETE inputs ({len(cov)}) — present but partial, which changes results silently:")
+        for c in cov:
+            print(f"    {c}")
+    else:
+        print("  input coverage: complete\n")
     stale = [i for i in ok if i["missing_outputs"]]
     if stale:
         print(f"\n  runnable but output not yet present ({len(stale)}):")
         for i in stale:
             print(f"    {i['item']}: {', '.join(i['missing_outputs'])}")
-    sys.exit(0 if not bad else 1)
+    sys.exit(0 if not bad and not cov else 1)
 
 
 if __name__ == "__main__":
