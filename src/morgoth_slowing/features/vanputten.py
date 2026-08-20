@@ -110,3 +110,35 @@ def q_asym(freqs, psd, band=(0.5, 25.0), reduce="max"):
     if reduce == "dict":
         return vals
     return max(vals.values())
+
+
+def slow_freq(freqs, psd, idx=None, band=(1.0, 8.0), fit_band=(1.0, 45.0), alpha=(7.0, 13.0)):
+    """Dominant frequency of the SLOW activity, as (detrended_peak, band_median).
+
+    Review C146-c: reports state a frequency ("3-5 Hz theta-delta slowing") where a band word does not. The
+    obvious estimators both fail on EEG and are deliberately not used:
+
+      raw argmax in `band`      EEG power falls off as ~1/f^a, so the largest value inside any low band is
+                                its lowest bin. Measured this way every recording returns exactly 1.0 Hz.
+      stored `peak_freq`        computed over 1-45 Hz, so it lands on the posterior dominant rhythm.
+
+    `detrended_peak` is the argmax of the residual after dividing out an aperiodic 1/f background fitted in
+    log-log over `fit_band` with the alpha range EXCLUDED, so a posterior rhythm cannot drag the slope and
+    the maximum reflects a periodic bump rather than the background. `band_median` is the frequency dividing
+    band power in half -- a centre-of-mass reading, reported alongside because it is more stable when no
+    discrete slow rhythm is present.
+    """
+    p = psd.mean(axis=0) if idx is None else psd[np.asarray(idx)].mean(axis=0)
+    bm = (freqs >= band[0]) & (freqs <= band[1]) & np.isfinite(p) & (p > 0)
+    if bm.sum() < 3:
+        return float("nan"), float("nan")
+    fb, pb = freqs[bm], p[bm]
+    c = np.cumsum(pb) / pb.sum()
+    band_median = float(np.interp(0.5, c, fb))
+    fm = ((freqs >= fit_band[0]) & (freqs <= fit_band[1]) & np.isfinite(p) & (p > 0)
+          & ~((freqs >= alpha[0]) & (freqs <= alpha[1])))
+    if fm.sum() < 8:
+        return float("nan"), band_median
+    slope, icept = np.polyfit(np.log(freqs[fm]), np.log(p[fm]), 1)
+    resid = np.log(pb) - (slope * np.log(fb) + icept)
+    return float(fb[int(np.argmax(resid))]), band_median

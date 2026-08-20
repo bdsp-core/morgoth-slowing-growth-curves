@@ -30,12 +30,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from morgoth_slowing.features import extract as ex
+from morgoth_slowing.features import extract as ex, artifact as af, vanputten as vp
 from morgoth_slowing.io.edf import load_edf_referential
 
 SLOW_BAND = (1.0, 8.0)          # delta + theta; above this the alpha rhythm dominates the argmax
 SEG_LEN_S = 15.0
-MAX_S = 600.0                   # first 10 minutes is enough for a frequency summary
+MAX_SEG = 40                    # usable segments per recording is plenty for a frequency summary
 RES = Path("results/story")
 MANIFEST = "data/manifest/report_manifest_v6.parquet"
 
@@ -58,75 +58,46 @@ def reported_slow_hz(text: str) -> float | None:
     return None
 
 
-def ex_peak(freqs, psd, band) -> float:
-    """Raw PSD argmax in a band. Kept only as the negative control -- see slow_freq()."""
-    m = (freqs >= band[0]) & (freqs <= band[1])
-    return float(freqs[m][int(np.argmax(psd[:, m].mean(axis=0)))])
-
-
-def slow_freq(freqs, psd, band=SLOW_BAND) -> tuple[float, float]:
-    """(median frequency, 1/f-detrended peak) within `band`.
-
-    A raw argmax is useless here. EEG power falls off as roughly 1/f^a, so the largest value inside any low
-    band is almost always its lowest bin: measured that way every recording returns 1.0 Hz and the
-    correlation with the reported frequency is nil. Two estimators that are not dominated by the aperiodic
-    background:
-
-      median frequency  the frequency dividing band power in half -- a centre-of-mass measure, which is
-                        closer to what a reader means by "3-5 Hz slowing" than any single peak.
-      detrended peak    argmax after dividing out a log-log linear fit of the aperiodic background, so the
-                        maximum reflects a periodic bump rather than the 1/f slope.
-    """
-    m = (freqs >= band[0]) & (freqs <= band[1])
-    f = freqs[m]
-    p = psd[:, m].mean(axis=0)
-    if not np.isfinite(p).all() or p.sum() <= 0:
-        return float("nan"), float("nan")
-    c = np.cumsum(p) / p.sum()
-    med = float(np.interp(0.5, c, f))
-    ok = (f > 0) & (p > 0)
-    if ok.sum() >= 4:
-        sl, ic = np.polyfit(np.log(f[ok]), np.log(p[ok]), 1)
-        resid = np.log(p[ok]) - (sl * np.log(f[ok]) + ic)
-        peak = float(f[ok][int(np.argmax(resid))])
-    else:
-        peak = float("nan")
-    return med, peak
-
-
 def measure(edf_uri: str) -> tuple[float, float, float] | None:
-    """(slow median Hz, 1/f-detrended slow peak Hz, full-band peak Hz) from the first MAX_S seconds."""
+    """(detrended slow peak, slow band median, full-band peak) over USABLE segments of one recording.
+
+    Mirrors scripts/31 exactly: same loader, same preprocess+montage, same segment_indices stepping, and --
+    critically -- the same artifact filter. An earlier version of this script did none of that and measured
+    electrode drift, returning 1.0 Hz for every recording.
+    """
     with tempfile.TemporaryDirectory() as td:
         local = Path(td) / "rec.edf"
         uri = ("s3://" + edf_uri[3:]) if edf_uri.startswith("s3:") and not edf_uri.startswith("s3://") else edf_uri
         try:
             subprocess.run(["aws", "s3", "cp", uri, str(local)], check=True, capture_output=True, timeout=900)
-            data, chs, fs = load_edf_referential(str(local), max_hours=MAX_S / 3600 + 0.02)
+            data, chs, fs = load_edf_referential(str(local))
         except Exception:
             return None
     if data is None or not len(data):
         return None
-    bip = ex.to_bipolar(ex.preprocess(data, fs), chs)      # same HP + notch + montage as scripts/31
-    n = int(SEG_LEN_S * fs)
-    slow, dpeak, full = [], [], []
-    for s in range(0, min(len(bip), int(MAX_S * fs)) - n, n):
-        seg = bip[s:s + n]
-        if np.nanstd(seg) < 1e-9:
+    bip = ex.to_bipolar(ex.preprocess(data, fs), chs)
+    peaks, meds, fulls = [], [], []
+    for i, (s_, e_) in enumerate(ex.segment_indices(bip.shape[0])):
+        if len(peaks) >= MAX_SEG:
+            break
+        seg = bip[s_:e_]
+        ok, _ = af.segment_usable(seg, fs)
+        if not ok:
             continue
-        freqs, psd = ex.multitaper_psd(np.asarray(seg).T, fs)
+        freqs, psd = ex.multitaper_psd(seg.T, fs)
         if not np.isfinite(psd).all():
             continue
-        med, dpk = slow_freq(freqs, psd)
-        if np.isfinite(med):
-            slow.append(med)
-        if np.isfinite(dpk):
-            dpeak.append(dpk)
-        full.append(ex_peak(freqs, psd, (1.0, 45.0)))
-    if not slow:
+        pk, md = vp.slow_freq(freqs, psd)
+        if np.isfinite(pk):
+            peaks.append(pk)
+        if np.isfinite(md):
+            meds.append(md)
+        m = (freqs >= 1.0) & (freqs <= 45.0)
+        fulls.append(float(freqs[m][int(np.argmax(psd[:, m].mean(axis=0)))]))
+    if not peaks:
         return None
-    return (float(np.median(slow)),
-            float(np.median(dpeak)) if dpeak else float("nan"),
-            float(np.median(full)))
+    return (float(np.median(peaks)), float(np.median(meds)) if meds else float("nan"),
+            float(np.median(fulls)))
 
 
 def main() -> None:
@@ -151,7 +122,7 @@ def main() -> None:
         got = measure(str(r.resolved_path))
         if got:
             rows.append(dict(eeg_id=r.eeg_id, reported_hz=float(r.reported_hz),
-                             slow_median_hz=got[0], slow_detrended_hz=got[1], full_peak_hz=got[2]))
+                             slow_detrended_hz=got[0], slow_median_hz=got[1], full_peak_hz=got[2]))
         if k % 25 == 0:
             print(f"   {k}/{len(samp)} ({len(rows)} measured)", flush=True)
     d = pd.DataFrame(rows)

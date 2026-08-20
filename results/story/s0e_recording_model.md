@@ -4,7 +4,7 @@ Per-segment features aggregated per recording as {mean,p90,max,prev}; degrades t
 
 | test set | axis | model | AUROC | AP | % under ROC | % under PR |
 |---|---|---|---|---|---|---|
-| report-test | focal | ours | 0.733 | 0.626 | – | – |
-| report-test | generalized | ours | 0.720 | 0.399 | – | – |
-| occasion | focal | ours | 0.924 [0.831, 0.989] | 0.754 | 76% | 76% |
-| occasion | generalized | ours | 0.943 [0.890, 0.982] | 0.782 | 61% | 56% |
+| report-test | focal | ours | 0.737 | 0.628 | – | – |
+| report-test | generalized | ours | 0.717 | 0.391 | – | – |
+| occasion | focal | ours | 0.918 [0.822, 0.985] | 0.761 | 71% | 53% |
+| occasion | generalized | ours | 0.937 [0.884, 0.979] | 0.756 | 39% | 33% |

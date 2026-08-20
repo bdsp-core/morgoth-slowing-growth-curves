@@ -4,9 +4,9 @@ Each segment carries a deviation z per feature × region, scored against its own
 
 | feature | group | W | N1 | N2 | N3 | REM |
 |---|---|---|---|---|---|---|
-| delta excess | clean-normal | +0.22 | +0.13 | -0.01 | -0.09 | +0.23 |
-| delta excess | abnormal | +0.80 | +1.44 | +0.48 | +0.12 | +1.08 |
-| theta/alpha ratio | clean-normal | +0.39 | +0.05 | +0.01 | -0.18 | +0.18 |
-| theta/alpha ratio | abnormal | +1.08 | +1.17 | +0.72 | +0.08 | +0.71 |
-| delta/alpha ratio | clean-normal | +0.36 | +0.21 | +0.09 | -0.32 | +0.11 |
-| delta/alpha ratio | abnormal | +0.97 | +1.41 | +0.82 | +0.14 | +0.70 |
+| delta excess | clean-normal | +0.24 | +0.18 | +0.00 | -0.04 | +0.19 |
+| delta excess | abnormal | +0.83 | +1.57 | +0.48 | +0.13 | +1.01 |
+| theta/alpha ratio | clean-normal | +0.33 | +0.17 | -0.02 | +0.06 | +0.18 |
+| theta/alpha ratio | abnormal | +1.03 | +1.25 | +0.65 | +0.42 | +0.71 |
+| delta/alpha ratio | clean-normal | +0.34 | +0.24 | +0.09 | -0.05 | +0.18 |
+| delta/alpha ratio | abnormal | +0.96 | +1.36 | +0.83 | +0.42 | +0.72 |

@@ -4,5 +4,5 @@ Stages: W+N1+N2+N3+REM. Focal uses localization: per-segment region z -> peak_z,
 
 | axis | stages | n pos/N | AUROC | AP | experts | % under ROC | % under PR |
 |---|---|---|---|---|---|---|---|
-| focal | W+N1+N2+N3+REM | 14/100 | 0.837 | 0.654 | 17 | **35%** | **29%** |
-| generalized | W+N1+N2+N3+REM | 19/100 | 0.901 | 0.745 | 18 | **33%** | **22%** |
+| focal | W+N1+N2+N3+REM | 14/100 | 0.895 | 0.737 | 17 | **47%** | **53%** |
+| generalized | W+N1+N2+N3+REM | 19/100 | 0.920 | 0.800 | 18 | **39%** | **44%** |

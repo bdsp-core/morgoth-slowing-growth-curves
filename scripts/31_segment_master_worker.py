@@ -229,7 +229,11 @@ def segment_master_rows(eid, pid, edt, bip, fs, stages, gate=None):
             "p_focal_seg": (float(gate[3][i]) if gate and len(gate) > 3 and i < len(gate[3]) else np.nan),
             "p_gen_seg": (float(gate[4][i]) if gate and len(gate) > 4 and i < len(gate[4]) else np.nan),
             "Q_SLOWING": vp.q_slowing(freqs, psd), "Q_APG": vp.q_apg(freqs, psd),
-            "r_sBSI": vp.r_sbsi(freqs, psd), "pdBSI": vp.pdbsi(freqs, psd), "Q_ASYM": vp.q_asym(freqs, psd)})
+            "r_sBSI": vp.r_sbsi(freqs, psd), "pdBSI": vp.pdbsi(freqs, psd), "Q_ASYM": vp.q_asym(freqs, psd),
+            # Frequency OF THE SLOWING (review C146-c) -- reports state one ("3-5 Hz") where a band word
+            # does not. Neither peak_freq (1-45 Hz, lands on the posterior rhythm) nor a raw argmax inside
+            # the slow band (1/f puts it on the lowest bin) can serve; see vanputten.slow_freq.
+            **dict(zip(("slow_peak_freq", "slow_median_freq"), vp.slow_freq(freqs, psd)))})
         bp_all = ex.band_powers(freqs, psd)              # dict band -> (18,) power, all channels at once
         for c, ch in enumerate(CH_NAMES):
             d = _derived(np.array([[float(bp_all[b][c]) for b in _BANDS6]]))

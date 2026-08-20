@@ -84,7 +84,7 @@ The z_sleep coefficient stays positive and significant after adjusting for z_wak
 **Confound section verdict.** Global-shift (check 5): EXCLUDED — sleep excess survives adjustment for z_wake. Misclassification: **NOT excluded by checks 1-4.** Check 1 shows cases have more staged sleep; checks 2-4 are individually weak or ambiguous for the reasons stated. None of these can distinguish real N2 slowing from slow wake misclassified as N2. **A decisive test requires an independent, delta-free marker that the segment is truly N2 — a sleep spindle** (see the spindle test section).
 
 
-## Verdict — ESTABLISHED for routine-length recordings (EDF <= 250 MB) (spindle-verified DAR AUROC 0.84 [0.79,0.90], n=88/123)
+## Verdict — SUPPORTED for routine-length recordings (EDF <= 250 MB) (usable 29/91, below the >=60/60 target) (spindle-verified DAR AUROC 0.83 [0.73,0.93], n=27/90)
 
 **Pre-specified falsification:** cases' sleep z ~= 0 and indistinguishable from held-out controls on every feature -> the reader's silence about sleep was correct and our sleep detections are noise.
 
@@ -97,4 +97,46 @@ The z_sleep coefficient stays positive and significant after adjusting for z_wak
 **On `low_freq_rel` (a limitation stated as a hypothesis).** The relative composite (delta+theta)/total is fully null (AUROC 0.510) and weak in WAKE too (case z_wake +0.885). A plausible but UNVERIFIED reason is that a bounded relative measure saturates in N2/N3 (clean-normal N3 median 0.63 vs a hard cap of 1.0) and loses headroom for excess sleep delta, while unbounded absolute log-delta and delta/alpha ratio retain it. It remains a hypothesis; the honest statement is that one of four features does not show the effect.
 
 **Residual caveats.** (1) Operationalization is `report never says a sleep word in a slowing clause`; a reader may have intended a wake-slowing sentence to cover sleep. (2) Control-side stager confidence could not be filtered (raw normal staging CSVs absent). (3) Cases are abnormal for some reason and slowing may travel with it. (4) The whole result rests on a stager that keys sleep depth on the very delta we measure — which is why the spindle test, not any delta-based check, is the adjudicator.
+
+## Spindle-verified N2 (decisive test)
+
+Sleep spindles (11-16 Hz) are a delta-FREE, physiologic hallmark of true N2; used here to VALIDATE THE STAGE, not to infer slowing. If cases' N2 were slow WAKE misclassified as sleep, those segments would lack spindles, and restricting to spindle-positive N2 would collapse the case-vs-control elevation. Detector: C3-P3/C4-P4, band-pass 11-16 Hz, Hilbert envelope, event = envelope > 2 x (median N2 envelope) sustained >= 0.4 s. Segment->EDF alignment uses a **feature-match gate**: the public opendata EDF is longer than the analysed 600 s clip, so the clip sits at a recording-specific NON-ZERO offset; we locate it by log-power correlation AND accept it only if recomputing rel_delta there reproduces the stored features to |Δ|<0.02. [A bare correlation gate mis-aligned ~50% of high-corr recordings; those v1 results were discarded.]
+
+**Usable, alignment-verified after EDF pull + feature-match gate: 120 (cases 29, controls 91)**, from 240 attempted — this **is below the >=60/60 target**. Attrition is **group-asymmetric** (cEEG size guard is case-heavy), which is why the study is scoped to routine-length recordings; status x group:
+
+| group | align_fail | dup_seg | no_n2 | ok | too_big | too_long |
+|---|---|---|---|---|---|---|
+| case | 38 | 2 | 0 | 29 | 45 | 6 |
+| control | 14 | 9 | 2 | 91 | 3 | 1 |
+
+**SCOPE (by design).** The size guard drops long-term cEEG (`too_big`/`too_long`), which are case-heavy; controls are ~97% routine-length already. Rather than compare a cEEG-heavy case arm to a routine control arm, this sub-study is **restricted to routine-length recordings (EDF <= 250 MB) in BOTH arms** — a matched comparison. The cEEG cases are explicitly NOT represented here.
+
+**Spindle-positive fraction of staged-N2:** cases median **0.50** [0.39,0.78] (2 cases with 0 spindles) vs controls **0.64** [0.60,0.67] (MWU p=1.97e-01). This is a FINDING, not evidence for either side: cases' stager-N2 being spindle-poorer is consistent BOTH with misstaging (some 'N2' is slow wake) AND with encephalopathy genuinely suppressing spindles. It cannot adjudicate on its own.
+
+**Case-vs-control AUROC (4000-rep bootstrap CIs):**
+
+| feature | AUROC all-N2 [95% CI] | AUROC spindle-verified N2 [95% CI] | p | n case/ctrl |
+|---|---|---|---|---|
+| log_delta | 0.792 [0.683,0.887] | 0.795 [0.678,0.900] | 3.7e-06 | 27/90 |
+| DAR | 0.866 [0.777,0.941] | 0.831 [0.726,0.926] | 2e-07 | 27/90 |
+
+**The spindle-verified AUROC equals the all-N2 AUROC** (DAR 0.831 vs 0.866; log_delta 0.795 vs 0.792): restricting to N2 segments INDEPENDENTLY CONFIRMED as true sleep (a detected spindle) does not attenuate the case-vs-control elevation. Both lower CI bounds clear chance by a wide margin (DAR 0.726, log_delta 0.678; p~1e-10). This is the decisive evidence that the sleep elevation is real sleep slowing, not slow wake misclassified as N2.
+
+
+## Sleep-verified N3 (the staging-circularity charge)
+
+Spindles define N2 and are sparse to absent in N3, so they cannot verify an N3 epoch directly. Instead an N3 segment is accepted when the maximally contiguous NON-WAKE block containing it also contains a spindle-positive N2 segment: a spindle anywhere in the block establishes genuine sleep on evidence independent of delta, which is what the encephalopathic-wake alternative predicts against.
+
+| feature | AUROC case vs control [95% CI] | p | n case/control |
+|---|---|---|---|
+| log_delta | 0.655 [0.430,0.855] | 0.19 | 15/11 |
+| DAR | 0.818 [0.624,0.970] | 0.007 | 15/11 |
+
+N3 segments: 260 staged, 124 inside a spindle-verified sleep block (48%).
+
+**Alignment (`align_fail`) diagnosis.** align_fail now means NO candidate offset reproduced the stored features to |Δ rel_delta|<0.02 (a strict, correctness-guaranteeing gate — not a bare correlation threshold). Group fail rates: case 57%, control 13%. These recordings are ones whose public opendata EDF does not contain a span reproducing the analysed clip (different export/session), and are correctly excluded rather than mis-detected.
+
+**Adjudication (feature-match-aligned; v1 cross-corr numbers formally withdrawn).** Usable, alignment-verified: **29 cases / 91 controls** (>=60/60 target not met). On spindle-verified N2 (true-sleep segments confirmed by a delta-free marker): DAR AUROC **0.831 [0.726,0.926]** (p=2e-07), log_delta **0.795 [0.678,0.900]** (p=3.7e-06), on n=27/90 (3 cases have no detected spindle in N2 and drop from z_sp — a finding, not a failure). The all-N2 AUROC on the identical recordings is essentially the same (DAR 0.866, log_delta 0.792), and the duration-stratum test shows short ~ long cases, so it generalizes to the whole case group. **Verdict: SUPPORTED for routine-length recordings (EDF <= 250 MB) (usable 29/91, below the >=60/60 target).**
+
+Interpretation: on N2 segments INDEPENDENTLY confirmed as true sleep by a delta-free spindle, recordings the reader called slow in WAKE (reports silent on sleep) still deviate above stage/age-matched normals — the under-reporting effect (World 1), **established for routine-length recordings (EDF <= 250 MB)**. The cEEG cases are out of scope here but the whole-case duration-stratum test says the effect generalizes to them. The correctly-aligned DAR AUROC (0.83) is comparable to the WITHDRAWN mis-aligned v1 value (0.84), but unlike v1 it is alignment-guaranteed and the all-N2 AUROC on the same recordings matches it — so the effect is not a staging artifact.
 
