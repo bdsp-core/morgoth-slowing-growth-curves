@@ -133,7 +133,7 @@ def main():
                 MP = pd.read_parquet("data/derived/occasion_morgoth_preds.parquet")
                 mm = MP[MP.axis == mx].set_index("fid").M_pred; mm.index = [f"ON_{int(i)}" for i in mm.index]
                 cm = m54.panel_curve(None, y.values[ok], mm.reindex(idx).values[ok], pts, C_MORG, "Morgoth")
-                fig, (a0, a1) = plt.subplots(1, 2, figsize=(11.5, 4.8)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
+                fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
                 for cur2, lab, cc in [(cm, "Morgoth", C_MORG), (cur, "LENS", C_OURS)]:
                     ci = f" [{lo:.2f}–{hi:.2f}]" if lab == "LENS" else ""
                     a0.plot(cur2["fpr"], cur2["tpr"], color=cc, lw=2.4, label=f"{lab} (AUROC {cur2['auc']:.2f}{ci}, {cur2['ur']:.0f}% under)")
@@ -145,7 +145,7 @@ def main():
                 a1.axhline(y.mean(), ls="--", color="#ccc", lw=1)
                 a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{tag.upper()} — ROC", fontsize=11)
                 a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{tag.upper()} — PRC", fontsize=11)
-                a0.legend(frameon=False, fontsize=8, loc="lower right"); a1.legend(frameon=False, fontsize=8, loc="upper right")
+                a0.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3); a1.legend(frameon=False, fontsize=5.6, handlelength=1.2, borderaxespad=0.3, loc="upper right")
                 for a in (a0, a1): a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
                 fig.suptitle(f"ON-100 {tag} — report-trained recording model vs Morgoth vs {len(pts)} experts", fontsize=10.5)
                 fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / f"s0e_{ds}_{tag}.png", dpi=300); plt.close(fig)

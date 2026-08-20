@@ -98,7 +98,7 @@ def main():
     vp_gen, vp_foc = vanputten_panel_indices()
     vp_by_axis = {"generalized": vp_gen, "focal": vp_foc}
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5)); md = ["# Figure S7 — van Putten vs LENS vs Morgoth on the "
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 2.96)); md = ["# Figure S7 — van Putten vs LENS vs Morgoth on the "
         "CLEAN ON-100 expert panel (fair benchmark; expert-majority labels)\n",
         "LENS = production code path (gen: scripts/54 MIL top-5; focal: scripts/66), identical to Figure 2. "
         "van Putten = best index per axis recomputed on the panel. Recording-level bootstrap 95% CIs.\n",

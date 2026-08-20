@@ -22,13 +22,13 @@ FIGS = {
     "Figure2_detection.png":         ([f"{STY}/s0d_single_occasion_generalized.png", f"{STY}/s0e_occasion_focal.png"], 1, "54, 55, 66"),
     "Figure3_sandor_external.png":   ([f"{STY}/sandor100_slowing.png"], 1, "sandor100_external_validation"),
     "Figure4_example_eeg_reports.png": ([f"{STY}/s4_examples_eeg_panel.png"], 1, "62, 63"),
-    "Figure5_description_contrast.png": ([f"{STY}/s4_d2.png", f"{STY}/s4_d5.png"], 2, "57"),
+    "Figure5_description_contrast.png": ([f"{STY}/s4_d2.png", f"{STY}/s4_d5.png"], 1, "57"),
     "Figure6_sleep_underreporting.png": ([f"{G}/v4a_wake_sleep.png"], 1, "fig6_sleep_naming (95b stat)"),
     # ---- SUPPLEMENTARY ----
     "FigureS1_architecture.png":     ([f"{STY}/architecture.png"], 1, "architecture_diagram"),
     "FigureS6_deviation_field.png":  ([f"{STY}/s2_segment_deviation.png"], 1, "44"),
     "FigureS4_curvebank.png":        ([f"{SC}/rel_delta__whole_head.png", f"{SC}/TAR__whole_head.png", f"{SC}/DAR__whole_head.png"], 1, "111"),
-    "FigureS8_description_panels.png": ([f"{STY}/s4_d1.png", f"{STY}/s4_d3.png", f"{STY}/s4_d4.png", f"{STY}/s4_d6.png"], 2, "57, 58"),
+    "FigureS8_description_panels.png": ([f"{STY}/s4_d1.png", f"{STY}/s4_d3.png", f"{STY}/s4_d4.png", f"{STY}/s4_d6.png"], 1, "57, 58"),
     "FigureS7_localized_focal.png":  ([f"{STY}/s0_occasion_ours_v4_focal.png"], 1, "49"),
     "FigureS9_severity_null.png":    ([f"{G}/severity_recalibrated.png"], 1, "109"),
     "FigureS2_vanputten.png":        (["figures/figs/vanputten_panel_s7.png"], 1, "vanputten_panel_s7"),
@@ -36,7 +36,8 @@ FIGS = {
     "FigureS5_centile_calibration.png": ([f"{STY}/s9_centile_calibration.png"], 1, "78"),
 }
 COLW = 7.0                                                       # inches per panel column
-SHRINK_WARN = 0.70   # a source authored wider than COLW/SHRINK_WARN has its text shrunk below legibility
+PAGE_W = 7.0         # the journal prints a figure at this width whatever the composite measures
+SHRINK_WARN = 0.70   # a source authored wider than page-width/SHRINK_WARN has its text shrunk below legibility
 
 
 def native_inches(path: str) -> float | None:
@@ -48,6 +49,16 @@ def native_inches(path: str) -> float | None:
             return im.size[0] / dpi if dpi else None
     except Exception:
         return None
+
+
+def page_width_per_panel(ncols: int) -> float:
+    """Inches of PAGE width each panel gets once the journal scales the composite to a 7in column.
+
+    The composite is COLW*ncols inches wide, but it is printed at 7in regardless, so a two-up figure gives
+    each panel 3.5in of page -- not 7. Comparing against COLW alone under-reports exactly the multi-panel
+    figures (Figure 5, Figure S8) whose text is smallest on the page.
+    """
+    return PAGE_W / ncols
 
 
 def legibility(panels: list[str], ncols: int) -> list[str]:
@@ -63,10 +74,11 @@ def legibility(panels: list[str], ncols: int) -> list[str]:
         w = native_inches(p)
         if w is None:
             continue
-        scale = COLW / w
+        target = page_width_per_panel(ncols)
+        scale = target / w
         if scale < SHRINK_WARN:
-            out.append(f"{Path(p).name}: authored {w:.1f}in wide -> {COLW:.1f}in "
-                       f"({scale:.0%} of original; text at {scale:.0%} of its authored pt size)")
+            out.append(f"{Path(p).name}: authored {w:.1f}in wide -> {target:.1f}in of page "
+                       f"({scale:.0%}; text renders at {scale:.0%} of its authored pt size)")
     return out
 
 

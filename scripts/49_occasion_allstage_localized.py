@@ -132,7 +132,7 @@ def evaluate(T, V, name, ax, cols, color):
     pts = m46.expert_points(wide)
     pu_roc, fr = m46.under_roc(fpr, tpr, pts); pu_pr, fp = m46.under_pr(prec, rec, pts)
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
-    fig, (a0, a1) = plt.subplots(1, 2, figsize=(11, 4.6))
+    fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.97))
     a0.plot([0, 1], [0, 1], "--", color="#bbb", lw=1); a0.plot(fpr, tpr, color=color, lw=2.4, label=f"LENS (AUROC {auc:.2f})")
     for r, pp in pts.items():
         a0.plot(pp["fpr"], pp["tpr"], "o", ms=6, mfc=("#888" if fr.get(r) else "#e41a1c"), mec="k", mew=.4, alpha=.85)

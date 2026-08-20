@@ -63,7 +63,7 @@ def main():
           "confirming per-stage calibration) vs abnormal (shifted positive).\n",
           "| feature | group | " + " | ".join(STAGES) + " |", "|---|---|" + "---|" * len(STAGES)]
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4.6), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(7.1, 2.33), sharey=True)
     for j, (col, label) in enumerate(FEATS):
         ax = axes[j]
         for grp, D, color in [("clean-normal", cn_d, NORMAL), ("abnormal", ab_d, ABNORMAL)]:

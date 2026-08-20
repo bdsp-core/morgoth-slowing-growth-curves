@@ -97,7 +97,7 @@ def main():
     m = rec[rec.rep_sev.notna() & rec.rep_sev.between(1, 3)]
     print(f"recordings with a reader severity adjective (clean_pair): {len(m):,}")
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=False)
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.10), sharey=False)
     lines = []
     for ax, stat in zip(axes, ["MAX", "P95"]):
         groups = [m[m.rep_sev == k][stat].dropna().values for k in (1, 2, 3)]

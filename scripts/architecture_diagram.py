@@ -31,7 +31,7 @@ def arrow(ax, x0, y0, x1, y1, style="-|>", lw=1.4, color="#333", ls="-"):
 
 def main():
     FIG.mkdir(parents=True, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(11.5, 9.2)); ax.set_xlim(0, 12); ax.set_ylim(0, 12); ax.axis("off")
+    fig, ax = plt.subplots(figsize=(7.1, 5.68)); ax.set_xlim(0, 12); ax.set_ylim(0, 12); ax.axis("off")
 
     # ---- ingest (top) ----
     box(ax, 0.5, 11.0, 3.3, 0.8, "Clinical EEG (EDF)\n25,536 recordings · 21,757 patients", C_IN, 8)

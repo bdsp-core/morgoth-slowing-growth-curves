@@ -157,7 +157,7 @@ def main():
             wide = wide.loc[keep_eeg]
             y = (wide.mean(axis=1) >= 0.5).astype(int)
             pts = m46.expert_points(wide)
-            fig, (a0, a1) = plt.subplots(1, 2, figsize=(11.5, 4.8)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
+            fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
             best = None
             for ver, col, cc in [("Morgoth", None, C_MORG), ("LENS-v1", "v1", OURS_ALT), ("LENS-v2", "v2", C_OURS)]:
                 if ver == "Morgoth":
@@ -179,7 +179,7 @@ def main():
             a1.axhline(y.mean(), ls="--", color="#ccc", lw=1)
             a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{tag.upper()} — ROC", fontsize=11)
             a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{tag.upper()} — PRC", fontsize=11)
-            a0.legend(frameon=False, fontsize=8, loc="lower right"); a1.legend(frameon=False, fontsize=8, loc="upper right")
+            a0.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3); a1.legend(frameon=False, fontsize=5.6, handlelength=1.2, borderaxespad=0.3, loc="upper right")
             for a in (a0, a1):
                 a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
             fig.suptitle(f"ON-100 {tag} — ONE report-trained model (MIL) vs Morgoth vs {len(pts)} experts", fontsize=10.5)

@@ -60,7 +60,7 @@ def main():
     md = ["# §4 Description — reading the deviation field, validated by contrast vs the report\n"]
 
     # ---------- D1 type & amount ----------
-    fig, ax = plt.subplots(1, 3, figsize=(15, 4.4))
+    fig, ax = plt.subplots(1, 3, figsize=(7.1, 2.08))
     sl = d[d.slowing]; cn = d[d.clean_normal == True]                                      # noqa: E712
     sub = d.sample(min(4000, len(d)), random_state=0)
     cmap = {True: "#c8443c", False: "#bbb"}
@@ -88,7 +88,7 @@ def main():
            f"- DELTA: {clean(l2[0])} vs {clean(l2[1])}; Cohen d={cohend(sl[sl.rep_delta].delta_p90.dropna(), sl[~sl.rep_delta].delta_p90.dropna()):.2f}, p={pdd:.1e}\n"]
 
     # ---------- D2 laterality & region ----------
-    fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
+    fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.84))
     foc = d[d.slowing_focal == True].copy()                                                 # noqa: E712
     ll = contrast(ax[0], [(s, foc[foc.focal_side == s].lat_signed) for s in ["left", "bilateral", "right"]],
                   "LENS L-R asymmetry by report side", "signed asymmetry z  (+ = left)", ["#c8443c", "#999", "#2c7fb8"], ylim=(-3, 3))
@@ -129,7 +129,7 @@ def main():
     md += ["## D3 — anterior-posterior predominance", "- " + "; ".join(aa) + f"; anterior>posterior p={pap:.1e}\n"]
 
     # ---------- D4 persistence ----------
-    fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
+    fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.84))
     ax[0].hist(d[d.clean_normal == True].prevalence, bins=40, alpha=.6, color="#888", density=True, label="clean-normal")  # noqa: E712
     ax[0].hist(d[d.slowing].prevalence, bins=40, alpha=.6, color="#c8443c", density=True, label="report slowing")
     for x, lab_ in [(.01, "occasional"), (.10, "frequent"), (.50, "abundant"), (.90, "continuous")]:
@@ -148,7 +148,7 @@ def main():
     # per-recording x per-stage prevalence is spiky (few N3 segments in routine EEG -> median collapses to 0),
     # so summarise stages by MEAN prevalence; the load-bearing signal is the GAP (report-slowing above
     # clean-normal at EVERY stage, wake AND sleep), not a monotone rise into deeper sleep.
-    fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
+    fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.84))
     Sm = S.merge(d[["eeg_id", "clean_normal", "slowing"]], on="eeg_id")
     xs = range(len(STAGES))
     for grp, dd, col in [("report slowing", Sm[Sm.slowing], "#c8443c"), ("clean-normal", Sm[Sm.clean_normal == True], "#888")]:  # noqa: E712

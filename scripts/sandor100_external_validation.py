@@ -114,7 +114,7 @@ def main():
     gen, foc, foc_med, amt_med = train_heads()
     scores = score_sandor(gen, foc, foc_med, amt_med)
     print(f"scored {len(scores)} recordings", flush=True)
-    fig, (a0, a1) = plt.subplots(1, 2, figsize=(12, 5))
+    fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96))
     rf, nf, pf, ne = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
     rg, ng, pg, _ = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
     fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=12)
