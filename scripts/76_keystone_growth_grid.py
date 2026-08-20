@@ -68,8 +68,10 @@ def fit_feature(df, feat):
     # mu df: "smooth" (=5) was too stiff for the now-exact fractional ages, which resolve a sharp early-life
     # peak (1 mo-1 yr) that a 5-df spline over the whole log-age span cannot bend through. gamlss_fit.R takes
     # a numeric df; ~9 gives the infant region enough local flexibility while the log-age axis + lower-df
-    # sigma keep the data-dense adult range stable. Override with KEYSTONE_MU_DF.
-    mu_df = os.environ.get("KEYSTONE_MU_DF", "9")
+    # sigma keep the data-dense adult range stable. Override with KEYSTONE_MU_DF. Raised 9 -> 20 after the round-1 review: at df=9 the fitted median
+    # undershot the model-free rolling median through the infant peak of the ratio features (worst cell DAR/W,
+    # median gap 0.97 IQR over 2mo-1y); df=20 brings that to 0.24 IQR. See scripts/79.
+    mu_df = os.environ.get("KEYSTONE_MU_DF", "20")
     with tempfile.TemporaryDirectory() as td:
         inp, outp = f"{td}/in.csv", f"{td}/out.csv"
         c[["stage", "t", "val"]].to_csv(inp, index=False)
@@ -90,7 +92,7 @@ def main():
     fig = plt.figure(figsize=(7.1, 1.42 * nrow + 1.05))
     # two sub-columns per feature: log-age development | linear-age adulthood
     gs = fig.add_gridspec(nrow, 2 * ncol, width_ratios=[1.35, 1.0] * ncol,
-                          hspace=0.16, wspace=0.06, left=0.085, right=0.995, top=0.855, bottom=0.085)
+                          hspace=0.16, wspace=0.06, left=0.115, right=0.995, top=0.855, bottom=0.085)
     tsplit = A2T(SPLIT_AGE)
 
     for cj, feat in enumerate(FEATURES):
@@ -137,9 +139,12 @@ def main():
                     ax.set_xticklabels(ADULT_LABELS if ri == nrow - 1 else [], rotation=45, ha="right")
                     ax.spines["left"].set_linestyle((0, (2, 2)))
                     ax.tick_params(labelleft=False)
-                if k == 0 and cj == 0:
-                    ax.set_ylabel(stage, fontsize=8.5, fontweight="bold", rotation=0,
-                                  ha="right", va="center", labelpad=9)
+                # y ticks on the LEFT panel of every feature: the three features are on different scales,
+                # so hiding all but the first column leaves two thirds of the grid without a readable axis.
+                if k == 0:
+                    if cj == 0:
+                        ax.set_ylabel(stage, fontsize=8.5, fontweight="bold", rotation=0,
+                                      ha="right", va="center", labelpad=30)
                 else:
                     ax.tick_params(labelleft=False)
             if ri == 0:

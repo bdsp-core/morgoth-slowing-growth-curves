@@ -58,7 +58,8 @@ run() {
   if [ "$FORCE" != "1" ] && [ -e "$sentinel" ]; then echo "  [have] $desc  ($sentinel)"; return; fi
   echo "  [run ] $desc"; "$@"
 }
-py() { python3 "$@"; }
+PY="${PY:-$([ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)}"
+py() { "$PY" "$@"; }
 
 # ---------------------------------------------------------------------------
 hdr "STAGE 0 — canonical tables + corrected labels  (local; scans segment_master)"
@@ -97,9 +98,12 @@ run 4 figures/story/s0_occasion_ours_v4_focal.png "Fig 2b localized focal (49)" 
 run 4 results/vanputten_fullcoverage.md        "Fig S7 / Table S1 van Putten benchmark (recompute)" -- py scripts/recompute_vanputten_fullcov.py
 # -- Figure 3: external validation (Sandor_100). Needs the Box dataset + Morgoth staging (like the panel step);
 #    SKIP_SANDOR=1 to skip, or set SANDOR_DIR. Regenerates Figure 3 + results/sandor/sandor100_external.md.
-SANDOR_DIR="${SANDOR_DIR:-/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/Morgoth1/Datasets/Sandor_100}"
+# SANDOR_DIR must be set explicitly. It previously defaulted to one developer's Box CloudStorage path,
+# which (a) does not exist for anyone else and (b) HANGS the whole run when stat'ed on a machine where the
+# Box daemon is not mounted -- the script sat forever with no output and no child process.
+SANDOR_DIR="${SANDOR_DIR:-}"
 if [ "${SKIP_SANDOR:-0}" = "1" ]; then echo "  [skip] SKIP_SANDOR=1 (Sandor external validation, Figure 3)"
-elif [ ! -d "$SANDOR_DIR" ]; then echo "  [skip] Sandor_100 not found at SANDOR_DIR (needs Box/rclone + Morgoth) -> Figure 3 not regenerated"
+elif [ -z "$SANDOR_DIR" ] || [ ! -d "$SANDOR_DIR" ]; then echo "  [skip] SANDOR_DIR unset or not present (needs the Sandor_100 source + Morgoth) -> Figure 3 not regenerated from raw; the committed panel inputs are used"
 else
   run 4 data/derived/segment_master/eeg_id=SB_001 "Sandor Morgoth staging + feature extraction (sandor100_stage_extract)" -- py scripts/sandor100_stage_extract.py
   run 4 figures/story/sandor100_slowing.png    "Fig 3 Sandor external validation (sandor100_external_validation)" -- py scripts/sandor100_external_validation.py
