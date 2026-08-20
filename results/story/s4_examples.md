@@ -14,7 +14,7 @@ LENS's BRIEF finding line and FULL report paragraph (governed by docs/claims_tab
 
 **Case 3 — Focal slowing · peak 1.7 SD (96th centile) · prominent in N1 · 49M**  
 - LENS (brief): Rare left temporal theta–delta (mixed) slowing (max T3), activated in drowsiness.  
-- LENS (full): Left temporal theta–delta (mixed) slowing, maximal over the left temporal region, peaking at T3 (the T3-T5 derivation). Peak deviation 1.7 SD above the age- and stage-matched normal at that region (96th centile), abnormal in 0% of analysed segments (rare). Activated in drowsiness.  
+- LENS (full): Left temporal theta–delta (mixed) slowing, maximal over the left temporal region, peaking at T3 (the T3-T5 derivation). Peak deviation 1.7 SD above the age- and stage-matched normal at that region (96th centile), though no individual segment reached the abnormality threshold (the finding rests on the peak deviation alone). Activated in drowsiness.  
 - Report (structured): focal slowing, left temporal (mixed)
 
 **Case 4 — Generalized slowing · peak 4.0 SD (>99.9th centile) · prominent in N2 · 85M**  

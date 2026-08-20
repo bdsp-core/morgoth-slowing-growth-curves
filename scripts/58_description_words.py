@@ -300,7 +300,16 @@ def report_paragraph(row, spatial, maxreg, confident, band, base, acc, elec):
     nep = int(row.n_episodes) if np.isfinite(row.n_episodes) else 0
     run = f"; longest continuous run ≈{row.longest_run_min:.1f} min over {nep} episode{'s' if nep != 1 else ''}" \
         if nep and np.isfinite(row.longest_run_min) else ""
-    s2 = f"{mag}, abnormal in {prev*100:.0f}% of analysed segments ({persistence_word(prev)}){run}."
+    # Round-1 review: a report reading "abnormal in 0% of analysed segments" while asserting slowing is a
+    # contradiction on its face. Two distinct cases hide behind that 0. A prevalence that merely ROUNDS to
+    # zero is reported as "<1%"; a prevalence that is genuinely zero means the peak never reached the
+    # abnormality threshold, and the sentence must say that rather than claim a 0% abnormality.
+    if prev <= 0:
+        s2 = (f"{mag}, though no individual segment reached the abnormality threshold "
+              f"(the finding rests on the peak deviation alone){run}.")
+    else:
+        pct = "<1%" if prev < 0.005 else f"{prev*100:.0f}%"
+        s2 = f"{mag}, abnormal in {pct} of analysed segments ({persistence_word(prev)}){run}."
     # sentence 3 — stage (cap first letter only; keep stage tokens like REM/N2 uppercase)
     stage_txt = "; ".join(x for x in [base, acc] if x)
     s3 = (stage_txt[0].upper() + stage_txt[1:] + ".") if stage_txt else ""

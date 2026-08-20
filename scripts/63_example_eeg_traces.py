@@ -103,12 +103,23 @@ def fetch_window(row, t0, eid):
     cf = CACHE / f"{eid}_{int(round(t0))}.npz"
     if cf.exists():
         z = np.load(cf, allow_pickle=True); return z["data"], [str(x) for x in z["chs"]], float(z["fs"])
-    ep, reason = m31.resolve_edf(row)
-    if ep is None:
-        raise RuntimeError(f"noedf:{reason}")
+    # The manifest is pre-flight-resolved (scripts/129), so resolved_path already names the exact session
+    # EDF. Prefer it: rclone is otherwise required just to re-discover a path we already know, and it is an
+    # undocumented dependency that anyone with plain AWS credentials should not need.
+    ep = getattr(row, "resolved_path", None)
+    if ep is None or (isinstance(ep, float) and np.isnan(ep)):
+        ep, reason = m31.resolve_edf(row)
+        if ep is None:
+            raise RuntimeError(f"noedf:{reason}")
     with tempfile.TemporaryDirectory() as td:
         local = Path(td) / "rec.edf"
-        subprocess.run([RC, "copyto", ep, str(local)], check=True, capture_output=True, timeout=1800)
+        uri = str(ep)
+        if uri.startswith("s3:") and not uri.startswith("s3://"):   # rclone-style -> aws CLI style
+            uri = "s3://" + uri[3:]
+        if uri.startswith("s3://"):
+            subprocess.run(["aws", "s3", "cp", uri, str(local)], check=True, capture_output=True, timeout=1800)
+        else:
+            subprocess.run([RC, "copyto", uri, str(local)], check=True, capture_output=True, timeout=1800)
         data, chs, fs = load_edf_referential(str(local), max_hours=max(0.1, t0 / 3600 + 0.05))
     s = int(round(t0 * fs)); n = int(round(SEG_S * fs)); s = min(s, data.shape[0] - n)
     win = data[s:s + n].T                                       # (19, n)
@@ -146,7 +157,7 @@ def main():
 
             def emit(lab, text, color, wrapw=94):
                 for k, ln in enumerate(textwrap.wrap(lab + (text or "—"), wrapw) or [""]):
-                    axt.text(0.0, y[0], ln, fontsize=6.0, color=color, va="top", transform=axt.transAxes,
+                    axt.text(0.0, y[0], ln, fontsize=6, color=color, va="top", transform=axt.transAxes,
                              fontweight="bold" if k == 0 else "normal"); y[0] -= LH
                 y[0] -= 0.02
             # two paired comparisons: our brief vs the report IMPRESSION; our detailed vs the report DESCRIPTION
