@@ -12,7 +12,8 @@ the `.docx` is generated from it by `scripts/build_manuscript_docx.py`.
 
 Status: `done` · `partial` · `open` · `blocked`
 
-**Round-1 outcome after the verification pass: 71 of 76 items done, 5 open, 0 blocked.** The open items are listed at the
+**Round-1 outcome, final: 74 of 76 items done. Two remain open: C146-c (tested, negative -- documented as a
+limitation rather than shipped) and REL-4 (bdsp.io version bump, deliberately held until the draft is agreed).** The open items are listed at the
 bottom of this file with the reason each was not closed.
 
 | ID | Reviewer | Item | Phase | Status | Where addressed |
@@ -49,11 +50,11 @@ bottom of this file with the reason each was not closed.
 | C125 | Shafi | Figure 2b call-out missing | 1 | done | renumber |
 | C175 | Shafi | Is N3 delta pathological? (SWS rebound) | 2 | done | abnormality reframe |
 | C183 | Shafi | Same, Discussion; suggests focal-only narrowing | 2 | done | abnormality reframe |
-| C146-a | Shafi | Staging circularity in encephalopathy (MAJOR) | 2,3 | open | N3 spindle verification |
+| C146-a | Shafi | Staging circularity in encephalopathy (MAJOR) | 2,3 | done | N3 spindle verification |
 | C198 | Ganglberger | Held-out centile calibration figure | 3 | done | new Figure S9 |
 | C100 | Shafi | Occipital PDR (not C3/C4); split log/linear age axis (MAJOR) | 3 | done | Figure 1 |
 | C171 | Shafi | Benchmark concordance vs human readers | 3 | done | new analysis |
-| C51 | Shafi | Lateralize anterior/posterior regions | 3 | open | region config |
+| C51 | Shafi | Lateralize anterior/posterior regions | 3 | done | region config |
 | C40 | Shafi | Uncontrolled state in overnight studies | 4 | done | Limitations |
 | C122 | Shafi | Move two-axes ablation to supplementary | 4 | done | §3.4a |
 | C67 | Ganglberger | Delete support-aware refit paragraph | 4 | done | §2.4 |
@@ -75,10 +76,10 @@ bottom of this file with the reason each was not closed.
 | C54 | Shafi | Explain relative-delta ≈0.34 calibration | 4 | done | §2.2 |
 | C57 | Shafi | Define "EMG-dominated" | 4 | done | §2.2 |
 | C46 | Ganglberger | Focal∩generalized overlap N or % | 4 | done | §2.1 |
-| C63 | Ganglberger | GAMLSS design matrix / unit / weighting | 4 | open | §2.4 |
+| C63 | Ganglberger | GAMLSS design matrix / unit / weighting | 4 | done | §2.4 |
 | C65 | Ganglberger | Does BCT carry a tail parameter? | 4 | done | §2.4 |
 | C70 | Ganglberger | Deviation-field tensor dimensions | 4 | done | §2.5 |
-| C72 | Ganglberger | Report→EEG pairing explanation confusing | 4 | open | §2.6 |
+| C72 | Ganglberger | Report→EEG pairing explanation confusing | 4 | done | §2.6 |
 | C76 | Ganglberger | What model class is LENS? (reject risk) | 4 | done | §2.7 |
 | C77 | Ganglberger | CV scheme / hyperparameter selection | 4 | done | §2.7 |
 | C78 | Ganglberger | Justify top-5 aggregation | 4 | done | §2.7 |
