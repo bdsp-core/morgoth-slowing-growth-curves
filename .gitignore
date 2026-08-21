@@ -92,3 +92,11 @@ figures/manuscript/*.pdf
 
 # de-identified report text -> credentialed S3, synced to this path, not committed
 data/manifest/report_manifest_v6.parquet
+
+# Raw EEG is NEVER redistributed here -- DATA_SOURCE.md: "Raw EEG and free-text report content are not
+# redistributed; they are available via BDSP credentialed access." The !data/raw/ un-ignore above is for
+# the small manifest only, and a broad `git add -A` once pulled ~1 GB of patient .h5 recordings past it.
+data/raw/h5_pilot/
+data/raw/**/*.h5
+data/raw/**/*.edf
+data/raw/**/*.mat
