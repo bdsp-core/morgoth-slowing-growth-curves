@@ -46,9 +46,10 @@ Figures are assembled into the submission set by
 | **Figure 1** normative model | `76_keystone_growth_grid.py`, `77_topoplots_by_age.py` | `grid_norm.json`, `segment_deviation/` | `figures/growth_v2/{keystone_growth_grid,topo_rel_delta_by_age_stage}.png` |
 | **Figure 2** detection (gen + focal) | `54_single_model_train_eval.py`, `55_recording_model.py` | `single_model_segfeats.parquet` | `figures/story/{s0d_single_occasion_generalized,s0e_occasion_focal}.png` |
 | **Figure 3** SAI-100 external | `sandor100_external_validation.py` | SAI-100 set + `segment_master/eeg_id=SB_*` | `figures/story/sandor100_slowing.png` |
-| **Figure 4** example EEG + reports | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_panel.png` |
-| **Figure 5** description contrast | `57_description_panels.py` | `description_recording.parquet`, `description_stage.parquet` | `figures/story/{s4_d2,s4_d5}.png` |
-| **Figure 6** sleep under-reporting | `fig6_sleep_naming.py` (stat: `95b_v4a_spindle_check.py`) | `description_stage.parquet`, `results/p6_sleep_underreporting.md` | `figures/growth_v2/v4a_wake_sleep.png` |
+| **Figure 4** example focal | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_focal.png` |
+| **Figure 5** example generalized | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_generalized.png` |
+| **Figure 6** description contrast | `57_description_panels.py` | `description_recording.parquet`, `description_stage.parquet` | `figures/story/{s4_d2,s4_d5}.png` |
+| **Figure 7** sleep under-reporting | `fig6_sleep_naming.py` (stat: `95b_v4a_spindle_check.py`) | `description_stage.parquet`, `results/p6_sleep_underreporting.md` | `figures/growth_v2/v4a_wake_sleep.png` |
 | **Figure S1** architecture | `architecture_diagram.py` | — | `figures/story/architecture.png` |
 | **Figure S2** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `segment_deviation/`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
 | **Figure S3** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |

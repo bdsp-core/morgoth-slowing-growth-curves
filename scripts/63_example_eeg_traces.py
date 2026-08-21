@@ -132,14 +132,20 @@ def main():
     man = pd.read_parquet(MANIFEST).drop_duplicates("eeg_id").set_index("eeg_id")
     foc = [r for _, r in ex.iterrows() if r.isfoc][:3]
     gen = [r for _, r in ex.iterrows() if not r.isfoc][:3]
-    cols = [foc, gen]                                            # left column = focal, right column = generalized
-
-    fig = plt.figure(figsize=(13.2, 17.4))
-    outer = fig.add_gridspec(3, 2, wspace=0.14, hspace=0.30, left=0.05, right=0.985, top=0.955, bottom=0.02)
+    # Review C146-f: as one 3x2 grid this figure was 12.9in wide and printed at 54%, which is why its report
+    # text was unreadable. It cannot be narrowed -- bbox_inches="tight" grows the canvas to fit the text, so
+    # shrinking the canvas or enlarging the fonts both make it worse. Split into two single-column figures
+    # instead: each is page-width, so nothing is scaled down.
+    panels = [("focal", foc, "s4_examples_eeg_focal.png",
+               "Example focal slowing: 10-s EEG segments with the LENS automated report vs the clinical report"),
+              ("generalized", gen, "s4_examples_eeg_generalized.png",
+               "Example generalized slowing: 10-s EEG segments with the LENS automated report vs the clinical report")]
     ok = 0
-    for c, colrows in enumerate(cols):
-        for rr, r in enumerate(colrows):
-            inner = outer[rr, c].subgridspec(2, 1, height_ratios=[2.5, 1.9], hspace=0.28)
+    for kind_name, rows, outname, title in panels:
+        fig = plt.figure(figsize=(7.1, 9.4))
+        outer = fig.add_gridspec(3, 1, hspace=0.38, left=0.075, right=0.985, top=0.930, bottom=0.02)
+        for rr, r in enumerate(rows):
+            inner = outer[rr, 0].subgridspec(2, 1, height_ratios=[2.5, 1.9], hspace=0.42)
             axe = fig.add_subplot(inner[0]); axt = fig.add_subplot(inner[1]); axt.axis("off")
             kind = "Focal" if r.isfoc else "Generalized"
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()
@@ -165,13 +171,13 @@ def main():
             emit("Report impression: ", getattr(r, "report_impression_text", "") or "(no slowing sentence)", C_REP)
             emit("LENS (detailed): ", r.paragraph, C_LENS)
             emit("Report description: ", getattr(r, "report_detail_text", "") or "(no slowing sentence)", C_REP)
-    fig.suptitle("Figure 4.  Example 10-s EEG segments (longitudinal bipolar; 1–30 Hz + 60 Hz notch) with the "
-                 "LENS automated report vs the clinical report.\nEach example pairs LENS's brief finding with the "
-                 "report's impression, and LENS's detailed description with the report's description.  "
-                 "Left column: focal.  Right: generalized.",
-                 fontsize=10, y=0.995)
-    fig.savefig(FIG / "s4_examples_eeg_panel.png", dpi=300, bbox_inches="tight", facecolor="white"); plt.close(fig)
-    print(f"rendered EEG for {ok}/6 examples -> figures/story/s4_examples_eeg_panel.png")
+        fig.suptitle(title + ".\nEach example pairs LENS's brief finding with the report's impression, and "
+                     "LENS's detailed description with the report's description.\n"
+                     "Longitudinal bipolar; 1\u201330 Hz + 60 Hz notch.", fontsize=7.5, y=0.992)
+        fig.savefig(FIG / outname, dpi=300, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+        print(f"  wrote figures/story/{outname}")
+    print(f"rendered EEG for {ok}/6 examples across two panels")
 
 
 if __name__ == "__main__":

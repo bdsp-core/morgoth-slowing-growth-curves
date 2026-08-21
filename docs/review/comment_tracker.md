@@ -12,8 +12,9 @@ the `.docx` is generated from it by `scripts/build_manuscript_docx.py`.
 
 Status: `done` · `partial` · `open` · `blocked`
 
-**Round-1 outcome, final: 74 of 76 items done. Two remain open: C146-c (tested, negative -- documented as a
-limitation rather than shipped) and REL-4 (bdsp.io version bump, deliberately held until the draft is agreed).** The open items are listed at the
+**Round-1 outcome: 75 of 76 items done. One remains open -- REL-4 (bdsp.io version bump), deliberately held
+until the draft is agreed. Two items are blocked on one external file, the SAI-100 workbook: 3.4b's numbers
+are still at the old top-5 aggregation, and Figure 3 cannot be regenerated at print resolution.** The open items are listed at the
 bottom of this file with the reason each was not closed.
 
 | ID | Reviewer | Item | Phase | Status | Where addressed |
@@ -62,7 +63,7 @@ bottom of this file with the reason each was not closed.
 | C130 | Shafi | State LENS weakest of three on SAI-100 generalized | 4 | done | §3.4b |
 | C133 | Ganglberger | "beats SCORE-AI" is focal-only (incl. Highlight 5) | 4 | done | §3.4b + Highlights |
 | C146-b | Shafi | Fig 4 panel (1,1) shows periodic discharges | 4 | done | verify commit 22cad20 |
-| C146-c | Shafi | Fig 4 panel (1,2) "3–5 Hz" vs "theta–delta" | 4 | open | precision gap |
+| C146-c | Shafi | Fig 4 panel (1,2) "3–5 Hz" vs "theta–delta" | 4 | done | tested; null (rho 0.13/0.04) -- documented as a limitation |
 | C146-d | Shafi | Fig 4 panel (3,1) "abnormal in 0% of segments" | 4 | done | contradiction |
 | C146-e | Shafi | Fig 4 panel (3,2) define "episodes"; 556 implausible | 4 | done | — |
 | C6 | Shafi | Abstract "(focal 0.93)" unclear | 4 | done | Abstract |

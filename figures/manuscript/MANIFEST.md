@@ -7,9 +7,10 @@ Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are compo
 | `Figure1_normative_model.png` | 2 (keystone_growth_grid.png, topo_rel_delta_by_age_stage.png) | `scripts/76, 77` |
 | `Figure2_detection.png` | 2 (s0d_single_occasion_generalized.png, s0e_occasion_focal.png) | `scripts/54, 55, 66` |
 | `Figure3_sandor_external.png` | 1 (sandor100_slowing.png) | `scripts/sandor100_external_validation` |
-| `Figure4_example_eeg_reports.png` | 1 (s4_examples_eeg_panel.png) | `scripts/62, 63` |
-| `Figure5_description_contrast.png` | 2 (s4_d2.png, s4_d5.png) | `scripts/57` |
-| `Figure6_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/fig6_sleep_naming (95b stat)` |
+| `Figure4_example_focal.png` | 1 (s4_examples_eeg_focal.png) | `scripts/62, 63` |
+| `Figure5_example_generalized.png` | 1 (s4_examples_eeg_generalized.png) | `scripts/62, 63` |
+| `Figure6_description_contrast.png` | 2 (s4_d2.png, s4_d5.png) | `scripts/57` |
+| `Figure7_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/fig6_sleep_naming (95b stat)` |
 | `FigureS1_architecture.png` | 1 (architecture.png) | `scripts/architecture_diagram` |
 | `FigureS6_deviation_field.png` | 1 (s2_segment_deviation.png) | `scripts/44` |
 | `FigureS5_curvebank.png` | 3 (rel_delta__whole_head.png, TAR__whole_head.png, DAR__whole_head.png) | `scripts/111` |
