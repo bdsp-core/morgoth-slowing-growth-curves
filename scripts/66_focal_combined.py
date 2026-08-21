@@ -22,8 +22,11 @@ m64 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m6
 importlib.util.spec_from_file_location("m64", "scripts/64_focal_v2_experiment.py").loader.exec_module(m64)
 
 SM = "data/derived/segment_master"
-SB_DIR = Path("/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/"
-              "Morgoth1/Datasets/Sandor_100"); MR = SB_DIR / "Morgoth_results"
+# SANDOR_DIR must be settable: this defaulted to one developer's Box CloudStorage mount, so the SAI-100
+# external validation could not be reproduced anywhere else. The default is the historical path purely
+# so the old machine keeps working; everyone else exports SANDOR_DIR.
+SB_DIR = Path(os.environ.get("SANDOR_DIR") or
+              "/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/Morgoth1/Datasets/Sandor_100"); MR = SB_DIR / "Morgoth_results"
 FOC_R = [f"{c}_{s}" for c in m55.FOC0 for s in ("mean", "p90", "max", "prev")] + ["age"]
 
 

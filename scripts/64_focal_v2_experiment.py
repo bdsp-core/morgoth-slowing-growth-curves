@@ -23,8 +23,11 @@ m55 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m5
 importlib.util.spec_from_file_location("m55", "scripts/55_recording_model.py").loader.exec_module(m55)
 m54 = m55.m54; m46 = m54.m49.m46
 SM = "data/derived/segment_master"
-SB_DIR = Path("/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/"
-              "Morgoth1/Datasets/Sandor_100"); MR = SB_DIR / "Morgoth_results"
+# SANDOR_DIR must be settable: this defaulted to one developer's Box CloudStorage mount, so the SAI-100
+# external validation could not be reproduced anywhere else. The default is the historical path purely
+# so the old machine keeps working; everyone else exports SANDOR_DIR.
+SB_DIR = Path(os.environ.get("SANDOR_DIR") or
+              "/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/Morgoth1/Datasets/Sandor_100"); MR = SB_DIR / "Morgoth_results"
 BANDS = ["log_delta", "log_theta", "log_TAR"]
 PAIRS = [("Fp1-F7", "Fp2-F8"), ("F7-T3", "F8-T4"), ("T3-T5", "T4-T6"), ("T5-O1", "T6-O2"),
          ("Fp1-F3", "Fp2-F4"), ("F3-C3", "F4-C4"), ("C3-P3", "C4-P4"), ("P3-O1", "P4-O2")]

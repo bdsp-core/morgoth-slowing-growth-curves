@@ -13,8 +13,8 @@ the `.docx` is generated from it by `scripts/build_manuscript_docx.py`.
 Status: `done` · `partial` · `open` · `blocked`
 
 **Round-1 outcome: 75 of 76 items done. One remains open -- REL-4 (bdsp.io version bump), deliberately held
-until the draft is agreed. Two items are blocked on one external file, the SAI-100 workbook: 3.4b's numbers
-are still at the old top-5 aggregation, and Figure 3 cannot be regenerated at print resolution.** The open items are listed at the
+until the draft is agreed. Nothing is blocked: the SAI-100 workbook was recovered from Box, so 3.4b is now
+scored at top-20 like ON-100 and Figure 3 regenerates at page width. Zero figures trip the legibility guard.** The open items are listed at the
 bottom of this file with the reason each was not closed.
 
 | ID | Reviewer | Item | Phase | Status | Where addressed |

@@ -13,6 +13,7 @@ Writes results/sandor/sandor100_external.md + figures/story/sandor100_{focal,gen
 Run: PYTHONPATH=src MPLBACKEND=Agg KMP_DUPLICATE_LIB_OK=TRUE python3 scripts/sandor100_external_validation.py
 """
 from __future__ import annotations
+import os
 import importlib.util
 from pathlib import Path
 import numpy as np, pandas as pd
@@ -31,8 +32,11 @@ importlib.util.spec_from_file_location("m66", "scripts/66_focal_combined.py").lo
 m46 = m54.m49.m46
 m53.SEG_CAP = 10**9                                              # use ALL segments when scoring the 100 EDFs
 
-SB_DIR = Path("/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/"
-              "Morgoth1/Datasets/Sandor_100")
+# SANDOR_DIR must be settable: this defaulted to one developer's Box CloudStorage mount, so the SAI-100
+# external validation could not be reproduced anywhere else. The default is the historical path purely
+# so the old machine keeps working; everyone else exports SANDOR_DIR.
+SB_DIR = Path(os.environ.get("SANDOR_DIR") or
+              "/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/Morgoth1/Datasets/Sandor_100")
 MR = SB_DIR / "Morgoth_results"
 SM = Path("data/derived/segment_master")
 OUT = Path("results/sandor"); FIG = Path("figures/story")
@@ -101,9 +105,13 @@ def eval_axis(scores, axis, mr_file, ax):
         ax.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
     ax.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
     ax.set_xlabel("1 − specificity"); ax.set_ylabel("sensitivity"); ax.set_xlim(-.02, 1.02); ax.set_ylim(-.02, 1.02)
-    ttl = "FOCAL slowing (nonepifoc)" if axis == "focal" else "GENERALIZED slowing (nonepidiffuse)"
-    ax.set_title(f"{ttl} — n={len(m)}, {int(y.sum())} pos", fontsize=10.5)
-    ax.legend(frameon=False, fontsize=8, loc="lower right")
+    # At page width the two titles collide and the long legend labels overrun the y-axis, so the title wraps
+    # onto two lines and the legend is sized to sit inside its own axes.
+    ttl = "FOCAL slowing" if axis == "focal" else "GENERALIZED slowing"
+    ax.set_title(f"{ttl}\nn={len(m)}, {int(y.sum())} positive", fontsize=8.5)
+    ax.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3)
+    ax.tick_params(labelsize=7)
+    ax.xaxis.label.set_size(8); ax.yaxis.label.set_size(8)
     return res, len(m), int(y.sum()), len(pts)
 
 
@@ -117,8 +125,8 @@ def main():
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96))
     rf, nf, pf, ne = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
     rg, ng, pg, _ = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
-    fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig(FIG / "sandor100_slowing.png", dpi=300); plt.close(fig)
+    fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=9.5)
+    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "sandor100_slowing.png", dpi=300); plt.close(fig)
 
     md = ["# SAI-100 (SCORE-AI validation set) — external validation: LENS vs SCORE-AI vs Morgoth vs experts\n",
           f"Full pipeline (extraction → **Morgoth ss_hm_1 sleep staging** → age+stage-matched deviation → the "
