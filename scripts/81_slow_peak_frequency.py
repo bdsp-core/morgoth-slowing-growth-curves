@@ -36,6 +36,10 @@ from morgoth_slowing.io.edf import load_edf_referential
 SLOW_BAND = (1.0, 8.0)          # delta + theta; above this the alpha rhythm dominates the argmax
 SEG_LEN_S = 15.0
 MAX_SEG = 40                    # usable segments per recording is plenty for a frequency summary
+THR = 1.5                       # a segment is "abnormal" for a band when its whole-head z exceeds this
+                                # (matches scripts/56, so "abnormal" means the same thing here as there)
+DEV = Path("data/derived/segment_deviation")
+ABNORMAL_ONLY = True
 RES = Path("results/story")
 MANIFEST = "data/manifest/report_manifest_v6.parquet"
 
@@ -58,7 +62,26 @@ def reported_slow_hz(text: str) -> float | None:
     return None
 
 
-def measure(edf_uri: str) -> tuple[float, float, float] | None:
+def abnormal_segments(eeg_id: str) -> set[int] | None:
+    """Segment indices this recording's deviation field calls abnormal (whole-head delta OR theta z > THR).
+
+    A reader states the frequency of the slowing WHEN IT OCCURS. Averaging the spectrum over an entire
+    recording, most of which is not slow, dilutes exactly the thing being measured -- so the frequency is
+    read only off the segments where slowing is actually present. Segment indices come from
+    ex.segment_indices in both places, so they line up 1:1 with the stored field.
+    """
+    f = DEV / f"eeg_id={eeg_id}" / "part.parquet"
+    if not f.exists():
+        return None
+    try:
+        d = pd.read_parquet(f, columns=["segment", "z__whole_head__log_delta", "z__whole_head__log_theta"])
+    except Exception:
+        return None
+    m = (d["z__whole_head__log_delta"] > THR) | (d["z__whole_head__log_theta"] > THR)
+    return set(d.loc[m, "segment"].astype(int))
+
+
+def measure(edf_uri: str, only: set[int] | None = None) -> tuple[float, float, float] | None:
     """(detrended slow peak, slow band median, full-band peak) over USABLE segments of one recording.
 
     Mirrors scripts/31 exactly: same loader, same preprocess+montage, same segment_indices stepping, and --
@@ -80,6 +103,8 @@ def measure(edf_uri: str) -> tuple[float, float, float] | None:
     for i, (s_, e_) in enumerate(ex.segment_indices(bip.shape[0])):
         if len(peaks) >= MAX_SEG:
             break
+        if only is not None and i not in only:
+            continue
         seg = bip[s_:e_]
         ok, _ = af.segment_usable(seg, fs)
         if not ok:
@@ -103,7 +128,11 @@ def measure(edf_uri: str) -> tuple[float, float, float] | None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=400, help="recordings to measure")
+    ap.add_argument("--all-segments", action="store_true",
+                    help="measure over every usable segment instead of only the abnormal ones")
     a = ap.parse_args()
+    global ABNORMAL_ONLY
+    ABNORMAL_ONLY = not a.all_segments
     RES.mkdir(parents=True, exist_ok=True)
 
     man = pd.read_parquet(MANIFEST, columns=["eeg_id", "report_text", "report_impression",
@@ -119,7 +148,10 @@ def main() -> None:
     samp = gt.sample(min(a.n, len(gt)), random_state=0)
     rows = []
     for k, r in enumerate(samp.itertuples(), 1):
-        got = measure(str(r.resolved_path))
+        only = abnormal_segments(r.eeg_id) if ABNORMAL_ONLY else None
+        if ABNORMAL_ONLY and not only:
+            continue                                  # no abnormal segment -> no slowing frequency to read
+        got = measure(str(r.resolved_path), only)
         if got:
             rows.append(dict(eeg_id=r.eeg_id, reported_hz=float(r.reported_hz),
                              slow_detrended_hz=got[0], slow_median_hz=got[1], full_peak_hz=got[2]))
