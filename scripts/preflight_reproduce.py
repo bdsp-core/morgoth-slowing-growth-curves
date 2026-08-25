@@ -23,6 +23,8 @@ CODE = re.compile(r"`([^`]+)`")
 
 # Inputs named in the table are shorthand; these resolve to real paths.
 PREFIX = ["data/derived/", "data/manifest/", "data/raw/", "results/", "figures/", ""]
+# segment_deviation is satisfied by the figure cache for the results tier
+CACHE_SATISFIES = {"segment_deviation", "segment_deviation/"}
 # Things the table names that are not files (prose, or an upstream dataset referenced by description).
 NOT_A_PATH = re.compile(r"^(scripts?/|—|-|source EDFs|SAI-100|ON-100|gate tables|manifest|panel|"
                         r"expert|votes|band_dtr|\.\.\.)", re.I)
@@ -54,6 +56,8 @@ def resolve(token: str) -> tuple[bool, str]:
             else:
                 return False, cand
         return True, tok
+    if tok.rstrip("/") in {c.rstrip("/") for c in CACHE_SATISFIES} and RESULTS_TIER_ONLY.exists():
+        return True, f"{tok} (via figure_cache)"
     for pre in PREFIX:
         p = Path(pre + tok)
         if p.exists():
@@ -76,11 +80,30 @@ COVERAGE = [
 ]
 
 
+# The results tier reads the per-segment field only through figure_cache/, so a machine set up for the
+# figure loop legitimately has no segment_* partitions and should not be told it is broken.
+RESULTS_TIER_ONLY = Path("data/derived/figure_cache/wholehead_z.parquet")
+
+
+def results_tier() -> bool:
+    """A figure-loop install: the cache is present and the per-segment deviation field is not."""
+    return RESULTS_TIER_ONLY.exists() and not Path("data/derived/segment_deviation").exists()
+
+
 def check_coverage() -> list[str]:
+    """Cardinality checks, each skipped when its own table is absent.
+
+    A results-tier machine legitimately has no segment_deviation and only the 98 SAI-100 partitions of
+    segment_master, so checking every table unconditionally reports a broken install where there is none.
+    What matters is that a table which IS present is COMPLETE.
+    """
     bad = []
     for name, pattern, expect in COVERAGE:
+        root = Path(pattern.split("/eeg_id=")[0].split("/_done")[0])
+        if not root.exists():
+            continue                    # table not installed at all -- not this tier's business
         got = len(list(Path().glob(pattern)))
-        if got != expect:
+        if got and got != expect:       # present-but-partial is the failure mode worth catching
             bad.append(f"{name}: {got} of {expect}")
     return bad
 
@@ -130,7 +153,8 @@ def main() -> None:
 
     ok = [i for i in items if i["runnable"]]
     bad = [i for i in items if not i["runnable"]]
-    print(f"contract items: {len(items)}   runnable now: {len(ok)}   blocked: {len(bad)}\n")
+    tier = "results tier (figure cache)" if results_tier() else "full install"
+    print(f"contract items: {len(items)}   runnable now: {len(ok)}   blocked: {len(bad)}   [{tier}]\n")
     for i in bad:
         print(f"  BLOCKED  {i['item']}")
         for s in i["missing_scripts"]:

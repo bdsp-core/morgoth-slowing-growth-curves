@@ -30,6 +30,15 @@ SB_DIR = Path(os.environ.get("SANDOR_DIR") or
 FOC_R = [f"{c}_{s}" for c in m55.FOC0 for s in ("mean", "p90", "max", "prev")] + ["age"]
 
 
+def _available(eid) -> bool:
+    """Can per-segment features be had for this recording, from either source?
+
+    segment_master is 59 GB and the results tier does not install it; for any recording already in
+    single_model_segfeats the features are identical and available from 61 MB. Gating on the big table
+    alone silently emptied the training set on a figure-loop machine.
+    """
+    return bool(m53b._cached_seg_feats(eid) is not None) or os.path.exists(f"{SM}/eeg_id={eid}")
+
 def _region_one(args):
     eid, age = args
     sf = m53b.seg_feats(eid, age)
@@ -69,7 +78,7 @@ def train_production_focal(sample=3000):
     foc = d.slowing_focal.fillna(False); gen = d.slowing_gen_pathologic.fillna(False); cn = d.clean_normal.fillna(False)
     d = d[(foc | cn | (gen & ~foc)) & (~d.eeg_id.astype(str).str.startswith(("MOE_", "ON_")))].copy()
     d["y"] = foc[d.index].astype(int).values
-    d = d[[os.path.exists(f"{SM}/eeg_id={i}") for i in d.eeg_id]]
+    d = d[[_available(i) for i in d.eeg_id]]
     tr = pd.concat([d[d.y == 1].sample(min(sample, int((d.y == 1).sum())), random_state=0),
                     d[d.y == 0].sample(min(sample, int((d.y == 0).sum())), random_state=0)])
     Rtr = combined(list(zip(tr.eeg_id, tr.age))).join(tr.set_index("eeg_id").y).dropna(subset=["y"])
@@ -92,7 +101,7 @@ def main():
     foc = d.slowing_focal.fillna(False); gen = d.slowing_gen_pathologic.fillna(False); cn = d.clean_normal.fillna(False)
     d = d[(foc | cn | (gen & ~foc)) & (~d.eeg_id.astype(str).str.startswith(("MOE_", "ON_")))].copy()
     d["y"] = foc[d.index].astype(int).values
-    d = d[[os.path.exists(f"{SM}/eeg_id={i}") for i in d.eeg_id]]
+    d = d[[_available(i) for i in d.eeg_id]]
     tr = pd.concat([d[d.y == 1].sample(min(3000, int((d.y == 1).sum())), random_state=0),
                     d[d.y == 0].sample(min(3000, int((d.y == 0).sum())), random_state=0)])
     print(f"training {len(tr)} report recordings (focal-specific)")
@@ -104,7 +113,7 @@ def main():
     V = pd.read_parquet("data/derived/occasion_expert_votes.parquet"); occ = pd.read_parquet("data/derived/occasion_features.parquet")
     oage = occ[(occ.stage == "W") & (occ.region == "whole_head")].drop_duplicates("fid").set_index("fid").age
     wide = V.dropna(subset=["r1.FN"]).pivot_table(index="fid", columns="rater", values="r1.FN"); wide.index = [f"ON_{int(i)}" for i in wide.index]
-    on = [(e, float(oage.get(int(e.split('_')[1]), np.nan))) for e in wide.index if os.path.exists(f"{SM}/eeg_id={e}")]
+    on = [(e, float(oage.get(int(e.split('_')[1]), np.nan))) for e in wide.index if _available(e)]
     Ron = combined(on); keep = wide.index.intersection(Ron.index); Ron = Ron.loc[keep]
     yon = (wide.loc[keep].mean(axis=1) >= 0.5).astype(int).values; won = wide.loc[keep]
 

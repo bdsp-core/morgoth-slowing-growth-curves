@@ -21,8 +21,43 @@ bash scripts/reproduce_story.sh scratch            # ~24 h — from raw EDFs on 
 
 ## Data access (before the `results`/`features` tiers)
 
-The derived tables are git-ignored (72 GB). Pull them from the credentialed prefix (needs bdsp.io
-credentialed access + a DUA — see [`DATA_SOURCE.md`](DATA_SOURCE.md)):
+**How much you actually need depends on the tier.** A figure-loop install is **1.8 GB**, not 71 GB:
+the flat parquets, the norm grids, the report manifest, `figure_cache/wholehead_z.parquet`, and the ~90 MB of
+panel partitions (ON-100 and SAI-100). That regenerates **14 of the 17** stage-4 producers, including
+Figures 1, 6, 7, S1, S3–S6, S8, S9 and every table.
+
+The three exceptions are the focal-detector chain — `55_recording_model`, `vanputten_panel_s7` and
+`sandor100_external_validation`, which run through `66_focal_combined` → `64_focal_v2_experiment`. That chain
+computes spatial-stability features by pivoting segment × channel, so it needs per-segment PER-CHANNEL band
+powers, which exist only in `segment_master/` (59 GB). Everything else was rewired to read the small tables:
+`seg_feats` now prefers `single_model_segfeats.parquet` (61 MB) over re-deriving from `segment_master`, and
+Figures S5/S6 read `figure_cache/` instead of the 6.5 GB deviation field.
+
+The cache is a faithful substitute, not a sample: it carries every segment for the six whole-head deviation
+features, which is all the `results` tier reads out of the per-segment field, and both figures that use it
+(S5 and S6) come out bit-identical either way. Rebuild it with `scripts/83_build_figure_cache.py` after any
+change to the deviation field.
+
+```bash
+# figure loop (~1.8 GB) -- rebuilds 14 of 17 producers, every table, and all but three figures
+aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/ data/derived/ --exclude "*/*"
+aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/figure_cache/ data/derived/figure_cache/
+aws s3 cp   s3://bdsp-opendata-credentialed/morgoth-slowing/manifest/report_manifest_v6.parquet data/manifest/
+# panel partitions (~90 MB) for the ON-100 / SAI-100 figures
+for p in segment_master segment_summary; do
+  aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/$p/ data/derived/$p/ \
+      --exclude "*" --include "eeg_id=ON_*" --include "eeg_id=SB_*"
+done
+aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/segment_master/_done/ \
+    data/derived/segment_master/_done/ --exclude "*" --include "ON_*.done"
+```
+
+`scripts/preflight_reproduce.py` detects which tier you have and checks only what that tier needs; it still
+fails loudly on a table that is present but INCOMPLETE, which is the failure mode that silently changed
+Table S2 during this revision.
+
+For the `features` and `scratch` tiers you also need the big partitioned tables (needs bdsp.io credentialed
+access + a DUA — see [`DATA_SOURCE.md`](DATA_SOURCE.md)):
 
 ```bash
 export AWS_PROFILE=<your-bdsp-profile>   # a profile with read access to s3://bdsp-opendata-credentialed
@@ -51,11 +86,11 @@ Figures are assembled into the submission set by
 | **Figure 6** description contrast | `57_description_panels.py` | `description_recording.parquet`, `description_stage.parquet` | `figures/story/{s4_d2,s4_d5}.png` |
 | **Figure 7** sleep under-reporting | `fig6_sleep_naming.py` (stat: `95b_v4a_spindle_check.py`) | `description_stage.parquet`, `results/p6_sleep_underreporting.md` | `figures/growth_v2/v4a_wake_sleep.png` |
 | **Figure S1** architecture | `architecture_diagram.py` | — | `figures/story/architecture.png` |
-| **Figure S2** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `segment_deviation/`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
+| **Figure S2** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `figure_cache/wholehead_z.parquet`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
 | **Figure S3** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
 | **Figure S4** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
 | **Figure S5** curve bank | `111_curve_bank_v6.py` | `grid_norm.json` | `figures/stage_curves/*__whole_head.png` |
-| **Figure S6** deviation field | `44_segment_deviation_summary.py` | `segment_deviation/` | `figures/story/s2_segment_deviation.png` |
+| **Figure S6** deviation field | `44_segment_deviation_summary.py` | `figure_cache/wholehead_z.parquet` | `figures/story/s2_segment_deviation.png` |
 | **Figure S7** localized focal | `49_occasion_allstage_localized.py` | `occasion_features.parquet` | `figures/story/s0_occasion_ours_v4_focal.png` |
 | **Figure S8** description panels (D1–D6) | `57_description_panels.py`, `58_description_words.py` | `description_recording.parquet` | `figures/story/s4_d{1,3,4,6}.png` |
 | **Figure S9** severity null | `109_severity_null_v6.py` | `occasion_features.parquet` | `figures/growth_v2/severity_recalibrated.png` |

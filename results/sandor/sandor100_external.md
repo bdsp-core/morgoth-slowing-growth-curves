@@ -4,7 +4,7 @@ Full pipeline (extraction → **Morgoth ss_hm_1 sleep staging** → age+stage-ma
 
 | axis | model | AUROC [95% CI] | % experts under ROC | AP |
 |---|---|---|---|---|
-| focal (25+) | LENS | 0.935 [0.872, 0.985] | 64% | 0.893 |
+| focal (25+) | LENS | 0.935 [0.867, 0.986] | 71% | 0.894 |
 | focal (25+) | Morgoth | 0.974 [0.923, 1.000] | 93% | 0.963 |
 | focal (25+) | SCORE-AI | 0.878 [0.783, 0.955] | 29% | 0.786 |
 | generalized (24+) | LENS | 0.908 [0.803, 0.980] | 50% | 0.846 |

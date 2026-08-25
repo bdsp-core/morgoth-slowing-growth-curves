@@ -27,6 +27,21 @@ FEATS = [("z__whole_head__log_delta", "delta excess"),
 FIG = Path("figures/story"); RES = Path("results/story")
 
 
+CACHE = "data/derived/figure_cache/wholehead_z.parquet"
+_CACHE_DF = None
+
+
+def _cache(cols):
+    """The distilled whole-head cache, if present. 43 MB in place of 6.5 GB of hive partitions."""
+    global _CACHE_DF
+    if _CACHE_DF is None:
+        if not os.path.exists(CACHE):
+            return None
+        _CACHE_DF = pd.read_parquet(CACHE, columns=["eeg_id", "stage"] + cols)
+        _CACHE_DF["eeg_id"] = _CACHE_DF["eeg_id"].astype(str)
+    return _CACHE_DF
+
+
 def read_one(args):
     eid, cols = args
     f = f"{DEV}/eeg_id={eid}/part.parquet"
@@ -44,7 +59,9 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--n", type=int, default=3000); a = ap.parse_args()
     FIG.mkdir(parents=True, exist_ok=True); RES.mkdir(parents=True, exist_ok=True)
     lab = pd.read_parquet("data/derived/recording_labels_sap.parquet").drop_duplicates("eeg_id")
-    have = [p.split("eeg_id=")[1].split("/")[0] for p in glob.glob(f"{DEV}/eeg_id=*")]
+    cache = _cache([c for c, _ in FEATS])
+    have = (list(cache.eeg_id.unique()) if cache is not None
+            else [p.split("eeg_id=")[1].split("/")[0] for p in glob.glob(f"{DEV}/eeg_id=*")])
     lab = lab[lab.eeg_id.isin(have)]
     cn = lab[(lab.clean_normal == True)].eeg_id.tolist()                          # noqa: E712
     ab = lab[(lab.is_abnormal == True)].eeg_id.tolist()                           # noqa: E712
@@ -52,10 +69,15 @@ def main():
     cn = list(rng.choice(cn, min(a.n, len(cn)), replace=False))
     ab = list(rng.choice(ab, min(a.n, len(ab)), replace=False))
     cols = [c for c, _ in FEATS]
-    print(f"reading {len(cn)} clean-normal + {len(ab)} abnormal recordings ...", flush=True)
-    with ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 4))) as ex:
-        cn_d = pd.concat([d for d in ex.map(read_one, [(i, cols) for i in cn]) if d is not None])
-        ab_d = pd.concat([d for d in ex.map(read_one, [(i, cols) for i in ab]) if d is not None])
+    src = "figure cache" if cache is not None else f"{DEV}/ partitions"
+    print(f"reading {len(cn)} clean-normal + {len(ab)} abnormal recordings from the {src} ...", flush=True)
+    if cache is not None:
+        cn_d = cache[cache.eeg_id.isin(set(cn))]
+        ab_d = cache[cache.eeg_id.isin(set(ab))]
+    else:
+        with ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 4))) as ex:
+            cn_d = pd.concat([d for d in ex.map(read_one, [(i, cols) for i in cn]) if d is not None])
+            ab_d = pd.concat([d for d in ex.map(read_one, [(i, cols) for i in ab]) if d is not None])
 
     md = ["# Section 2d — per-segment deviation field (stage-appropriate)\n",
           "Each segment carries a deviation z per feature × region, scored against its own (sleep-stage, "

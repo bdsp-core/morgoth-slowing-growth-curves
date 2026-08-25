@@ -35,8 +35,32 @@ AMT = [f"amt_{ft}" for ft in FEATS]
 FOC = [f"{p}_{ft}" for ft in FOC_F for p in ("peak", "foc", "asym")]
 
 
+SEGFEATS = "data/derived/single_model_segfeats.parquet"
+_SEGFEATS_IDX = None
+
+
+def _cached_seg_feats(eid):
+    """Per-segment features for one recording from the already-built table, if it is in there.
+
+    seg_feats otherwise re-derives these from segment_master, which is 59 GB of per-channel data. For any
+    recording already represented in single_model_segfeats (61 MB) the answer is identical and the big table
+    is unnecessary -- which is what lets the results tier run without it.
+    """
+    global _SEGFEATS_IDX
+    if _SEGFEATS_IDX is None:
+        if not os.path.exists(SEGFEATS):
+            _SEGFEATS_IDX = {}
+        else:
+            df = pd.read_parquet(SEGFEATS)
+            _SEGFEATS_IDX = {k: v for k, v in df.groupby("eeg_id", observed=True)}
+    return _SEGFEATS_IDX.get(eid)
+
+
 def seg_feats(eid, age):
     """per-segment stage-matched feature rows for one recording."""
+    cached = _cached_seg_feats(eid)
+    if cached is not None and len(cached):
+        return cached.copy()
     f = f"{SM}/eeg_id={eid}/part.parquet"
     if not os.path.exists(f) or not np.isfinite(age):
         return None

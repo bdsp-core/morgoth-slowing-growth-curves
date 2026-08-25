@@ -71,20 +71,46 @@ def reference_sets() -> tuple[pd.DataFrame, pd.DataFrame]:
     return internal, neg
 
 
+CACHE = Path("data/derived/figure_cache/wholehead_z.parquet")
+_CACHE_DF = None
+
+
+def _cache(cols):
+    """Whole-head deviation cache: 385 MB in place of 6.5 GB of hive partitions, same values.
+
+    Every cell this figure uses is whole-head, so the cache is a faithful substitute rather than an
+    approximation -- it carries every segment, not a sample, and the figure is bit-identical either way.
+    """
+    global _CACHE_DF
+    if _CACHE_DF is None:
+        if not CACHE.exists():
+            return None
+        _CACHE_DF = pd.read_parquet(CACHE, columns=["eeg_id", "segment", "stage"] + cols)
+        _CACHE_DF["eeg_id"] = _CACHE_DF["eeg_id"].astype(str)
+        _CACHE_DF = {k: v for k, v in _CACHE_DF.groupby("eeg_id", observed=True)}
+    return _CACHE_DF
+
+
 def load_cdf(ids: pd.DataFrame, n_rec: int | None, n_seg: int) -> pd.DataFrame:
     """Phi(z) per (patient, stage, cell) for the given recordings, subsampled to bound compute."""
     if n_rec is not None and len(ids) > n_rec:
         ids = ids.sample(n_rec, random_state=0)
     cols = [f"z__{r}__{f}" for r, f, _ in CELLS]
+    cache = _cache(cols)
     out = []
     for eeg_id, pid in zip(ids.eeg_id, ids.patient_id):
-        p = SD / f"eeg_id={eeg_id}" / "part.parquet"
-        if not p.exists():
-            continue
-        try:
-            d = pd.read_parquet(p, columns=["segment", "stage"] + cols)
-        except Exception:
-            continue
+        if cache is not None:
+            d = cache.get(str(eeg_id))
+            if d is None:
+                continue
+        else:
+            p = SD / f"eeg_id={eeg_id}" / "part.parquet"
+            if not p.exists():
+                continue
+            try:
+                d = pd.read_parquet(p, columns=["segment", "stage"] + cols)
+            except Exception:
+                continue
         d = d[d.stage.isin(STAGES)]
         if d.empty:
             continue

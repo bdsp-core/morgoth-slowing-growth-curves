@@ -5,7 +5,7 @@ LENS = production code path (gen: scripts/54 MIL top-5; focal: scripts/66), iden
 | axis | method | AUROC [95% CI] | % experts under ROC |
 |---|---|---|---|
 | focal | best van Putten index (asym_rel_delta) | 0.825 [0.717, 0.923] | 12% |
-| focal | LENS | 0.918 [0.822, 0.985] | 71% |
+| focal | LENS | 0.909 [0.820, 0.977] | 59% |
 | focal | Morgoth | 0.908 [0.828, 0.974] | 41% |
 | generalized | best van Putten index (DAR) | 0.817 [0.707, 0.913] | 11% |
 | generalized | LENS | 0.961 [0.914, 0.994] | 83% |
