@@ -24,7 +24,7 @@ report cohort and the ON-100 / SAI-100 evaluation sets are described in the manu
 | prefix | contents | size |
 |---|---|---|
 | `derived/` | the reproduce cache: `segment_master/` (per-segment × per-channel band powers, hive-partitioned by `eeg_id`), `segment_deviation/` (per-segment age/stage-matched z field), `description_recording.parquet` + `description_stage.parquet`, `single_model_segfeats.parquet`, `occasion_*.parquet`, `grid_norm.json` (GAMLSS norm grids), gate tables | 66.7 GiB (164,718 objects, verified 2026-08-19) |
-| `derived/figure_cache/` | `wholehead_z.parquet` — every segment's six whole-head deviation z-scores, the only part of the per-segment field the figure loop reads. Stands in for `segment_deviation/` at 1/17th the size, with bit-identical figures | 367 MiB |
+| `derived/figure_cache/` | Three distillations that let the figure loop reproduce every result without the 71 GB of partitioned tables: `wholehead_z.parquet` (whole-head deviation z per segment), `segfeats_all.parquet` (per-segment model features, all recordings), `focal_channel_feats.parquet` (per-recording segment × channel focality). Verified bit-identical to a full install | 458 MiB |
 | `panels/` | ON-100 expert-panel inputs / votes | 2.4 GiB (1,861 objects) |
 | `manifest_build/` | manifest-construction lineage: `report_manifest_v1–v5` + backfill (scripts 121–130 build v6 from these) and the raw report-findings CSVs. Regenerable; kept for provenance, out of git | 147 MiB (13 objects) |
 

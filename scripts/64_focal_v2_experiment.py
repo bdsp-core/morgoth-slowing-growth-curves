@@ -61,10 +61,41 @@ def feats(args):
     return out
 
 
+CACHE = Path("data/derived/figure_cache/focal_channel_feats.parquet")
+_CACHE_DF = None
+
+
+def _cache():
+    """Precomputed feats() output, if built (scripts/84).
+
+    feats() is the one thing in the results tier that needs per-segment PER-CHANNEL band powers, i.e. the
+    59 GB segment_master table. Its output is a handful of scalars per recording, so caching the RESULT --
+    a couple of MB -- is what makes the focal chain runnable on a figure-loop install.
+    """
+    global _CACHE_DF
+    if _CACHE_DF is None:
+        _CACHE_DF = (pd.read_parquet(CACHE).set_index("eeg_id") if CACHE.exists()
+                     else pd.DataFrame())
+    return _CACHE_DF
+
+
 def build(ids_ages):
-    with ThreadPoolExecutor(max_workers=14) as ex:
-        rows = [r for r in ex.map(feats, ids_ages) if r is not None]
-    return pd.DataFrame(rows).set_index("eeg_id")
+    c = _cache()
+    hit = [(i, age) for i, age in ids_ages if len(c) and i in c.index]
+    miss = [(i, age) for i, age in ids_ages if not (len(c) and i in c.index)]
+    rows = []
+    if hit:
+        got = c.loc[[i for i, _ in hit]].copy()
+        got["age"] = [age if np.isfinite(age) else 45.0 for _, age in hit]   # caller-supplied, never cached
+        rows.append(got.reset_index())
+    if miss:
+        with ThreadPoolExecutor(max_workers=14) as ex:
+            r = [x for x in ex.map(feats, miss) if x is not None]
+        if r:
+            rows.append(pd.DataFrame(r))
+    if not rows:
+        return pd.DataFrame(columns=["eeg_id"]).set_index("eeg_id")
+    return pd.concat(rows, ignore_index=True).set_index("eeg_id")
 
 
 FCOL = None
@@ -92,7 +123,10 @@ def main():
     keep = foc | cn | (gen & ~foc)
     d = d[keep & (~d.eeg_id.astype(str).str.startswith(("MOE_", "ON_")))].copy()
     d["y"] = foc[d.index].astype(int).values
-    d = d[[os.path.exists(f"{SM}/eeg_id={i}") for i in d.eeg_id]]
+    _c = _cache()
+    # same canonical rule as scripts/66: when the cache is installed it defines the eligible set
+    d = (d[[i in _c.index for i in d.eeg_id]] if len(_c)
+         else d[[os.path.exists(f"{SM}/eeg_id={i}") for i in d.eeg_id]])
     # balanced-ish training sample
     tr = pd.concat([d[d.y == 1].sample(min(3000, int((d.y == 1).sum())), random_state=0),
                     d[d.y == 0].sample(min(3000, int((d.y == 0).sum())), random_state=0)])

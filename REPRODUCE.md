@@ -21,17 +21,28 @@ bash scripts/reproduce_story.sh scratch            # ~24 h — from raw EDFs on 
 
 ## Data access (before the `results`/`features` tiers)
 
-**How much you actually need depends on the tier.** A figure-loop install is **1.8 GB**, not 71 GB:
-the flat parquets, the norm grids, the report manifest, `figure_cache/wholehead_z.parquet`, and the ~90 MB of
-panel partitions (ON-100 and SAI-100). That regenerates **14 of the 17** stage-4 producers, including
-Figures 1, 6, 7, S1, S3–S6, S8, S9 and every table.
+**How much you actually need depends on the tier.** A figure-loop install is **~1.9 GB**, not 71 GB: the
+flat parquets, the norm grids, the report manifest, `figure_cache/` and ~90 MB of panel partitions (ON-100
+and SAI-100). That regenerates **all 17** stage-4 producers — every figure and every table — and does so
+**bit-identically** to a full install. That equivalence is tested, not asserted: hiding all 71 GB and
+re-running produces byte-identical result files.
 
-The three exceptions are the focal-detector chain — `55_recording_model`, `vanputten_panel_s7` and
-`sandor100_external_validation`, which run through `66_focal_combined` → `64_focal_v2_experiment`. That chain
-computes spatial-stability features by pivoting segment × channel, so it needs per-segment PER-CHANNEL band
-powers, which exist only in `segment_master/` (59 GB). Everything else was rewired to read the small tables:
-`seg_feats` now prefers `single_model_segfeats.parquet` (61 MB) over re-deriving from `segment_master`, and
-Figures S5/S6 read `figure_cache/` instead of the 6.5 GB deviation field.
+`figure_cache/` holds three distillations, each a faithful substitute rather than a sample:
+
+| file | replaces | size |
+|---|---|---|
+| `wholehead_z.parquet` | the six whole-head columns of `segment_deviation/` (6.5 GB), all Figures S2/S6 read | 367 MB |
+| `segfeats_all.parquet` | per-segment model features for every recording, re-derived from `segment_master` | 88 MB |
+| `focal_channel_feats.parquet` | the per-recording output of the segment × channel pivot in `scripts/64` | 2.4 MB |
+
+Rebuild them on a full install with `scripts/83`, `85` and `84` after any change to the deviation field or
+the feature extractor.
+
+**When the caches are present they DEFINE which recordings are eligible**, rather than being topped up from
+`segment_master`. That is deliberate: eligibility used to be `os.path.exists()` on the big table, which
+included a few hundred recordings that then yielded no usable features, so a full install and a figure-loop
+install trained the focal detector on different sets and produced different numbers from identical code. The
+cache is the canonical, portable definition; `segment_master` is only the fallback when it is absent.
 
 The cache is a faithful substitute, not a sample: it carries every segment for the six whole-head deviation
 features, which is all the `results` tier reads out of the per-segment field, and both figures that use it
@@ -39,7 +50,7 @@ features, which is all the `results` tier reads out of the per-segment field, an
 change to the deviation field.
 
 ```bash
-# figure loop (~1.8 GB) -- rebuilds 14 of 17 producers, every table, and all but three figures
+# figure loop (~1.9 GB) -- rebuilds ALL 17 producers, bit-identically to a full install
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/ data/derived/ --exclude "*/*"
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/figure_cache/ data/derived/figure_cache/
 aws s3 cp   s3://bdsp-opendata-credentialed/morgoth-slowing/manifest/report_manifest_v6.parquet data/manifest/

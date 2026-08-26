@@ -35,23 +35,33 @@ AMT = [f"amt_{ft}" for ft in FEATS]
 FOC = [f"{p}_{ft}" for ft in FOC_F for p in ("peak", "foc", "asym")]
 
 
+# Complete per-segment feature cache (scripts/85), covering every recording. Preferred over
+# single_model_segfeats.parquet, which holds the same features but only for the ~10k recordings scripts/53
+# sampled -- a partial cache made training-set membership depend on which tables happened to be installed.
+SEGFEATS_ALL = "data/derived/figure_cache/segfeats_all.parquet"
 SEGFEATS = "data/derived/single_model_segfeats.parquet"
 _SEGFEATS_IDX = None
 
 
-def _cached_seg_feats(eid):
-    """Per-segment features for one recording from the already-built table, if it is in there.
+def _segfeats_cached() -> bool:
+    """True when the COMPLETE per-segment cache (scripts/85) is installed, so it can define membership."""
+    return os.path.exists(SEGFEATS_ALL)
 
-    seg_feats otherwise re-derives these from segment_master, which is 59 GB of per-channel data. For any
-    recording already represented in single_model_segfeats (61 MB) the answer is identical and the big table
-    is unnecessary -- which is what lets the results tier run without it.
+
+def _cached_seg_feats(eid):
+    """Per-segment features for one recording, from the cache if it is covered there.
+
+    seg_feats otherwise re-derives these from segment_master, 59 GB of per-channel data. The values are
+    identical either way, so a machine with the 92 MB cache reproduces the pipeline exactly without it.
     """
     global _SEGFEATS_IDX
     if _SEGFEATS_IDX is None:
-        if not os.path.exists(SEGFEATS):
+        src = SEGFEATS_ALL if os.path.exists(SEGFEATS_ALL) else SEGFEATS
+        if not os.path.exists(src):
             _SEGFEATS_IDX = {}
         else:
-            df = pd.read_parquet(SEGFEATS)
+            df = pd.read_parquet(src)
+            df["eeg_id"] = df["eeg_id"].astype(str)
             _SEGFEATS_IDX = {k: v for k, v in df.groupby("eeg_id", observed=True)}
     return _SEGFEATS_IDX.get(eid)
 

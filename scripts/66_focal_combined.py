@@ -37,7 +37,15 @@ def _available(eid) -> bool:
     single_model_segfeats the features are identical and available from 61 MB. Gating on the big table
     alone silently emptied the training set on a figure-loop machine.
     """
-    return bool(m53b._cached_seg_feats(eid) is not None) or os.path.exists(f"{SM}/eeg_id={eid}")
+    # BOTH halves of combined() must be producible, or the region and focal feature sets would be built on
+    # different recordings. And when the caches are present they DEFINE the eligible set, rather than being
+    # topped up from segment_master: otherwise a full install trains on the few hundred recordings the caches
+    # do not cover, a figure-loop install does not, and the two produce different models from the same code.
+    # The cache is the canonical, portable definition; segment_master is only the fallback when it is absent.
+    fc = m64._cache()
+    if len(fc) and m53b._cached_seg_feats is not None and m53b._segfeats_cached():
+        return bool(eid in fc.index and m53b._cached_seg_feats(eid) is not None)
+    return os.path.exists(f"{SM}/eeg_id={eid}")
 
 def _region_one(args):
     eid, age = args

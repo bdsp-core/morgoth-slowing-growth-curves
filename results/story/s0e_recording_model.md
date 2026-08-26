@@ -6,5 +6,5 @@ Per-segment features aggregated per recording as {mean,p90,max,prev}; degrades t
 |---|---|---|---|---|---|---|
 | report-test | focal | ours | 0.737 | 0.628 | – | – |
 | report-test | generalized | ours | 0.717 | 0.391 | – | – |
-| occasion | focal | ours | 0.909 [0.820, 0.977] | 0.658 | 59% | 53% |
+| occasion | focal | ours | 0.908 [0.815, 0.978] | 0.710 | 53% | 53% |
 | occasion | generalized | ours | 0.937 [0.884, 0.979] | 0.756 | 39% | 33% |
