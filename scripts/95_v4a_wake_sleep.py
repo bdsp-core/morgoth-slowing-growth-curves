@@ -32,6 +32,7 @@ Run: PYTHONPATH=src python3 scripts/95_v4a_wake_sleep.py
 """
 from __future__ import annotations
 import re, glob
+import os
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.stats import mannwhitneyu, wilcoxon, spearmanr
@@ -70,9 +71,18 @@ def spindle_verdict():
     real verdict, so re-running 95 alone silently reverted the paper's conclusion. Same rule as 95b:
     ESTABLISHED iff the spindle-verified AUROC's bootstrap CI excludes chance AND >=60 usable per arm.
     """
-    p = Path("data/derived/v4a_spindle_results.parquet")
+    # Read the SAME checkpoint scripts/95b writes (V4A_WORK/v4a_spindle_results_v2.parquet). This used to
+    # point at data/derived/v4a_spindle_results.parquet -- the v1 cross-correlation run that was FORMALLY
+    # WITHDRAWN (alignment was silently wrong; see the retraction in results/v4a_wake_sleep.md). That file
+    # still exists locally and on S3, so re-running 95 rebuilt the verdict headline from retracted data and
+    # printed the withdrawn "DAR 0.84, n=88/123" over the correct "0.79 [0.73,0.85], n=86/226".
+    _work = Path(os.environ.get("V4A_WORK", "data/derived/v4a_work"))
+    p = _work / "v4a_spindle_results_v2.parquet"
     if not p.exists():
-        return "SPINDLE TEST NOT RUN (no data/derived/v4a_spindle_results.parquet)"
+        legacy = Path("data/derived/v4a_spindle_results.parquet")
+        # never silently fall back to v1 -- it is retracted, not merely old
+        return (f"SPINDLE TEST NOT RUN (no {p})" if not legacy.exists() else
+                f"SPINDLE TEST NOT RUN (only the WITHDRAWN v1 file {legacy} is present; re-run scripts/95b)")
     d = pd.read_parquet(p)
     d = d[d.status == "ok"].dropna(subset=["z_sp_DAR"])
     nC = int((d.group == "case").sum()); nK = int((d.group == "control").sum())

@@ -53,6 +53,9 @@ change to the deviation field.
 # figure loop (~1.9 GB) -- rebuilds ALL 17 producers, bit-identically to a full install
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/ data/derived/ --exclude "*/*"
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/figure_cache/ data/derived/figure_cache/
+# the spindle sub-study checkpoint: the top-level sync above uses --exclude "*/*" and would skip it, and
+# scripts/95 needs it to write the SS3.8 verdict. Without it 95 reports "SPINDLE TEST NOT RUN".
+aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/v4a_work/ data/derived/v4a_work/
 aws s3 cp   s3://bdsp-opendata-credentialed/morgoth-slowing/manifest/report_manifest_v6.parquet data/manifest/
 # panel partitions (~90 MB) for the ON-100 / SAI-100 figures
 for p in segment_master segment_summary; do
@@ -121,6 +124,31 @@ Figures are assembled into the submission set by
 | Sleep under-reporting naming rates; spindle-verified AUROC | `95b_v4a_spindle_check.py` | `description_stage.parquet` + source EDFs |
 | Severity null (ρ≈0.05; 168-combination sweep) | `109_severity_null_v6.py` | `occasion_features.parquet` |
 | Slow-frequency null (ρ = 0.13 all-seg, 0.04 abnormal-only) | `81_slow_peak_frequency.py` | `report_manifest_v6.parquet` + source EDFs (S3) |
+
+### Known issue: scripts/95 reads age from the manifest, not `metadata/ages_v6.parquet`
+
+`metadata/ages_v6.parquet` is the authoritative age table (OMOP `birth_datetime`, 99.6% exact, >89 binned to
+90 for HIPAA Safe Harbor). `fleet_analysis_adapter.py` and `34_recording_meta_from_segments.py` read it;
+`scripts/95` still takes `age` from `report_manifest_v6.parquet`, whose `age` is a whole number of years and
+partly wrong. Measured against ages_v6 over the 25,654 recordings both cover: median discrepancy **0.31 y**,
+**4.3% differ by more than a year**, maximum **14 y**. The manifest also carries **217 un-binned ages above
+90** (max 121); §3.8's one-row-per-patient selection picks up 194 of them, which `scripts/95`'s
+`age.between(0, 100)` filter admits rather than bins.
+
+The fix was written and measured, then deliberately **not applied**, because applying it half-way is worse
+than not applying it: `95` is a stage-4 producer, so changing its ages changes committed results, and the
+§3.8 headline numbers come from `95b`, which needs credentialed EDF access to re-run. Fixing `95` without
+re-running `95b` would leave the repo producing numbers the paper does not quote.
+
+**Measured impact, so the decision is on the record rather than assumed.** With ages_v6 substituted, every
+AUROC `95` produces moves by ≤0.001 (log_delta 0.779 → 0.779, DAR 0.777 → 0.777, TAR 0.689 → 0.688,
+low_freq_rel 0.522 → 0.521) and the case count by one (338 → 339). Nothing the manuscript quotes changes at
+the precision it is quoted to.
+
+**To close it properly**, run as one unit on a machine with EDF access: patch `95` to prefer ages_v6 (binning
+any manifest fallback to 90), re-run `95` → `95b`, then update §3.8 from the regenerated
+`results/v4a_wake_sleep.md`. `tests/test_ages.py` guards the derived tables; the same override has already
+been applied to `rebuild_labels_unified.py`, which is why `labels_unified.parquet` is now 98.6% fractional.
 
 Numbers that require the **raw EEG or model training** to regenerate (not just the committed CSVs) are
 produced by the `features`/`scratch` tiers and are marked in `reproduce_story.sh`; every other number

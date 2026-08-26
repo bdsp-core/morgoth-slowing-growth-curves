@@ -190,3 +190,83 @@ def test_worker_keeps_all_three_slowing_classes():
         assert col in src, f"worker no longer reads {col} — the 3-class head is being collapsed again"
     for out in ("p_focal_seg", "p_gen_seg"):
         assert out in src, f"worker no longer persists {out} to segment_summary"
+
+
+V4A = Path("results/v4a_wake_sleep.md")
+
+
+def _v4a_primary():
+    """(case, ctrl) median z_sleep for log_delta and DAR, from the primary table of the v4a results."""
+    out = {}
+    for ln in V4A.read_text().splitlines():
+        m = re.match(r"\|\s*\*{0,2}(log_delta|DAR)\s*\*{0,2}\|\s*([+-][\d.]+)\s*\|\s*([+-][\d.]+)\s*\|", ln)
+        if m and m.group(1) not in out:                 # first occurrence == the primary table
+            out[m.group(1)] = (float(m.group(2)), float(m.group(3)))
+    return out
+
+
+def _v4a_aurocs():
+    """The spindle-verified N2 and sleep-verified N3 AUROCs the manuscript headlines."""
+    txt = V4A.read_text()
+    got = {}
+    sp = re.search(r"## Spindle-verified N2.*?(?=\n## )", txt, re.S)
+    if sp:
+        for f, all_n2, spv in re.findall(
+                r"\|\s*(log_delta|DAR)\s*\|\s*([\d.]+) \[[^\]]+\]\s*\|\s*([\d.]+) \[", sp.group(0)):
+            got[f"{f}_allN2"], got[f"{f}_spindle"] = float(all_n2), float(spv)
+    n3 = re.search(r"## Sleep-verified N3.*?(?=\n## |\Z)", txt, re.S)
+    if n3:
+        for f, a in re.findall(r"\|\s*(log_delta|DAR)\s*\|\s*([\d.]+) \[", n3.group(0)):
+            got[f"{f}_n3"] = float(a)
+    return got
+
+
+@pytest.mark.skipif(not (V4A.exists() and MS.exists()), reason="results not built")
+def test_manuscript_ss38_matches_v4a_results():
+    """SS3.8's numbers must come from the CURRENT v4a results, not a superseded run.
+
+    This bug shipped: the prose read "median sleep-stage z +0.62 log delta, +0.98 DAR, vs +0.02 / -0.03 in
+    held-out controls" -- an exact match to a run that had since been replaced (case +0.619/+0.976, controls
+    +0.019/-0.025). The AUROCs in the same paragraph HAD been updated; this parenthetical had not, so nothing
+    flagged it. The true values were +0.815/+0.892 vs -0.052/-0.077.
+    """
+    ms = MS.read_text().replace("−", "-")          # the prose uses U+2212 for minus
+    missing = []
+    for feat, (case, ctrl) in _v4a_primary().items():
+        for role, v in (("case", case), ("ctrl", ctrl)):
+            # prose rounds to 2 dp; accept either sign form of zero-ish values
+            want = f"{v:+.2f}".replace("+", "") if v >= 0 else f"{v:.2f}"
+            if want not in ms:
+                missing.append(f"{feat} {role} median z_sleep {v:+.3f} (as '{want}')")
+    for name, v in _v4a_aurocs().items():
+        if f"{v:.3f}" not in ms:
+            missing.append(f"{name} AUROC {v:.3f}")
+    assert not missing, ("SS3.8 quotes numbers that are not in results/v4a_wake_sleep.md -- the prose has "
+                         "drifted from the run:\n  " + "\n  ".join(missing))
+
+
+def test_spindle_verdict_reads_the_v2_checkpoint_not_the_retracted_v1():
+    """scripts/95 must derive SS3.8's verdict from the SAME file scripts/95b writes.
+
+    It read data/derived/v4a_spindle_results.parquet -- the v1 cross-correlation run, FORMALLY WITHDRAWN
+    because its alignment was silently wrong. That file is still on disk and was still on S3, so re-running
+    95 rebuilt the verdict headline from retracted data: it wrote "spindle-verified DAR AUROC 0.84
+    [0.79,0.90], n=88/123" over the correct "0.79 [0.73,0.85], n=86/226". Nothing failed; only a diff against
+    the committed results caught it.
+    """
+    src = Path("scripts/95_v4a_wake_sleep.py")
+    body = src.read_text()
+    verdict = body[body.index("def spindle_verdict"):]
+    verdict = verdict[:verdict.index("\ndef ")]
+    # strip comments and docstring prose -- the v1 filename is legitimately NAMED there to warn about it,
+    # and an earlier version of this test was fooled into a vacuous pass by exactly that.
+    code = "\n".join(ln.split("#")[0] for ln in verdict.splitlines())
+    code = re.sub(r'"""..*?"""', "", code, flags=re.S)
+
+    assert "v4a_spindle_results_v2.parquet" in code, (
+        "scripts/95 no longer loads the v2 spindle checkpoint that scripts/95b writes")
+    for ln in code.splitlines():
+        if "v4a_spindle_results.parquet" in ln:          # the retracted v1 name, in real code
+            assert "legacy" in ln, (
+                "scripts/95 loads the RETRACTED v1 spindle file in:\n  " + ln.strip() +
+                "\nv1 alignment was silently wrong; only the v2 feature-match-gated run is valid.")

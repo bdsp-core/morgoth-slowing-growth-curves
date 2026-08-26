@@ -19,6 +19,7 @@ import numpy as np, pandas as pd
 
 MAN = Path("data/manifest/report_manifest_v6.parquet")
 OUT = Path("data/derived/labels_unified.parquet")
+AGES = Path("metadata/ages_v6.parquet")
 LABEL_COLS = ["is_normal", "is_abnormal", "has_focal_slow", "has_gen_slow", "clean_normal",
               "focal_side", "focal_region", "focal_band", "gen_topography", "gen_band",
               "clean_pair", "age", "sex"]
@@ -27,6 +28,19 @@ LABEL_COLS = ["is_normal", "is_abnormal", "has_focal_slow", "has_gen_slow", "cle
 def main():
     man = pd.read_parquet(MAN)
     main = man[man.panel_set == "none"].copy()                       # main cohort only (no MoE / OccasionNoise)
+    # AGE: the manifest's own `age` is a WHOLE NUMBER of years and partly wrong (median 0.31 y off vs the
+    # authoritative table, >1 y for 4.3% of recordings, up to 14 y). metadata/ages_v6.parquet is the
+    # OMOP-derived source of record, and copying the manifest column here is what made labels_unified 100%
+    # integer -- the exact revert tests/test_ages.py exists to catch. Override per recording.
+    _ag = pd.read_parquet(AGES)[["eeg_id", "age"]].drop_duplicates("eeg_id")
+    if "eeg_id" in main.columns:
+        main = main.merge(_ag.rename(columns={"age": "_age_v6"}), on="eeg_id", how="left")
+        # Fall back to the manifest only where ages_v6 has no row -- and BIN THE FALLBACK: the de-identified
+        # OMOP export returns ages up to 121 and the manifest carries 217 of them un-binned, so an unguarded
+        # fallback reintroduces a HIPAA Safe Harbor violation (ages over 89 are identifiers). ages_v6 already
+        # bins; the fallback must too.
+        _fb = main["age"].clip(upper=90)
+        main["age"] = main["_age_v6"].where(main["_age_v6"].notna(), _fb)
     lu = pd.DataFrame({"bdsp_id": main.patient_id.astype(str),        # convention A: bdsp_id == patient_id (S0001/S0002)
                        "patient_id": main.patient_id.astype(str),
                        "eeg_datetime": main.eeg_datetime.astype(str)})  # the column the reorg had dropped
@@ -34,7 +48,7 @@ def main():
         lu[c] = main[c].values
     gs, ab = lu.has_gen_slow == True, lu.is_abnormal == True          # noqa: E712
     lu["gen_class"] = np.where(gs & ab, "pathologic", np.where(gs & ~ab, "physiologic", "none"))
-    lu["age_source"] = "manifest"
+    lu["age_source"] = np.where(lu.age % 1 != 0, "ages_v6", "manifest")
 
     if OUT.exists():                                                  # keep the broken file for reference (gitignored)
         bak = OUT.with_suffix(".pre_rebuild.parquet")
