@@ -5,6 +5,10 @@ This class of bug bit twice in one session and both times it was silent:
   1. `scripts/table4_predictions_scorecard.py` had the van Putten AUROCs HARDCODED, transcribed by hand
      from an earlier run of Table 6. When Table 6 was recomputed under the SAP §3.3 `clean_pair` filter,
      the scorecard kept quoting the old numbers and nothing complained.
+     [The test for this is GONE, deliberately: 4547c97 deleted both the scorecard and
+     results/table4_predictions.md when the paper consolidated to Table 1 + S1-S3, so the guard could only
+     ever skip. A permanently-skipped test reads as coverage and is not -- if the scorecard ever returns,
+     restore the guard with it.]
   2. The manuscript quoted the pre-filter headline (0.881 / 0.918 / 0.875) long after the table said
      0.875 / 0.911 / 0.870.
 
@@ -19,7 +23,6 @@ import pytest
 
 T6 = Path("results/vanputten_fullcoverage.md")
 DASHBOARD = Path("scripts/build_story_dashboard.py")
-T4 = Path("results/table4_predictions.md")
 MS = Path("docs/manuscript_draft.md")
 TARGETS = ["abnormal", "generalized", "focal"]
 
@@ -34,16 +37,6 @@ def gate_row():
         if len(vals) == 3:
             return dict(zip(TARGETS, vals))
     raise AssertionError("no Morgoth gate row found in Table 6")
-
-
-@pytest.mark.skipif(not (T6.exists() and T4.exists() and MS.exists()), reason="results not built")
-def test_scorecard_quotes_table6_gate():
-    gate = gate_row()
-    t4 = T4.read_text()
-    for t, v in gate.items():
-        assert f"{v:.3f}" in t4, (
-            f"Table 4 does not quote the gate's {t} AUROC ({v:.3f}) from Table 6 — the scorecard has "
-            f"drifted from the table it summarises. Re-run scripts/table4_predictions_scorecard.py.")
 
 
 @pytest.mark.skipif(not (T6.exists() and MS.exists()), reason="results not built")
