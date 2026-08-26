@@ -114,12 +114,13 @@ Figures are assembled into the submission set by
 
 | Number (paper) | Script | Source artifact |
 |---|---|---|
-| Detection AUROC (focal 0.92 / gen 0.95) | `54`, `55` | `single_model_segfeats.parquet` → `results/story/*` |
+| Detection AUROC (focal 0.908 / gen 0.961) | `54`, `55` | `figure_cache/segfeats_all.parquet` + `focal_channel_feats.parquet` → `results/story/*` |
 | ON-100 experts-under-curve; human ceiling κ | `recompute_human_ceiling_v6.py` | ON-100 panel votes (`panels/`) |
 | Band δ-vs-θ AUROC 0.74 (vs 0.68 deviation); κ≈0.10 | `band_calibration.py` | `description_recording.parquet` |
 | Component concordance (side 56% / region 46% / band 52%) | `58_description_words.py` | `description_recording.parquet` + report labels |
 | Sleep under-reporting naming rates; spindle-verified AUROC | `95b_v4a_spindle_check.py` | `description_stage.parquet` + source EDFs |
 | Severity null (ρ≈0.05; 168-combination sweep) | `109_severity_null_v6.py` | `occasion_features.parquet` |
+| Slow-frequency null (ρ = 0.13 all-seg, 0.04 abnormal-only) | `81_slow_peak_frequency.py` | `report_manifest_v6.parquet` + source EDFs (S3) |
 
 Numbers that require the **raw EEG or model training** to regenerate (not just the committed CSVs) are
 produced by the `features`/`scratch` tiers and are marked in `reproduce_story.sh`; every other number

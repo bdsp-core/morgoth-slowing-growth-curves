@@ -51,11 +51,15 @@ Secondary strengthening, if wanted: require the spindle-positive N2 segment to b
 
 ## Status
 
-Not yet run. The infrastructure it depends on was, until this pass, unable to execute at all: `scripts/95`
-read report text from a deleted scratch directory, and `scripts/95b` both read and wrote paths on a machine
-that no longer exists and required `rclone`. Both now run from the committed manifest and plain AWS
-credentials. The N2 adjudication has been relaunched at full scale; the N3 extension above is specified but
-unimplemented, and **should not be described in the manuscript as done**.
+**Run and reported.** Both items above are implemented (`scripts/95` emits the N3 reference; `scripts/95b`
+builds the non-wake blocks and marks the spindle-positive ones) and the full run is done.
 
-Until it is, §2.11 and §3.8 carry the framing answer — a deviation is a statistical statement, not a
-diagnosis — which addresses the *interpretation* half of Shafi's comment but not the *staging* half.
+Of 665 staged N3 segments, **320 (48%)** sit inside a spindle-verified sleep block. On those, cases still
+separate from controls: log_delta AUROC **0.767 [0.645, 0.870]** (p = 2e-4), DAR **0.784 [0.671, 0.884]**
+(p = 7e-5), on 41 cases and 28 controls. The secondary strengthening (requiring the spindle within ~90 min
+rather than anywhere in the block) was not applied; the block-level criterion is what the numbers reflect.
+
+Results: `results/v4a_wake_sleep.md`, section "Sleep-verified N3". Written up in manuscript §3.8, which is
+now entitled to describe it as done. §2.11 continues to carry the framing answer — a deviation is a
+statistical statement, not a diagnosis — which addresses the *interpretation* half of Shafi's comment; the
+run above addresses the *staging* half.

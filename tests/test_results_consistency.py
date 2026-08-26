@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 T6 = Path("results/vanputten_fullcoverage.md")
+DASHBOARD = Path("scripts/build_story_dashboard.py")
 T4 = Path("results/table4_predictions.md")
 MS = Path("docs/manuscript_draft.md")
 TARGETS = ["abnormal", "generalized", "focal"]
@@ -46,13 +47,51 @@ def test_scorecard_quotes_table6_gate():
 
 
 @pytest.mark.skipif(not (T6.exists() and MS.exists()), reason="results not built")
-def test_manuscript_quotes_table6_gate():
-    gate = gate_row()
-    ms = MS.read_text()
-    for t, v in gate.items():
-        assert f"{v:.3f}" in ms, (
-            f"The manuscript does not quote the gate's {t} AUROC ({v:.3f}) from Table 6. If Table 6 was "
-            f"recomputed, docs/manuscript_draft.md §3.1b + the abstract must be updated to match.")
+def test_manuscript_does_not_quote_superseded_gate_values():
+    """The prose must never quote a gate AUROC that Table 6 has SUPERSEDED.
+
+    The original test demanded the manuscript CITE all three gate arms. That was right when SS3.1b quoted the
+    row inline, but the paper has since been restructured: Table 6 now reaches the reader as Table S1, inlined
+    verbatim (asserted below), and the prose cites only the focal arm in the Discussion. The old test
+    therefore failed on a manuscript that was correct.
+
+    A proximity check ("a value near the word gate must match the table") does not work either, and the
+    attempt is recorded here so it is not retried: the SAME gate is legitimately benchmarked on THREE
+    datasets -- the internal report cohort (Table 6), ON-100, and SAI-100 -- with different and equally
+    correct AUROCs, and SS3.5 names both "van Putten" and "Morgoth" while being entirely about ON-100. Any
+    line-proximity rule flags that correct paragraph.
+
+    What is actually checkable is the bug that bit: prose left quoting values the table has replaced. So pin
+    the superseded numbers explicitly.
+    """
+    superseded = {"0.881": "abnormal", "0.918": "generalized", "0.875": "focal"}   # pre-clean_pair triple
+    live = {f"{v:.3f}" for v in gate_row().values()}
+    bad = []
+    for ln in MS.read_text().splitlines():
+        if not any(w in ln for w in ("Morgoth", "gate")):
+            continue
+        if any(x in ln.lower() for x in ("superseded", "omitted that filter", "earlier version")):
+            continue
+        for val, arm in superseded.items():
+            # 0.875 is the pre-filter FOCAL value but also the live ABNORMAL value -- only flag it when the
+            # table no longer contains it at all, so a legitimate reuse is not a false positive
+            if val in ln and val not in live:
+                bad.append(f"{val} (superseded {arm}) in: {ln.strip()[:130]}")
+    assert not bad, ("manuscript quotes a gate AUROC superseded by Table 6 "
+                     f"(live values {sorted(live)}):\n  " + "\n  ".join(bad))
+
+
+@pytest.mark.skipif(not T6.exists(), reason="results not built")
+def test_table6_is_inlined_into_the_manuscript():
+    """Table 6's gate row reaches the reader only because the docx builder inlines the file verbatim.
+
+    That is what makes the citation-free prose above safe, so it is worth asserting rather than assuming:
+    if the builder stops inlining it, the gate numbers silently leave the paper.
+    """
+    builder = Path("scripts/build_manuscript_docx.py").read_text()
+    assert str(T6) in builder, (
+        f"{T6} is no longer inlined by build_manuscript_docx.py -- the gate AUROCs would vanish from the "
+        "paper, and the prose does not quote them.")
 
 
 @pytest.mark.skipif(not MS.exists(), reason="manuscript not present")
@@ -69,9 +108,23 @@ def test_manuscript_has_no_prefilter_headline():
 
 @pytest.mark.skipif(not MS.exists(), reason="manuscript not present")
 def test_every_referenced_figure_exists():
-    """The manuscript referenced 7 figures that did not exist on disk. Never again."""
+    """The manuscript referenced 7 figures that did not exist on disk. Never again.
+
+    Two shorthands in the prose are legitimate and must be resolved before checking, or the test fails on a
+    correct manuscript: a run of panels is written `s4_d1,3,4,6.png` (one token, four files), and after a
+    full path is given once, sibling panels are named by BASENAME alone (`s0e_occasion_focal.png`).
+    """
     ms = MS.read_text()
-    missing = [f for f in sorted(set(re.findall(r"[A-Za-z0-9_/.-]+\.png", ms))) if not Path(f).exists()]
+    names = set()
+    # expand comma runs: s4_d1,3,4,6.png -> s4_d1.png s4_d3.png s4_d4.png s4_d6.png
+    for prefix, nums in re.findall(r"([A-Za-z0-9_/.-]*?[A-Za-z_])(\d+(?:,\d+)+)\.png", ms):
+        names.update(f"{prefix}{n}.png" for n in nums.split(","))
+        ms = ms.replace(f"{prefix}{nums}.png", " ")
+    names.update(re.findall(r"[A-Za-z0-9_/.-]+\.png", ms))
+
+    known = {p.name for p in Path("figures").rglob("*.png")} if Path("figures").exists() else set()
+    missing = sorted(n for n in names
+                     if not Path(n).exists() and Path(n).name not in known)
     assert not missing, f"manuscript references figures that do not exist: {missing}"
 
 
@@ -94,6 +147,7 @@ def test_dangling_citations_do_not_grow():
         "\n  ".join(missing) + "\nRegenerate the evidence or cut the citation — do not raise the budget.")
 
 
+@pytest.mark.skipif(not DASHBOARD.exists(), reason="dashboard builder absent")
 def test_dashboard_figures_all_exist():
     """Every figure the dashboard embeds must exist on disk.
 
@@ -103,20 +157,23 @@ def test_dashboard_figures_all_exist():
     3,130-recording table.) Check the builder's own figure list instead.
     """
     import importlib.util, sys
-    spec = importlib.util.spec_from_file_location("bd_", "scripts/build_dashboard_sap.py")
+    spec = importlib.util.spec_from_file_location("bd_", DASHBOARD)
     mod = importlib.util.module_from_spec(spec)
     sys.modules["bd_"] = mod
     try:
         spec.loader.exec_module(mod)
     except SystemExit:
         pass
-    figs = [f for item in mod.ITEMS for f in item[3]]
-    assert figs, "dashboard builder exposes no figures — the ITEMS structure changed"
+    # SECTIONS = [(id, title, blurb, [(label, blurb, [figs], [tables]), ...]), ...]
+    subs = [sub for section in mod.SECTIONS for sub in section[3]]
+    figs = [f for sub in subs for f in sub[2]]
+    tables = [t for sub in subs for t in sub[3]]
+    assert figs, "dashboard builder exposes no figures - the SECTIONS structure changed"
+
     missing = [str(f) for f in figs if not Path(f).exists()]
     assert not missing, f"dashboard embeds figures that do not exist: {missing}"
 
-    tables = [t for item in mod.ITEMS for t in item[4]]
-    missing_t = [str(t) for t in tables if not Path(t).exists()]
+    missing_t = [str(x) for x in tables if not Path(x).exists()]
     assert not missing_t, f"dashboard links tables that do not exist: {missing_t}"
 
 
