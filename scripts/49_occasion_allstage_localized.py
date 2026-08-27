@@ -134,11 +134,22 @@ def evaluate(T, V, name, ax, cols, color):
     pu_roc, fr = m46.under_roc(fpr, tpr, pts); pu_pr, fp = m46.under_pr(prec, rec, pts)
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.97))
-    a0.plot([0, 1], [0, 1], "--", color="#bbb", lw=1); a0.plot(fpr, tpr, color=color, lw=2.4, label=f"LENS (AUROC {auc:.2f})")
+    # Recording-level bootstrap 95% CI -- the same convention and the same resampling unit as Figures 2,
+    # 3 and S3, so every performance number in the ROC family carries an interval of the same kind.
+    _rng = np.random.default_rng(0); _yv = y.values; _b = []
+    for _ in range(2000):
+        _i = _rng.integers(0, len(_yv), len(_yv))
+        if np.unique(_yv[_i]).size >= 2:
+            _b.append(roc_auc_score(_yv[_i], p[_i]))
+    lo, hi = (float(np.percentile(_b, 2.5)), float(np.percentile(_b, 97.5))) if _b else (np.nan, np.nan)
+    a0.plot([0, 1], [0, 1], "--", color="#bbb", lw=1)
+    a0.plot(fpr, tpr, color=color, lw=2.4, label=f"LENS  {auc:.2f} [{lo:.2f}\u2013{hi:.2f}]")
     for r, pp in pts.items():
-        a0.plot(pp["fpr"], pp["tpr"], "o", ms=6, mfc=(palette.NEUTRAL if fr.get(r) else palette.MORGOTH), mec="k", mew=.4, alpha=.85)
-    a0.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"under ({sum(fr.values())})")
-    a0.plot([], [], "o", mfc=palette.MORGOTH, mec="k", label=f"above ({len(pts)-sum(fr.values())})")
+        a0.plot(pp["fpr"], pp["tpr"], "o", ms=6, mfc=("none" if fr.get(r) else palette.NEUTRAL), mec="k", mew=.4, alpha=.85)
+    # Filled vs hollow, not two hues: purple is Morgoth's colour in Figures 2, 3 and S3, and this
+    # panel sits next to S3.
+    a0.plot([], [], "o", mfc="none", mec="k", label=f"expert under curve ({sum(fr.values())})")
+    a0.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"expert above ({len(pts)-sum(fr.values())})")
     a0.set_aspect("equal", adjustable="box")   # match Figures 2/3/S3: chance at 45 deg
     a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity")
     a0.set_title(f"{name.upper()} — ROC\n{sum(fr.values())}/{len(pts)} experts under", fontsize=9.5)
@@ -146,9 +157,9 @@ def evaluate(T, V, name, ax, cols, color):
     a1.plot(rec, prec, color=color, lw=2.4, label=f"LENS (AP {ap:.2f})"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
     for r, pp in pts.items():
         if np.isfinite(pp["precision"]):
-            a1.plot(pp["recall"], pp["precision"], "o", ms=6, mfc=(palette.NEUTRAL if fp.get(r) else palette.MORGOTH), mec="k", mew=.4, alpha=.85)
-    a1.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"under ({sum(fp.values())})")
-    a1.plot([], [], "o", mfc=palette.MORGOTH, mec="k", label=f"above ({len(fp)-sum(fp.values())})")
+            a1.plot(pp["recall"], pp["precision"], "o", ms=6, mfc=("none" if fp.get(r) else palette.NEUTRAL), mec="k", mew=.4, alpha=.85)
+    a1.plot([], [], "o", mfc="none", mec="k", label=f"expert under curve ({sum(fp.values())})")
+    a1.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"expert above ({len(fp)-sum(fp.values())})")
     a1.set_aspect("equal", adjustable="box")
     a1.set_xlabel("recall"); a1.set_ylabel("precision")
     a1.set_title(f"{name.upper()} — PRC\n{sum(fp.values())}/{len(fp)} experts under", fontsize=9.5)

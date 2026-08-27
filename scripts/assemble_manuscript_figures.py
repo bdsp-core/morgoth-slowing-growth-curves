@@ -8,6 +8,7 @@ reported, not fatal. Part of the `results` reproduce tier (regenerate the panel 
 Run: MPLBACKEND=Agg python3 scripts/assemble_manuscript_figures.py
 """
 from __future__ import annotations
+import math
 import re
 from pathlib import Path
 import matplotlib; matplotlib.use("Agg")
@@ -47,6 +48,7 @@ SHRINK_WARN = 0.70   # a source authored wider than page-width/SHRINK_WARN has i
 # review comment C103 ("Figure 1 illegible") was actually about. page_fit() checks the height limit too.
 PAGE_MM = (190.0, 240.0)
 MIN_PT = 6.0         # nothing may print smaller than this
+MIN_DPI = 300.0      # ...and nothing may print coarser than this, ON THE PAGE
 
 
 def native_inches(path: str) -> float | None:
@@ -105,6 +107,15 @@ def page_fit(out_path: Path) -> tuple[float, float, float]:
     return w_mm * s, h_mm * s, s
 
 
+def print_dpi(out_path: Path) -> float:
+    """Pixels per inch the figure actually has once it is scaled onto the page."""
+    from PIL import Image
+    with Image.open(out_path) as im:
+        dpi = (im.info.get("dpi") or (300,))[0] or 300
+        w_in = im.size[0] / dpi
+    return im.size[0] / (page_fit(out_path)[0] / 25.4) if w_in else float("nan")
+
+
 def smallest_pt(panels: list[str]) -> float | None:
     """The smallest font size any producing script sets for these panels, read from the source.
 
@@ -138,8 +149,20 @@ def compose(out_path: Path, panels: list[str], ncols: int) -> bool:
         if n > 1:
             ax.text(0.0, 1.01, chr(65 + i), transform=ax.transAxes, fontsize=17, fontweight="bold",
                     va="bottom", ha="left")
+    # Save at whatever pixel density leaves the PRINTED figure at >= MIN_DPI.
+    #
+    # This is the DPI trap, and it is the exact twin of the type-size one. A figure saved at 300 dpi carries
+    # "300 dpi" in its metadata and every checker reads it back and passes it -- but the journal scales the
+    # figure to fill the column, and scaling UP spreads the same pixels over more paper. At the page scales
+    # this set uses (1.13-1.44) every figure was landing between 209 and 266 dpi on the page while claiming
+    # 300. Measured, not assumed: see the effective-DPI column in MANIFEST.md.
+    #
+    # So: render once to learn the natural size, compute the page scale, then re-render at 300 x that scale.
     fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
-    fig.savefig(out_path.with_suffix(".pdf"), dpi=300, bbox_inches="tight", facecolor="white")  # publication PDF
+    scale = page_fit(out_path)[2]
+    if scale > 1.0:
+        fig.savefig(out_path, dpi=int(math.ceil(MIN_DPI * scale)), bbox_inches="tight", facecolor="white")
+    fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight", facecolor="white")   # vector; dpi n/a
     plt.close(fig)
     return True
 
@@ -156,11 +179,12 @@ def main():
              f"{PAGE_MM[0]:.0f} x {PAGE_MM[1]:.0f} mm box; type scale is what every point size in it is "
              "multiplied by on the page. A figure that is too tall prints narrower than the column and "
              "shrinks its own labels, so both are reported here.", "",
-             "| submission figure | panels | producing script(s) | printed mm | type scale |",
-             "|---|---|---|---|---|"]
+             "| submission figure | panels | producing script(s) | printed mm | type scale | printed DPI |",
+             "|---|---|---|---|---|---|"]
     have = miss = 0
     warnings: dict[str, list[str]] = {}
     toosmall: dict[str, tuple] = {}
+    lowdpi: dict[str, float] = {}
     fit: list[tuple] = []
     for name, (panels, ncols, scripts) in FIGS.items():
         w = legibility(panels, ncols)
@@ -169,16 +193,19 @@ def main():
         if compose(OUT / name, panels, ncols):
             have += 1
             pw, ph, sc = page_fit(OUT / name)
+            edpi = print_dpi(OUT / name)
             spt = smallest_pt(panels)
-            fit.append((name, pw, ph, sc, spt))
+            fit.append((name, pw, ph, sc, spt, edpi))
             if spt is not None and spt * sc < MIN_PT:
                 toosmall[name] = (spt, sc, spt * sc, pw, ph)
+            if edpi < MIN_DPI - 1:
+                lowdpi[name] = edpi
             lines.append(f"| `{name}` | {len(panels)} ({', '.join(Path(p).name for p in panels)}) | "
-                         f"`scripts/{scripts}` | {pw:.0f} x {ph:.0f} | {sc:.2f} |")
+                         f"`scripts/{scripts}` | {pw:.0f} x {ph:.0f} | {sc:.2f} | {edpi:.0f} |")
         else:
             miss += 1
             missing = [p for p in panels if not Path(p).exists()]
-            lines.append(f"| `{name}` | *(missing: {', '.join(missing)})* | `scripts/{scripts}` | — | — |")
+            lines.append(f"| `{name}` | *(missing: {', '.join(missing)})* | `scripts/{scripts}` | — | — | — |")
     (OUT / "MANIFEST.md").write_text("\n".join(lines) + "\n")
     print(f"composited {have} submission figures into {OUT}/ ({miss} with a missing source) + MANIFEST.md")
     if miss:
@@ -187,9 +214,16 @@ def main():
             if missing:
                 print(f"    {name} <- missing {missing}")
     worst = min((f[3] for f in fit), default=1.0)
-    print(f"    page fit: worst type scale {worst:.2f}"
+    worst_dpi = min((f[5] for f in fit), default=300.0)
+    print(f"    page fit: worst type scale {worst:.2f}; worst printed DPI {worst_dpi:.0f}"
           + (f"; {len(toosmall)} figure(s) print type below {MIN_PT:.0f} pt" if toosmall
              else f"; every figure prints its smallest type at >= {MIN_PT:.0f} pt"))
+    if lowdpi:
+        print(f"\n!! {len(lowdpi)} figure(s) print below {MIN_DPI:.0f} DPI ON THE PAGE. The dpi stamped in the\n"
+              f"   file is not the dpi on paper: a figure scaled UP to fill the column spreads the same\n"
+              f"   pixels over more paper. Raise the save dpi in compose():")
+        for name, e in lowdpi.items():
+            print(f"    {name} <- {e:.0f} DPI printed")
     if toosmall:
         print(f"\n!! {len(toosmall)} figure(s) would print text below the {MIN_PT:.0f} pt floor. A figure "
               f"taller than ~{PAGE_MM[0]/PAGE_MM[1]:.2f}x its width is scaled DOWN to fit the page height, "
