@@ -42,9 +42,16 @@ recover_stash() {
   [ -d "$STASH" ] || return 0
   echo "!! a previous run left hidden tables in $STASH — restoring them first"
   for d in segment_master segment_summary segment_deviation; do
-    [ -e "$STASH/$d" ] || continue
-    rm -rf "$D/$d"; mv "$STASH/$d" "$D/$d"; echo "   recovered $d"
+    [ -d "$STASH/$d" ] || continue
+    mkdir -p "$D/$d"
+    find "$STASH/$d" -maxdepth 1 -mindepth 1 -exec mv {} "$D/$d/" \; 2>/dev/null
+    rmdir "$STASH/$d" 2>/dev/null; echo "   recovered $d"
   done
+  if [ -d "$STASH/segment_master_done" ]; then
+    mkdir -p "$D/segment_master/_done"
+    find "$STASH/segment_master_done" -maxdepth 1 -mindepth 1 -exec mv {} "$D/segment_master/_done/" \; 2>/dev/null
+    rmdir "$STASH/segment_master_done" 2>/dev/null; echo "   recovered segment_master/_done"
+  fi
   if [ -d "$STASH/files" ]; then
     find "$STASH/files" -maxdepth 1 -mindepth 1 -exec mv {} "$D/" \; 2>/dev/null
   fi
@@ -52,9 +59,17 @@ recover_stash() {
 }
 
 restore() {
+  # Move the hidden partitions back beside the published ones. Nothing is deleted and nothing is replaced,
+  # so this is safe to run twice and safe to run after a partial hide.
   for d in segment_master segment_summary segment_deviation; do
-    if [ -e "$STASH/$d" ]; then rm -rf "$D/$d"; mv "$STASH/$d" "$D/$d"; fi
+    [ -d "$STASH/$d" ] || continue
+    find "$STASH/$d" -maxdepth 1 -mindepth 1 -exec mv {} "$D/$d/" \; 2>/dev/null
+    rmdir "$STASH/$d" 2>/dev/null
   done
+  if [ -d "$STASH/segment_master_done" ]; then
+    find "$STASH/segment_master_done" -maxdepth 1 -mindepth 1 -exec mv {} "$D/segment_master/_done/" \; 2>/dev/null
+    rmdir "$STASH/segment_master_done" 2>/dev/null
+  fi
   if [ -d "$STASH/files" ]; then
     find "$STASH/files" -maxdepth 1 -mindepth 1 -exec mv {} "$D/" \; 2>/dev/null
   fi
@@ -136,32 +151,49 @@ else:
 PYEOF
 [ -s "$EXIDS" ] || { echo "could not read PINNED_EXAMPLES"; exit 1; }
 
-if [ -d "$D/segment_deviation" ]; then
-  mv "$D/segment_deviation" "$STASH/segment_deviation"; mkdir -p "$D/segment_deviation"; n=0
-  while read -r e; do
-    [ -d "$STASH/segment_deviation/eeg_id=$e" ] || continue
-    ln -s "$STASH/segment_deviation/eeg_id=$e" "$D/segment_deviation/eeg_id=$e"; n=$((n+1))
-  done < "$EXIDS"
-  echo "segment_deviation: exposed $n published example partition(s) of $(wc -l < "$EXIDS" | tr -d ' ') pinned" \
-       "(hid $(ls "$STASH/segment_deviation" | wc -l | tr -d ' ') local)"
-fi
-
-# 1c. segment_master / segment_summary: keep only the published panel subsets, via symlinks
-for d in segment_master segment_summary; do
-  [ -d "$D/$d" ] || continue
-  mv "$D/$d" "$STASH/$d"; mkdir -p "$D/$d"; n=0
-  for p in "$STASH/$d"/eeg_id=ON_* "$STASH/$d"/eeg_id=SB_*; do
+# NOTE ON MECHANISM. An earlier version moved the whole table aside and symlinked the published partitions
+# back in. Two things went wrong with that and both are avoided here. The symlink targets were absolute
+# paths into a temp directory, so moving the stash inside the repo silently broke every one of them (the
+# producers then read an empty tree and "reproduced" nothing). And moving the published data at all means a
+# crash can strand it. So the logic is inverted: the published partitions are NEVER TOUCHED, and only the
+# partitions a fresh install would NOT have are moved aside. No symlinks anywhere.
+hide_partitions() {                       # $1 = table dir, $2 = predicate returning 0 for "publish this"
+  local d="$1" keep="$2" hid=0 kept=0
+  [ -d "$D/$d" ] || return 0
+  mkdir -p "$STASH/$d"
+  for p in "$D/$d"/*; do
     [ -e "$p" ] || continue
-    ln -s "$p" "$D/$d/$(basename "$p")"; n=$((n+1))
+    local b; b="$(basename "$p")"
+    if "$keep" "$b"; then kept=$((kept+1)); else mv "$p" "$STASH/$d/"; hid=$((hid+1)); fi
   done
-  if [ -d "$STASH/$d/_done" ]; then
-    mkdir -p "$D/$d/_done"
-    for s in "$STASH/$d"/_done/ON_*.done; do
-      [ -e "$s" ] && ln -s "$s" "$D/$d/_done/$(basename "$s")"
-    done
-  fi
-  echo "  $d: exposed $n panel partition(s)$([ -d "$D/$d/_done" ] && echo " + $(ls "$D/$d/_done" | wc -l | tr -d ' ') ON_ done-sidecars")"
-done
+  rmdir "$STASH/$d" 2>/dev/null
+  echo "  $d: kept $kept published partition(s), hid $hid local-only"
+}
+
+keep_examples() {                          # segment_deviation: only the six pinned Figure 4/5 examples
+  case "$1" in eeg_id=*) grep -qxF "${1#eeg_id=}" "$EXIDS" ;; *) return 1 ;; esac
+}
+keep_panels() {                            # segment_master / segment_summary: the ON-100 and SAI-100 panels
+  case "$1" in
+    eeg_id=ON_*|eeg_id=SB_*) return 0 ;;
+    _done) return 0 ;;                     # its ON_*.done sidecars are published; the rest are pruned below
+    *) return 1 ;;
+  esac
+}
+
+hide_partitions segment_deviation keep_examples
+for d in segment_master segment_summary; do hide_partitions "$d" keep_panels; done
+
+# _done carries a sidecar per completed recording; only the ON_ ones are published.
+if [ -d "$D/segment_master/_done" ]; then
+  mkdir -p "$STASH/segment_master_done"; hid=0
+  for s in "$D/segment_master/_done"/*; do
+    [ -e "$s" ] || continue
+    case "$(basename "$s")" in ON_*.done) ;; *) mv "$s" "$STASH/segment_master_done/"; hid=$((hid+1)) ;; esac
+  done
+  rmdir "$STASH/segment_master_done" 2>/dev/null
+  echo "  segment_master/_done: kept $(ls "$D/segment_master/_done" | wc -l | tr -d ' ') ON_ sidecar(s), hid $hid"
+fi
 echo
 
 # ---------------------------------------------------------------------------
