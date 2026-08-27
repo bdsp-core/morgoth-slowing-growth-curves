@@ -122,6 +122,9 @@ def main():
             ax.set_ylabel(palette.flabel(feat), fontsize=9)
             ax.set_title(f"{palette.flabel(feat)}, whole head — clean-normals", fontsize=9.5)
             ax.legend(frameon=False, fontsize=8, title="stage")
+            ax.text(0.995, -0.20, "routine and overnight studies pooled \u2014 so these n exceed Figure 1B's "
+                                  "source-appropriate counts", transform=ax.transAxes, ha="right", va="top",
+                    fontsize=6.8, color="#555")
             fig.tight_layout()
             fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300, bbox_inches="tight")
             # Emit the per-stage n. Figure S5's counts differ tenfold from Figure 1B's for the same cohort

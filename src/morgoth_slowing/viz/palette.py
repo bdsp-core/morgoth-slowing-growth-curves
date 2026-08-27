@@ -12,7 +12,9 @@ SCORE_AI = "#2c7fb8"     # SCORE-AI (blue)
 
 # --- reference operating points ---
 EXPERTS = "#8c8c8c"      # individual expert points (grey)
-VANPUTTEN = "#9aa0a6"    # van Putten qEEG indices (grey)
+VANPUTTEN = "#8c510a"    # van Putten qEEG indices (dark ochre). NOT grey: in Figure S3 the index
+                         # curve and the expert operating points shared one axes and one grey, so the
+                         # method and the humans were indistinguishable inside the same panel.
 
 # --- data classes ---
 NORMAL = "#31a354"       # clean-normal reference (green = healthy)

@@ -86,7 +86,13 @@ def render(tab, info, feature):
     # wants the descriptive title in the caption regardless. What it said -- median per 10-20 electrode over
     # patients, mean of incident bipolar chains, normal EEGs from cohort+expansion, and the recording count
     # -- is in the Figure 1 / Figure S4 captions in docs/manuscript_draft.md. Keep the two in sync.
-    fig.subplots_adjust(top=0.94)
+    # The n here are much smaller than Figure S5's for the same cohort, because this panel takes wake from
+    # the routine cohort and sleep from the overnight expansion and never pools them (ratio features are not
+    # comparable across acquisition types). A reviewer reads the image before the caption, so it says so.
+    fig.text(0.5, 0.005, "Source-appropriate: wake from routine studies, sleep from overnight studies, never "
+                         "pooled \u2014 so sleep-row n are far below Figure S5's pooled counts.",
+             ha="center", va="bottom", fontsize=6.8, color="#555")
+    fig.subplots_adjust(top=0.94, bottom=0.035)
     out = Path(f"figures/growth_v2/topo_{feature}_by_age_stage.png")
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=300, bbox_inches="tight"); plt.close(fig)
