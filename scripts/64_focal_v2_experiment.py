@@ -26,8 +26,35 @@ SM = "data/derived/segment_master"
 # SANDOR_DIR must be settable: this defaulted to one developer's Box CloudStorage mount, so the SAI-100
 # external validation could not be reproduced anywhere else. The default is the historical path purely
 # so the old machine keeps working; everyone else exports SANDOR_DIR.
+def _resolve_sandor_dir():
+    """Locate the SAI-100 source, or say exactly how to point at it.
+
+    This used to default to one developer's Box CloudStorage mount, so every other machine died with a
+    FileNotFoundError deep inside pandas naming a stranger's home directory. The data is DUA-governed and
+    cannot be committed, so a default is still needed -- but it must be a path that can plausibly exist
+    here, and when it does not it must fail with an instruction rather than a stack trace.
+    """
+    import os as _os
+    from pathlib import Path as _P
+    env = _os.environ.get("SANDOR_DIR")
+    if env:
+        return env
+    for c in (_P.home() / "Desktop/GithubRepos/Sandor_100_local",
+              _P.home() / "Sandor_100",
+              _P("data/external/Sandor_100"),
+              _P("/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/"
+                 "ChenXiSun/Morgoth1/Datasets/Sandor_100")):    # historical, so the original machine works
+        if _P(c).is_dir():
+            return str(c)
+    raise SystemExit(
+        "SAI-100 source not found. It is DUA-governed and not committed, so set SANDOR_DIR to the "
+        "directory\nholding validation_study_excel_export.xlsx and Morgoth_results/, e.g.\n"
+        "  export SANDOR_DIR=~/Desktop/GithubRepos/Sandor_100_local\n"
+        "or run scripts/reproduce_story.sh, which skips this step cleanly when SANDOR_DIR is unset.")
+
+
 SB_DIR = Path(os.environ.get("SANDOR_DIR") or
-              "/Users/mwestover/Library/CloudStorage/Box-Box/Brandon - DeID/0_People/ChenXiSun/ChenXiSun/Morgoth1/Datasets/Sandor_100"); MR = SB_DIR / "Morgoth_results"
+              _resolve_sandor_dir()); MR = SB_DIR / "Morgoth_results"
 BANDS = ["log_delta", "log_theta", "log_TAR"]
 PAIRS = [("Fp1-F7", "Fp2-F8"), ("F7-T3", "F8-T4"), ("T3-T5", "T4-T6"), ("T5-O1", "T6-O2"),
          ("Fp1-F3", "Fp2-F4"), ("F3-C3", "F4-C4"), ("C3-P3", "C4-P4"), ("P3-O1", "P4-O2")]

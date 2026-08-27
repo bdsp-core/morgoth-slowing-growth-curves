@@ -23,6 +23,26 @@ MANIFEST = "data/manifest/report_manifest_v6.parquet"
 # its report ("burst suppression with bursts of irregular theta slowing") is not a clean generalized-slowing
 # case, so it makes a misleading LENS-vs-report comparison.
 EXCLUDE_IDS = ("S0001121298232",)
+
+# The six recordings shown in Figures 4 and 5, PINNED.
+#
+# Why pin rather than re-search: the search ranks candidates on `peak_region`/`peak_region_z`, and the
+# normative grid gained four regions during the revision (7 -> 11: L/R anterior and L/R posterior, the split
+# SS2 describes, 210 -> 330 cells). That legitimately re-ranks the focal pool, so re-running picked three
+# DIFFERENT focal patients than the figures the reviewers read and commented on panel-by-panel.
+#
+# Changing which patients appear mid-revision would orphan those comments for no scientific gain -- the cases
+# are illustrations, not results. So the identities are fixed here and only their CARDS are recomputed, which
+# is what actually needed updating: the committed cards were built from the superseded 7-region descriptors.
+# Order is the display order: 3 focal (marked/moderate/mild), then 3 generalized.
+PINNED_EXAMPLES = (
+    "S0001112857553_20160206081631",   # focal, marked
+    "S0001120133802_20120917122010",   # focal, moderate
+    "S0002118633403_20191203074129",   # focal, mild
+    "S0001119160767_20190930133101",   # generalized, marked
+    "S0002114400117_20220102134116",   # generalized, moderate
+    "S0002119199989_20170830132221",   # generalized, mild
+)
 # Pull ONLY the SLOWING-finding sentence(s) from the clinical report: require the core word "slow", and drop
 # sentences about medications / history / times / epileptiform activity — those are off-topic for this figure
 # and the most PHI-sensitive part. Then de-identify (dates, times, redaction stars, long-number IDs, names).
@@ -229,12 +249,25 @@ def main():
             & d.focal_side.notna() & (d.lat_signed.abs() >= LAT_MIN)]                                               # noqa: E712
     gen = d[(~d.isfoc) & d.gen & (d.slowing_gen_pathologic == True) & (d.slowing_focal != True)]                    # noqa: E712
     MARKED, MODERATE, MILD = (3.0, 12.0), (1.8, 3.0), (1.0, 1.8)
-    used_ids, used_stages, used_regions, chosen = set(), [], set(), []
-    for pool, band in [(foc, MARKED), (foc, MODERATE), (foc, MILD),
-                       (gen, MARKED), (gen, MODERATE), (gen, MILD)]:
-        r = pick(pool, used_ids, used_stages, used_regions, band)
-        if r is not None:
-            used_ids.add(r.eeg_id); used_stages.append(r.domstage); used_regions.add(r.peak_region); chosen.append(r)
+    chosen = []
+    by_id = {str(r.eeg_id): r for r in d.itertuples()}
+    missing = [e for e in PINNED_EXAMPLES if e not in by_id]
+    if not missing:
+        chosen = [by_id[e] for e in PINNED_EXAMPLES]          # reviewed figure -> identities fixed
+    else:
+        # Only reachable if the pinned recordings drop out of the descriptor table entirely. Say so loudly
+        # rather than silently swapping in different patients, which is exactly the failure this pin exists
+        # to prevent.
+        print(f"WARNING: {len(missing)} pinned example(s) absent from description_recording "
+              f"({missing}); falling back to the automatic search, so Figures 4/5 will show DIFFERENT "
+              f"patients than the reviewed version.")
+        used_ids, used_stages, used_regions = set(), [], set()
+        for pool, band in [(foc, MARKED), (foc, MODERATE), (foc, MILD),
+                           (gen, MARKED), (gen, MODERATE), (gen, MILD)]:
+            r = pick(pool, used_ids, used_stages, used_regions, band)
+            if r is not None:
+                used_ids.add(r.eeg_id); used_stages.append(r.domstage)
+                used_regions.add(r.peak_region); chosen.append(r)
     ex = pd.DataFrame(chosen).reset_index(drop=True)
 
     # --- render 6 cards (one row each) ---
