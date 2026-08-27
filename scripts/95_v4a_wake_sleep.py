@@ -675,7 +675,18 @@ def main():
 
     md = "\n".join(L) + "\n"
     Path("results").mkdir(exist_ok=True)
-    Path("results/v4a_wake_sleep.md").write_text(md)
+    # scripts/95b APPENDS the spindle-verified N2 and sleep-verified N3 sections to this same file, and they
+    # carry SS3.8's headline evidence. Overwriting wholesale therefore DELETED them, and 95b can only put them
+    # back on a machine with credentialed EDF access -- so on a figure-loop install, running the results tier
+    # silently stripped the paper's decisive result out of its own results file. Carry them over instead.
+    _out = Path("results/v4a_wake_sleep.md")
+    _tail = ""
+    if _out.exists():
+        _prev = _out.read_text()
+        _i = _prev.find("## Spindle-verified N2")
+        if _i != -1:
+            _tail = _prev[_i:].lstrip("\n")
+    _out.write_text((md.rstrip("\n") + "\n\n" + _tail) if _tail else md)
     print("\n" + md)
 
     # ---- hand-off to the spindle test (scripts/95b): groups + the N2 reference curves ----------
