@@ -97,6 +97,7 @@ def main():
             plt.close(fig)
             n += 1
 
+        stage_n = {}
         # stage-resolved variant, whole head
         # Figure S5 stacks three of these. At 4.8 in tall each the composite was 13 in tall, which the
         # journal has to scale to ~120 mm wide to fit the page height -- every label at 65% of authored
@@ -111,6 +112,7 @@ def main():
                 continue
             q = smooth_q(s.age, s[feat], qs=(0.5,))
             ax.plot(GRID, q[0.5], color=col, lw=2.2, label=f"{st} (n={len(s):,})")
+            stage_n[st] = len(s)
             drew = True
         if drew:
             axfmt(ax)
@@ -119,6 +121,18 @@ def main():
             ax.legend(frameon=False, fontsize=8, title="stage")
             fig.tight_layout()
             fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300, bbox_inches="tight")
+            # Emit the per-stage n. Figure S5's counts differ tenfold from Figure 1B's for the same cohort
+            # (S5 pools routine and overnight; 1B does not -- see the Figure 1B caption), so the caption has
+            # to quote both and neither had a source.
+            if feat == "rel_delta":
+                from pathlib import Path as _P
+                _P("results/story").mkdir(parents=True, exist_ok=True)
+                _P("results/story/curve_bank_stage_n.md").write_text(
+                    "# Figure S5 — clean-normal recordings per sleep stage (whole head)\n\n"
+                    "Routine and overnight recordings POOLED. Figure 1B applies the source-appropriate rule "
+                    "instead (wake from routine, sleep from overnight), which is why its per-stage n are an "
+                    "order of magnitude smaller.\n\n| stage | recordings |\n|---|---|\n"
+                    + "".join(f"| {k} | {v:,} |\n" for k, v in stage_n.items()))
             n += 1
         plt.close(fig)
 
