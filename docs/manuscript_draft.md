@@ -408,24 +408,23 @@ journal's page limits.*
 - **Ethical approval.** This work was conducted under IRB protocol number 2022P000417, with the Beth Israel Deaconess Medical Center (BIDMC) IRB granting a waiver of consent.
 - **Funding.** Dr. Westover\'s laboratory is supported by grants from the NIH (R01AG073410, R01HL161253, R01NS126282, R01AG073598, R01NS131347, R01NS130119) and by AWS.
 - **Conflicts of interest.** Dr. Westover is a co-founder of, serves as a scientific advisor and consultant to, and has a personal equity interest in Beacon Biosignals. The remaining authors declare no competing interests.
-- **CRediT author contributions.** *\[Draft for each author to confirm or amend before submission.\]*
-**J. Jing:** Methodology, Software, Formal analysis, Investigation, Writing -- original draft.
-**C. Sun:** Methodology, Software, Formal analysis, Visualization, Writing -- original draft.
-**W. Ganglberger:** Methodology, Software, Data curation, Validation, Writing -- review & editing.
-**A. D. Lam:** Investigation, Validation, Writing -- review & editing.
-**H. Sun:** Methodology, Software, Writing -- review & editing.
-**T. Zhang:** Software, Data curation.
-**D. M. Goldenholz:** Methodology, Writing -- review & editing.
-**F. A. Nascimento:** Investigation, Validation, Writing -- review & editing.
-**D. Yuan:** Investigation, Data curation.
-**S. Beniczky:** Resources (SAI-100 evaluation set), Validation, Writing -- review & editing.
-**J. A. Kim:** Investigation, Validation, Writing -- review & editing.
-**A. F. Struck:** Investigation, Validation, Writing -- review & editing.
-**S. F. Zafar:** Investigation, Validation, Supervision, Writing -- review & editing.
-**R. J. Thomas:** Conceptualization, Investigation, Supervision, Writing -- review & editing.
-**M. M. Shafi:** Conceptualization, Investigation, Supervision, Writing -- review & editing.
-**M. B. Westover:** Conceptualization, Methodology, Resources, Supervision, Funding acquisition,
-Project administration, Writing -- review & editing.
+- **CRediT author contributions.** *\[Draft for each author to confirm or amend before submission; initials are given on the title page.\]*
+**Conceptualization:** RJT, MMS, MBW.
+**Data curation:** WG, TZ, DY, MBW.
+**Formal analysis:** JJ, CS, MBW.
+**Funding acquisition:** MBW.
+**Investigation:** ADL, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW.
+**Methodology:** JJ, CS, WG, HS, DMG, MBW.
+**Project administration:** MBW.
+**Resources:** SB, RJT, MMS, MBW.
+**Software:** JJ, CS, WG, HS, TZ, MBW.
+**Supervision:** SFZ, RJT, MMS, MBW.
+**Validation:** WG, ADL, FAN, SB, JAK, AFS, SFZ, MBW.
+**Visualization:** CS, MBW.
+**Writing -- original draft:** JJ, CS, MBW.
+**Writing -- review & editing:** JJ, CS, WG, ADL, HS, TZ, DMG, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW.
+
+Under Resources, S.B. provided the SAI-100 evaluation set and its expert reads (§2.9).
 - **Acknowledgements.** We thank the electroencephalographers who annotated the ON-100 and SAI-100
 evaluation sets, whose independent reads make both the external validation and the human-ceiling analysis
 possible. We thank the Brain Data Science Platform (BDSP) team for data curation, de-identification and
