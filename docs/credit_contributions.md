@@ -45,19 +45,19 @@ into byline order. Leave a cell empty only if genuinely no author filled that ro
 
 | CRediT role | Contributors |
 |---|---|
-| Conceptualization | RJT, MMS, MBW |
-| Data curation | WG, TZ, DY, MBW |
-| Formal analysis | JJ, CS, MBW |
-| Funding acquisition | MBW |
+| Conceptualization | RJT, AFS, SFZ, MMS, MBW, JJ, CS, WG |
+| Data curation | WG, DY, SB, MBW |
+| Formal analysis | JJ, CS, WG, MBW |
+| Funding acquisition | RJT, MBW |
 | Investigation | ADL, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW |
 | Methodology | JJ, CS, WG, HS, DMG, MBW |
-| Project administration | MBW |
-| Resources | SB, RJT, MMS, MBW |
-| Software | JJ, CS, WG, HS, TZ, MBW |
-| Supervision | SFZ, RJT, MMS, MBW |
+| Project administration | AFS, SFZ, JAK, RJT, MBW |
+| Resources | FAN, DY, SB, RJT, MMS, MBW |
+| Software | JJ, CS, WG, HS, MBW |
+| Supervision | AFS, JAK, SFZ, RJT, MBW |
 | Validation | WG, ADL, FAN, SB, JAK, AFS, SFZ, MBW |
-| Visualization | CS, MBW |
-| Writing -- original draft | JJ, CS, MBW |
+| Visualization | JJ, WG, CS, MBW |
+| Writing -- original draft | WG, RJT, JJ, CS, MBW |
 | Writing -- review & editing | JJ, CS, WG, ADL, HS, TZ, DMG, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW |
 
 ## 3. Notes carried into the manuscript
@@ -94,19 +94,19 @@ weight — but editors sometimes query the combination, so it is better settled 
 
 The form journals typeset. Generated from the table above; edit that, not this.
 
-**Jin Jing (JJ):** Formal analysis, Methodology, Software, Writing -- original draft, Writing -- review & editing.
-**Chenxi Sun (CS):** Formal analysis, Methodology, Software, Visualization, Writing -- original draft, Writing -- review & editing.
-**Wolfgang Ganglberger (WG):** Data curation, Methodology, Software, Validation, Writing -- review & editing.
+**Jin Jing (JJ):** Conceptualization, Formal analysis, Methodology, Software, Visualization, Writing -- original draft, Writing -- review & editing.
+**Chenxi Sun (CS):** Conceptualization, Formal analysis, Methodology, Software, Visualization, Writing -- original draft, Writing -- review & editing.
+**Wolfgang Ganglberger (WG):** Conceptualization, Data curation, Formal analysis, Methodology, Software, Validation, Visualization, Writing -- original draft, Writing -- review & editing.
 **Alice D. Lam (ADL):** Investigation, Validation, Writing -- review & editing.
 **Haoqi Sun (HS):** Methodology, Software, Writing -- review & editing.
-**Tianyu Zhang (TZ):** Data curation, Software, Writing -- review & editing.
+**Tianyu Zhang (TZ):** Writing -- review & editing.
 **Daniel M. Goldenholz (DMG):** Methodology, Writing -- review & editing.
-**Fabio A. Nascimento (FAN):** Investigation, Validation, Writing -- review & editing.
-**Doyle Yuan (DY):** Data curation, Investigation, Writing -- review & editing.
-**Sándor Beniczky (SB):** Investigation, Resources, Validation, Writing -- review & editing.
-**Jennifer A. Kim (JAK):** Investigation, Validation, Writing -- review & editing.
-**Aaron F. Struck (AFS):** Investigation, Validation, Writing -- review & editing.
-**Sahar F. Zafar (SFZ):** Investigation, Supervision, Validation, Writing -- review & editing.
-**Robert J. Thomas (RJT):** Conceptualization, Investigation, Resources, Supervision, Writing -- review & editing.
-**Mouhsin M. Shafi (MMS):** Conceptualization, Investigation, Resources, Supervision, Writing -- review & editing.
+**Fabio A. Nascimento (FAN):** Investigation, Resources, Validation, Writing -- review & editing.
+**Doyle Yuan (DY):** Data curation, Investigation, Resources, Writing -- review & editing.
+**Sándor Beniczky (SB):** Data curation, Investigation, Resources, Validation, Writing -- review & editing.
+**Jennifer A. Kim (JAK):** Investigation, Project administration, Supervision, Validation, Writing -- review & editing.
+**Aaron F. Struck (AFS):** Conceptualization, Investigation, Project administration, Supervision, Validation, Writing -- review & editing.
+**Sahar F. Zafar (SFZ):** Conceptualization, Investigation, Project administration, Supervision, Validation, Writing -- review & editing.
+**Robert J. Thomas (RJT):** Conceptualization, Funding acquisition, Investigation, Project administration, Resources, Supervision, Writing -- original draft, Writing -- review & editing.
+**Mouhsin M. Shafi (MMS):** Conceptualization, Investigation, Resources, Writing -- review & editing.
 **M. Brandon Westover (MBW):** Conceptualization, Data curation, Formal analysis, Funding acquisition, Investigation, Methodology, Project administration, Resources, Software, Supervision, Validation, Visualization, Writing -- original draft, Writing -- review & editing.

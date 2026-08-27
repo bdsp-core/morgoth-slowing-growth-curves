@@ -408,23 +408,23 @@ journal's page limits.*
 - **Ethical approval.** This work was conducted under IRB protocol number 2022P000417, with the Beth Israel Deaconess Medical Center (BIDMC) IRB granting a waiver of consent.
 - **Funding.** Dr. Westover\'s laboratory is supported by grants from the NIH (R01AG073410, R01HL161253, R01NS126282, R01AG073598, R01NS131347, R01NS130119) and by AWS.
 - **Conflicts of interest.** Dr. Westover is a co-founder of, serves as a scientific advisor and consultant to, and has a personal equity interest in Beacon Biosignals. The remaining authors declare no competing interests.
-- **CRediT author contributions.** *\[Draft for each author to confirm or amend before submission; initials are given on the title page.\]*
-**Conceptualization:** RJT, MMS, MBW.
-**Data curation:** WG, TZ, DY, MBW.
-**Formal analysis:** JJ, CS, MBW.
-**Funding acquisition:** MBW.
-**Investigation:** ADL, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW.
-**Methodology:** JJ, CS, WG, HS, DMG, MBW.
-**Project administration:** MBW.
-**Resources:** SB, RJT, MMS, MBW.
-**Software:** JJ, CS, WG, HS, TZ, MBW.
-**Supervision:** SFZ, RJT, MMS, MBW.
-**Validation:** WG, ADL, FAN, SB, JAK, AFS, SFZ, MBW.
-**Visualization:** CS, MBW.
-**Writing -- original draft:** JJ, CS, MBW.
-**Writing -- review & editing:** JJ, CS, WG, ADL, HS, TZ, DMG, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW.
+- **CRediT author contributions.** *\[Draft for each author to confirm or amend before submission; initials are given on the title page.\]*  
+  **Conceptualization:** JJ, CS, WG, AFS, SFZ, RJT, MMS, MBW.  
+  **Data curation:** WG, DY, SB, MBW.  
+  **Formal analysis:** JJ, CS, WG, MBW.  
+  **Funding acquisition:** RJT, MBW.  
+  **Investigation:** ADL, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW.  
+  **Methodology:** JJ, CS, WG, HS, DMG, MBW.  
+  **Project administration:** JAK, AFS, SFZ, RJT, MBW.  
+  **Resources:** FAN, DY, SB, RJT, MMS, MBW.  
+  **Software:** JJ, CS, WG, HS, MBW.  
+  **Supervision:** JAK, AFS, SFZ, RJT, MBW.  
+  **Validation:** WG, ADL, FAN, SB, JAK, AFS, SFZ, MBW.  
+  **Visualization:** JJ, CS, WG, MBW.  
+  **Writing -- original draft:** JJ, CS, WG, RJT, MBW.  
+  **Writing -- review & editing:** JJ, CS, WG, ADL, HS, TZ, DMG, FAN, DY, SB, JAK, AFS, SFZ, RJT, MMS, MBW.
 
-Under Resources, S.B. provided the SAI-100 evaluation set and its expert reads (§2.9).
+  Under Resources, S.B. provided the SAI-100 evaluation set and its expert reads (§2.9).
 - **Acknowledgements.** We thank the electroencephalographers who annotated the ON-100 and SAI-100
 evaluation sets, whose independent reads make both the external validation and the human-ceiling analysis
 possible. We thank the Brain Data Science Platform (BDSP) team for data curation, de-identification and

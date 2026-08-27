@@ -109,10 +109,17 @@ def main() -> int:
         print("\nnote: " + n)
 
     if args.write:
-        block = ("- **CRediT author contributions.** *\\[Draft for each author to confirm or amend before "
-                 "submission; initials are given on the title page.\\]*\n" + role_view + "\n")
+        # Two details decide whether this survives the trip through pandoc into Word. Each role line ends
+        # with a HARD line break, or the 14 lines collapse into one run-on paragraph that no co-author can
+        # read or annotate. And the trailing notes are indented as continuation paragraphs of the list item,
+        # or the first of them ends the list and the "- **Acknowledgements.**" bullet after it renders as a
+        # literal "- Acknowledgements" glued onto the note.
+        lines = [("- **CRediT author contributions.** *\\[Draft for each author to confirm or amend before "
+                  "submission; initials are given on the title page.\\]*")]
+        lines += ["  " + l for l in role_view.splitlines()]
+        block = "  \n".join(lines) + "\n"
         for n in notes:
-            block += "\n" + n + "\n"
+            block += "\n  " + n + "\n"
         m = MD.read_text()
         start = m.index("- **CRediT author contributions.**")
         end = m.index("- **Acknowledgements.**", start)
