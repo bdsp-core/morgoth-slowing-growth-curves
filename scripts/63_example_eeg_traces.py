@@ -130,10 +130,42 @@ def plot_panel(ax, data, sr, title, hl=()):
     ax.text(x0 - 0.05, y0 + 50, "100 µV", ha="right", va="center", fontsize=7)
 
 
+SEG_STEP_S = 14.0                       # 15-s window, 14-s step; t_start_s == segment * 14 (verified)
+_WH_CACHE = "data/derived/figure_cache/wholehead_z.parquet"
+
+
+def _pick_generalized_from_cache(eid, domstage):
+    """Max whole-head amount in the dominant stage, first hour -- from the cache. None if unavailable."""
+    if not os.path.exists(_WH_CACHE):
+        return None
+    cols = ["segment", "stage"] + AMT_Z
+    d = pd.read_parquet(_WH_CACHE, filters=[("eeg_id", "==", eid)], columns=cols)
+    if d.empty:
+        return None
+    d = d[d.segment * SEG_STEP_S < 3600]
+    have = [c for c in AMT_Z if c in d.columns]
+    if not have or d.empty:
+        return None
+    d = d.assign(amt=d[have].mean(axis=1))
+    ds = d[d.stage == domstage]
+    ds = ds if len(ds) else d
+    return float(ds.sort_values("amt", ascending=False).iloc[0].segment * SEG_STEP_S)
+
+
 def pick_segment(eid, domstage, region=None):
     """Display window = where the finding is clearest. FOCAL: the segment where the CLAIMED region's slowing
     peaks (so the plotted window matches the label, not an off-region/artefact whole-head max — QC 2026-07-19).
     GENERALIZED: the max whole-head amount. Restricted to the dominant stage, first hour."""
+    if region is None:
+        # GENERALIZED: the rule is "max whole-head amount in the dominant stage, first hour", and every
+        # column that needs is in figure_cache/wholehead_z.parquet -- which the figure-loop tier already
+        # ships for every recording. So a generalized example needs NO per-recording segment_deviation
+        # partition, and swapping one in costs nothing to publish. Verified equivalent: for all three
+        # generalized examples that have both sources, the two paths choose the identical window
+        # (t0 = 2254.0 / 2408.0 / 1036.0 s).
+        t0 = _pick_generalized_from_cache(eid, domstage)
+        if t0 is not None:
+            return t0
     f = f"{DEV}/eeg_id={eid}/part.parquet"
     if not os.path.exists(f):
         # Returning None here silently changed which 10-s window got plotted: fetch_window falls back to a

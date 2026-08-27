@@ -23,11 +23,11 @@ LENS's BRIEF finding line and FULL report paragraph (governed by docs/claims_tab
 - Report description: over the left hemisphere, there is moderate amplitude left temporo-parietal delta/theta slowing which rarely form fluctuating semi-rhythmic activity…intermittent drowsiness is characterized by attenuation of the background, slow roving eye movements and bilateral slowing in the theta and delta range, l>>r.  
 - Report (structured): focal slowing, left temporal (mixed)
 
-**Case 4 — Generalized slowing · peak 4.0 SD (>99.9th centile) · prominent in N2 · 85M**  
+**Case 4 — Generalized slowing · peak 4.8 SD (>99.9th centile) · prominent in N2 · 71F**  
 - LENS (brief): Continuous diffuse theta–delta (mixed) slowing, present in wakefulness and sleep; most prominent in N2.  
-- Report impression: occasional periods of generalized delta slowing alternating with periods of lower voltage theta slowing of the background.  
-- LENS (full): Diffuse theta–delta (mixed) slowing. Peak deviation 4.0 SD above the age- and stage-matched normal (>99.9th centile), abnormal in 100% of analysed segments (continuous); longest continuous run ≈26.6 min over 1 episode. Present in wakefulness and sleep; most prominent in N2.  
-- Report description: there is frequent 3-5 hz generalized slowing in the 60-100 uv range  
+- Report impression: this is an abnormal eeg, due to the presence of generalized symmetric theta/ delta slowing.  
+- LENS (full): Diffuse theta–delta (mixed) slowing. Peak deviation 4.8 SD above the age- and stage-matched normal (>99.9th centile), abnormal in 100% of analysed segments (continuous); longest continuous run ≈24.3 min over 1 episode. Present in wakefulness and sleep; most prominent in N2.  
+- Report description: the resting background showed generalized symmetric theta/ delta slowing with an amplitude up to 100 hz.  
 - Report (structured): generalized slowing (mixed)
 
 **Case 5 — Generalized slowing · peak 2.2 SD (99th centile) · prominent in N3 · 49F**  

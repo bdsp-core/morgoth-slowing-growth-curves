@@ -48,6 +48,8 @@ CLASSIFIED = {
     "sandor100_": "prefix of sandor100_external_validation / sandor100_stage_extract, both in the runner",
     "assemble_manuscript_figures": "stage 5 - composits committed figures for the docx, produces no new result",
     "verify_fresh_install": "a VERIFIER, not a producer - re-runs every producer with only git + S3 and diffs",
+    "screen_generalized_exemplars": "a SELECTION tool - ranks candidate Figure 5 exemplars so a pin can be "
+                                    "chosen; run by hand when an example is challenged, not part of the build",
     "certify_reproducibility": "this script",
 }
 

@@ -39,7 +39,17 @@ PINNED_EXAMPLES = (
     "S0001112857553_20160206081631",   # focal, marked
     "S0001120133802_20120917122010",   # focal, moderate
     "S0002118633403_20191203074129",   # focal, mild
-    "S0001119160767_20190930133101",   # generalized, marked
+    # Was S0001119160767_20190930133101 (generalized, marked, N2, 85M). Replaced 2026-08-27 on co-author
+    # review: its displayed window shows a right-frontal-predominant rhythmic run that reads as LRDA or
+    # lateralised periodic discharges rather than diffuse slowing, which is a distraction in the one figure
+    # whose job is to show plain generalized slowing. Note the report-text screen below could never have
+    # caught it -- that report says "occasional PERIODS of generalized delta slowing", which matches no
+    # \bperiodic\b pattern. The give-away is in the signal, so the replacement was chosen by screening the
+    # actual displayed window (scripts/screen_generalized_exemplars.py) and then looking at the traces.
+    # This one: same marked band (4.8 SD), same N2 dominant stage, continuous irregular polymorphic
+    # delta-theta across all chains, symmetric, no stereotyped repeating waveform -- and its report
+    # independently says "generalized SYMMETRIC theta/delta slowing".
+    "S0001116438689_20121214164651",   # generalized, marked
     "S0002114400117_20220102134116",   # generalized, moderate
     "S0002119199989_20170830132221",   # generalized, mild
 )
@@ -56,7 +66,7 @@ EXCLUDE = re.compile(r"\b(medication|treatment|administered|history|reason for|h
                      r"propofol|clobazam|lamotrigine|phenobarbital|phenytoin|lacosamide|keppra|levetiracetam)\b", re.I)
 # leading report boilerplate to strip so a snippet never reads "Report impression: final report impression: ..."
 BOILER = re.compile(r"^\s*(\*+\s*final report\s*\*+|final report impression|final impression|summary impression|"
-                    r"final correlation|clinical correlation|final report|impression|report)\s*[:\-.]*\s*", re.I)
+                    r"final correlation|clinical correlation|final report|impression|description|detail|report)\s*[:\-.]*\s*", re.I)
 
 
 def _strip_boiler(s: str) -> str:
@@ -184,7 +194,14 @@ def report_structured(r):
     return "; ".join(parts) if parts else "slowing (unspecified)"
 
 
-def main():
+def candidate_frame():
+    """The screened pool of candidate exemplars, and the frames the caller needs alongside it.
+
+    Extracted verbatim out of main() so it can be reused -- scripts/screen_generalized_exemplars.py
+    ranks candidates for a replacement pin from exactly the pool this figure draws from, rather than
+    from a second, subtly different one. No logic changed in the move; scripts/62's output is
+    byte-identical across the refactor.
+    """
     FIG.mkdir(parents=True, exist_ok=True); RES.mkdir(parents=True, exist_ok=True)
     R = pd.read_parquet("data/derived/description_recording.parquet")
     S = pd.read_parquet("data/derived/description_stage.parquet")
@@ -224,6 +241,11 @@ def main():
             return True
         return not PERIODIC.search(str(man.report_impression.get(eid, "")) + " " + str(man.report_text.get(eid, "")))
     d = d[d.eeg_id.map(_no_periodic)]
+    return d, S, man, meta, stage_map
+
+
+def main():
+    d, S, man, meta, stage_map = candidate_frame()
 
     # --- pick 6 CONCORDANT examples (our field agrees slowing is present), 3 focal + 3 generalized,
     #     spanning degree (marked/moderate/mild) and DIFFERENT dominant sleep stages ---
