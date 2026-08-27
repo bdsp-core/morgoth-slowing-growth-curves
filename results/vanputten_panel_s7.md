@@ -1,4 +1,4 @@
-# Figure S7 — van Putten vs LENS vs Morgoth on the CLEAN ON-100 expert panel (fair benchmark; expert-majority labels)
+# Figure S3 — van Putten vs LENS vs Morgoth on the CLEAN ON-100 expert panel (fair benchmark; expert-majority labels)
 
 LENS = production code path (gen: scripts/54 MIL top-5; focal: scripts/66), identical to Figure 2. van Putten = best index per axis recomputed on the panel. Recording-level bootstrap 95% CIs.
 

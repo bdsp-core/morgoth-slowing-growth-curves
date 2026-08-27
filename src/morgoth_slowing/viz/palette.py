@@ -21,6 +21,19 @@ ABNORMAL = "#c8443c"     # report-slowing / abnormal (brick red)
 CHANCE = "#bbbbbb"       # diagonal / chance reference lines
 
 
+# --- sleep stages -------------------------------------------------------------------------------------
+# ONE mapping for the five stages, everywhere. Figure 1A and Figure S5 used to disagree completely --
+# W was yellow in one and dark blue in the other, N3 navy in one and red in the other -- so a reader who
+# learned either mapping was actively misled by the other. Ordered light-to-dark with depth, REM set apart.
+STAGE = {"W": "#E8B800", "N1": "#5FB0D0", "N2": "#4488FF", "N3": "#00008B", "REM": "#A040A0"}
+STAGE_ORDER = ("W", "N1", "N2", "N3", "REM")
+
+
+def stage_colors(stages=STAGE_ORDER):
+    """Colours for a stage sequence, in the caller's order."""
+    return [STAGE[s] for s in stages]
+
+
 # --- shared publication style (Tufte-leaning) ---------------------------------------------------------------
 # Applied once at import so every figure script that imports this module inherits the same look: no top/right
 # spines (drop the box), frameless legends, thin axes, and one consistent font ladder. Individual scripts can

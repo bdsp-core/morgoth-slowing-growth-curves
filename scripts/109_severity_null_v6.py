@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Figure S1 — "severity is a null result", regenerated on v6.
+"""Figure S9 — "severity is a null result", regenerated on v6.
 
-The manuscript's Figure S1 says: our continuous deviation score does NOT track the reader's
+The manuscript's Figure S9 says: our continuous deviation score does NOT track the reader's
 mild/moderate/marked adjective, and that this stays true when the fragile max-statistic is replaced with a
 robust upper quantile. The figure on disk was produced by scripts/86 from the LEGACY tables (pre-label-fix,
 pre-age-fix), so it was the last stale figure in the paper.
@@ -97,25 +97,32 @@ def main():
     m = rec[rec.rep_sev.notna() & rec.rep_sev.between(1, 3)]
     print(f"recordings with a reader severity adjective (clean_pair): {len(m):,}")
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.10), sharey=False)
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.35), sharey=False)
     lines = []
-    for ax, stat in zip(axes, ["MAX", "P95"]):
+    for i, (ax, stat) in enumerate(zip(axes, ["MAX", "P95"])):
         groups = [m[m.rep_sev == k][stat].dropna().values for k in (1, 2, 3)]
         rho, p = spearmanr(m.rep_sev.values, m[stat].values)
         kp = kruskal(*groups).pvalue if all(len(g) > 2 for g in groups) else np.nan
         ax.boxplot(groups, tick_labels=[f"{SEV_LBL[k]}\n(n={len(g)})" for k, g in zip((1, 2, 3), groups)],
                    showfliers=False, medianprops=dict(color="#d95f02", lw=2))
-        ax.set_title(f"{stat} of |z|   ·   Spearman ρ = {rho:+.3f} (p = {p:.2g})", fontsize=10)
-        ax.set_xlabel("reader's severity adjective"); ax.set_ylabel("deviation from age-matched normal (|z|)")
+        # The long y-label used to run up into this title. Both are trimmed and a panel letter added.
+        ax.set_title(f"{stat} of |z|\nSpearman ρ = {rho:+.3f} (p = {p:.2g})", fontsize=9)
+        ax.text(-0.20, 1.03, "AB"[i], transform=ax.transAxes, fontsize=11, fontweight="bold",
+                va="bottom", ha="left")
+        ax.set_xlabel("reader's severity adjective", fontsize=9)
+        ax.set_ylabel("deviation from matched normal, |z|", fontsize=9)
         ax.grid(alpha=.25, axis="y")
         med = [float(np.median(g)) for g in groups]
         lines.append(f"| {stat} | {rho:+.3f} | {p:.2g} | {kp:.2g} | " +
                      " → ".join(f"{v:.2f}" for v in med) + f" | {len(m):,} |")
         print(f"  {stat:4s} Spearman rho={rho:+.3f} (p={p:.2g})  medians mild→marked: "
               f"{med[0]:.2f} → {med[1]:.2f} → {med[2]:.2f}")
-    fig.suptitle("Figure S1 — Severity is a null result (v6, corrected labels + exact ages)", fontsize=12)
+    # NO in-figure title. It used to read "Figure S1", which is the architecture schematic -- the display
+    # items were renumbered and this one was missed, so every cross-reference to it landed on the wrong
+    # figure. Titles now live in the captions (docs/manuscript_draft.md), where a renumber cannot desync them.
     fig.tight_layout()
-    fig.savefig("figures/growth_v2/severity_recalibrated.png", dpi=300)
+    fig.tight_layout()
+    fig.savefig("figures/growth_v2/severity_recalibrated.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     # ---- robustness sweep -------------------------------------------------------------------------
@@ -164,7 +171,7 @@ def main():
           f"{n_sig} clear Bonferroni (p < {bonf:.2g})")
 
     Path("results/severity_null_v6.md").write_text(
-        "# Figure S1 — severity is a null result (regenerated on v6)\n\n"
+        "# Figure S9 — severity is a null result (regenerated on v6)\n\n"
         "Our continuous deviation score against the reader's own **mild / moderate / marked** adjective, on "
         f"**{len(m):,}** cleanly-paired recordings. Two summary statistics are compared: the fragile **MAX** "
         "over each recording's region×stage deviation cells (one artifactual cell can set it) and a robust "

@@ -126,17 +126,19 @@ def eval_axis(scores, axis, mr_file, ax):
         cur = m54.panel_curve(None, y[ok], s[ok], pts, c, name)
         lo, hi = m54.boot_ci(y[ok], s[ok])
         ax.plot(cur["fpr"], cur["tpr"], color=c, lw=2.4,
-                label=f"{name} (AUROC {cur['auc']:.2f} [{lo:.2f}–{hi:.2f}], {cur['ur']:.0f}% under)")
+                label=f"{name} (AUROC {cur['auc']:.2f} [{lo:.2f}\u2013{hi:.2f}], "
+                          f"{round(cur['ur']*len(pts)/100)}/{len(pts)} experts under)")
         res.append((name, cur["auc"], lo, hi, cur["ur"], cur["ap"]))
     for r, p in pts.items():
         ax.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
     ax.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
+    ax.set_aspect("equal", adjustable="box")   # 0-1 on both axes: chance must sit at 45 deg
     ax.set_xlabel("1 − specificity"); ax.set_ylabel("sensitivity"); ax.set_xlim(-.02, 1.02); ax.set_ylim(-.02, 1.02)
     # At page width the two titles collide and the long legend labels overrun the y-axis, so the title wraps
     # onto two lines and the legend is sized to sit inside its own axes.
     ttl = "FOCAL slowing" if axis == "focal" else "GENERALIZED slowing"
     ax.set_title(f"{ttl}\nn={len(m)}, {int(y.sum())} positive", fontsize=8.5)
-    ax.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3)
+    ax.legend(frameon=False, fontsize=6.2, loc="lower right", handlelength=1.2, borderaxespad=0.3)
     ax.tick_params(labelsize=7)
     ax.xaxis.label.set_size(8); ax.yaxis.label.set_size(8)
     return res, len(m), int(y.sum()), len(pts)
@@ -152,8 +154,12 @@ def main():
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96))
     rf, nf, pf, ne = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
     rg, ng, pg, _ = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
-    fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=9.5)
-    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "sandor100_slowing.png", dpi=300); plt.close(fig)
+    # Title in the Figure 3 caption (Clinical Neurophysiology); panel letters so the two axes are citable.
+    for k, a in enumerate((a0, a1)):
+        a.text(-0.14, 1.02, chr(65 + k), transform=a.transAxes, fontsize=11, fontweight="bold",
+               va="bottom", ha="left")
+    fig.tight_layout()
+    fig.savefig(FIG / "sandor100_slowing.png", dpi=300, bbox_inches="tight"); plt.close(fig)
 
     md = ["# SAI-100 (SCORE-AI validation set) — external validation: LENS vs SCORE-AI vs Morgoth vs experts\n",
           f"Full pipeline (extraction → **Morgoth ss_hm_1 sleep staging** → age+stage-matched deviation → the "

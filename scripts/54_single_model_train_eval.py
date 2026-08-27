@@ -167,8 +167,8 @@ def main():
                 ok = np.isfinite(s) & np.isfinite(y.values)
                 cur = panel_curve(a0, y.values[ok], s[ok], pts, cc, ver)
                 lo, hi = boot_ci(y.values[ok], s[ok])
-                a0.plot(cur["fpr"], cur["tpr"], color=cc, lw=2.4, label=f"{ver} (AUROC {cur['auc']:.2f} [{lo:.2f}–{hi:.2f}], {cur['ur']:.0f}% under)")
-                a1.plot(cur["rec"], cur["prec"], color=cc, lw=2.4, label=f"{ver} (AP {cur['ap']:.2f}, {cur['up']:.0f}% under)")
+                a0.plot(cur["fpr"], cur["tpr"], color=cc, lw=2.4, label=f"{ver}  {cur['auc']:.2f} [{lo:.2f}\u2013{hi:.2f}]\n{round(cur['ur']*len(pts)/100)}/{len(pts)} experts under")
+                a1.plot(cur["rec"], cur["prec"], color=cc, lw=2.4, label=f"{ver}  AP {cur['ap']:.2f}\n{round(cur['up']*len(pts)/100)}/{len(pts)} experts under")
                 md.append(f"| {ds} | {tag} | {ver} | {cur['auc']:.3f} [{lo:.3f}, {hi:.3f}] | {cur['ap']:.3f} | "
                           f"{cur['ur']:.0f}% | {cur['up']:.0f}% |")
             for r, p in pts.items():
@@ -178,11 +178,17 @@ def main():
             a0.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
             a1.axhline(y.mean(), ls="--", color="#ccc", lw=1)
             a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{tag.upper()} — ROC", fontsize=11)
+            # ROC and PRC axes are both 0-1 probability scales, so the chance diagonal must be at 45 deg.
+            # Without this the four ROC figures render at four aspect ratios and curve "squareness" is
+            # not comparable between them.
+            a0.set_aspect("equal", adjustable="box"); a1.set_aspect("equal", adjustable="box")
             a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{tag.upper()} — PRC", fontsize=11)
-            a0.legend(frameon=False, fontsize=6.5, loc="lower right", handlelength=1.2, borderaxespad=0.3)
+            a0.legend(frameon=False, fontsize=6.0, loc="lower right", handlelength=1.0,
+                  borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
             # PRC curves live along the TOP of the panel, so an upper-right legend overprints them
             # (round-1 render: the LENS-v2 entry was struck through by its own curve). Bottom-left is empty.
-            a1.legend(frameon=False, fontsize=6.5, handlelength=1.2, borderaxespad=0.3, loc="lower left")
+            a1.legend(frameon=False, fontsize=6.0, handlelength=1.0, borderaxespad=0.2,
+                  labelspacing=0.35, handletextpad=0.5, loc="lower left")
             for a in (a0, a1):
                 a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
             # Title in the caption, not in the image (Clinical Neurophysiology). The subplot titles still

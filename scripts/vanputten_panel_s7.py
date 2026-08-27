@@ -98,12 +98,14 @@ def main():
     vp_gen, vp_foc = vanputten_panel_indices()
     vp_by_axis = {"generalized": vp_gen, "focal": vp_foc}
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 2.96)); md = ["# Figure S7 — van Putten vs LENS vs Morgoth on the "
+    # Square ROC axes need vertical room: at 2.96 in the two panels collapsed to narrow squares and the
+    # legends overflowed across them. Taller canvas + two-line legend labels, as in Figure 2.
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.95)); md = ["# Figure S3 — van Putten vs LENS vs Morgoth on the "
         "CLEAN ON-100 expert panel (fair benchmark; expert-majority labels)\n",
         "LENS = production code path (gen: scripts/54 MIL top-5; focal: scripts/66), identical to Figure 2. "
         "van Putten = best index per axis recomputed on the panel. Recording-level bootstrap 95% CIs.\n",
         "| axis | method | AUROC [95% CI] | % experts under ROC |", "|---|---|---|---|"]
-    for ax, axis in zip(axes, ["focal", "generalized"]):
+    for axi, (ax, axis) in enumerate(zip(axes, ["focal", "generalized"])):
         wide, morg = em[axis]
         idx = wide.index
         y_all = (wide.mean(axis=1).to_numpy() >= 0.5).astype(int)
@@ -124,15 +126,20 @@ def main():
             lo, hi = m54.boot_ci(y, s)
             short = name.split(" (")[0]
             ax.plot(cur["fpr"], cur["tpr"], color=c, lw=2.4,
-                    label=f"{short} (AUROC {cur['auc']:.2f} [{lo:.2f}–{hi:.2f}], {cur['ur']:.0f}% under)")
+                    label=f"{short}  {cur['auc']:.2f} [{lo:.2f}\u2013{hi:.2f}]\n"
+                          f"{round(cur['ur']*len(pts)/100)}/{len(pts)} experts under")
             md.append(f"| {axis} | {name} | {cur['auc']:.3f} [{lo:.3f}, {hi:.3f}] | {cur['ur']:.0f}% |")
         idx = idx[common]
         for p in pts.values():
             ax.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
         ax.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
+        ax.set_aspect("equal", adjustable="box")   # match Figures 2/3/S7: chance at 45 deg
+        ax.text(-0.22, 1.04, "AB"[axi], transform=ax.transAxes, fontsize=11, fontweight="bold",
+                va="bottom", ha="left")
         ax.set_xlabel("1 − specificity"); ax.set_ylabel("sensitivity"); ax.set_xlim(-.02, 1.02); ax.set_ylim(-.02, 1.02)
-        ax.set_title(f"{axis.upper()} slowing — n={len(idx)}, {int(y.sum())} pos", fontsize=11)
-        ax.legend(frameon=False, fontsize=8, loc="lower right")
+        ax.set_title(f"{axis.upper()} slowing\nn={len(idx)}, {int(y.sum())} positive", fontsize=9)
+        ax.legend(frameon=False, fontsize=6.0, loc="lower right", handlelength=1.0,
+                  borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
     # Title in the Figure S3 caption, not in the image (Clinical Neurophysiology).
     fig.tight_layout()
     fig.savefig(FIG / "vanputten_panel_s7.png", dpi=300, bbox_inches="tight"); plt.close(fig)

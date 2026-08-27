@@ -137,17 +137,28 @@ def evaluate(T, V, name, ax, cols, color):
     for r, pp in pts.items():
         a0.plot(pp["fpr"], pp["tpr"], "o", ms=6, mfc=("#888" if fr.get(r) else "#e41a1c"), mec="k", mew=.4, alpha=.85)
     a0.plot([], [], "o", mfc="#888", mec="k", label=f"under ({sum(fr.values())})"); a0.plot([], [], "o", mfc="#e41a1c", mec="k", label=f"above ({len(pts)-sum(fr.values())})")
-    a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{name.upper()} — ROC\n{100*pu_roc:.0f}% of {len(pts)} experts under", fontsize=10)
+    a0.set_aspect("equal", adjustable="box")   # match Figures 2/3/S3: chance at 45 deg
+    a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity")
+    a0.set_title(f"{name.upper()} — ROC\n{sum(fr.values())}/{len(pts)} experts under", fontsize=9.5)
     a0.legend(frameon=False, fontsize=7.5, loc="lower right"); a0.set_xlim(-.02, 1.02); a0.set_ylim(-.02, 1.02)
     a1.plot(rec, prec, color=color, lw=2.4, label=f"LENS (AP {ap:.2f})"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
     for r, pp in pts.items():
         if np.isfinite(pp["precision"]):
             a1.plot(pp["recall"], pp["precision"], "o", ms=6, mfc=("#888" if fp.get(r) else "#e41a1c"), mec="k", mew=.4, alpha=.85)
     a1.plot([], [], "o", mfc="#888", mec="k", label=f"under ({sum(fp.values())})"); a1.plot([], [], "o", mfc="#e41a1c", mec="k", label=f"above ({len(fp)-sum(fp.values())})")
-    a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{name.upper()} — PRC\n{100*pu_pr:.0f}% of {len(fp)} under", fontsize=10)
+    a1.set_aspect("equal", adjustable="box")
+    a1.set_xlabel("recall"); a1.set_ylabel("precision")
+    a1.set_title(f"{name.upper()} — PRC\n{sum(fp.values())}/{len(fp)} experts under", fontsize=9.5)
     a1.legend(frameon=False, fontsize=7.5, loc="upper right"); a1.set_xlim(-.02, 1.02); a1.set_ylim(-.02, 1.02)
-    fig.suptitle(f"Morgoth-FREE {'+'.join(STAGESET)} {name} detector vs {len(pts)} experts (LOO-CV)", fontsize=10.5)
-    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / f"s0_occasion_ours_v4_{name}.png", dpi=300); plt.close(fig)
+    # No in-figure title, and no "Morgoth-FREE": across the figure set "Morgoth" already names the sleep
+    # stager (Figure S1) and the reference detector (Figures 2, 3, S3), and using it a third time as a
+    # negation made it unclear whether this evaluates the same LENS as Figure 2. It does. Title is in the
+    # Figure S7 caption.
+    for k, a in enumerate((a0, a1)):
+        a.text(-0.14, 1.02, chr(65 + k), transform=a.transAxes, fontsize=11, fontweight="bold",
+               va="bottom", ha="left")
+    fig.tight_layout()
+    fig.savefig(FIG / f"s0_occasion_ours_v4_{name}.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     return f"| {name} | {'+'.join(STAGESET)} | {int(y.sum())}/{len(y)} | {auc:.3f} | {ap:.3f} | {len(pts)} | **{100*pu_roc:.0f}%** | **{100*pu_pr:.0f}%** |"
 
 

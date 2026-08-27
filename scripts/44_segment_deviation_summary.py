@@ -105,10 +105,9 @@ def main():
         if j == 0:
             ax.set_ylabel("per-segment deviation z (median, IQR)")
         ax.legend(frameon=False, fontsize=8)
-    fig.suptitle("Per-segment deviation field is stage-calibrated (normals ~0) and discriminative "
-                 "(abnormals shifted up) — whole head", fontsize=11)
-    fig.tight_layout(rect=[0, 0, 1, 0.94])
-    fig.savefig(FIG / "s2_segment_deviation.png", dpi=300); plt.close(fig)
+    # Title in the Figure S6 caption, not in the image (Clinical Neurophysiology).
+    fig.tight_layout()
+    fig.savefig(FIG / "s2_segment_deviation.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     (RES / "s2_segment_deviation.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/story/s2_segment_deviation.png + results/story/s2_segment_deviation.md")
 

@@ -28,7 +28,8 @@ REGION = os.environ.get("REGION", "occipital").lower()
 CHANS = CENTRAL if REGION == "central" else OCCIPITAL
 REGION_LABEL = "central (C3/C4)" if REGION == "central" else "occipital (O1/O2)"
 STAGES = ["W", "N1", "N2", "N3", "REM"]
-YODA = {"W": "#E8B800", "N1": "#5FB0D0", "N2": "#4488FF", "N3": "#00008B", "REM": "#A040A0"}
+from morgoth_slowing.viz.palette import STAGE as YODA   # the one stage mapping, shared with S5
+# (kept under the old local name so the plotting code below is untouched)
 BANDS = [(3, 97), (10, 90), (25, 75)]
 # Review C100: a single log10 age axis compresses all of adulthood into the last fifth of the panel, so the
 # aging trend cannot be read. Each cell is therefore split: log-spaced development to SPLIT_AGE, then a
