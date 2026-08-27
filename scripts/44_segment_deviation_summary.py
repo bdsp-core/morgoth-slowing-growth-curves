@@ -17,13 +17,12 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from morgoth_slowing.viz.palette import EXPERTS as NEUTRAL, ABNORMAL
+from morgoth_slowing.viz import palette
+from morgoth_slowing.viz.palette import NEUTRAL, ABNORMAL
 
 DEV = "data/derived/segment_deviation"
 STAGES = ["W", "N1", "N2", "N3", "REM"]
-FEATS = [("z__whole_head__log_delta", "delta excess"),
-         ("z__whole_head__log_TAR", "theta/alpha ratio"),
-         ("z__whole_head__log_DAR", "delta/alpha ratio")]
+FEATS = [(f"z__whole_head__{k}", palette.flabel(k)) for k in ("log_delta", "log_TAR", "log_DAR")]
 FIG = Path("figures/story"); RES = Path("results/story")
 
 
@@ -104,10 +103,12 @@ def main():
             md.append(f"| {label} | {grp} | " + " | ".join(f"{m:+.2f}" for m in meds) + " |")
         ax.axhline(0, ls="--", color="#888", lw=1)
         ax.set_xticks(range(len(STAGES))); ax.set_xticklabels(STAGES)
-        ax.set_title(label, fontsize=10); ax.grid(alpha=.2)
+        ax.set_title(label, fontsize=9.5); ax.grid(alpha=.2)
         if j == 0:
             # The full label was clipped by the canvas edge, taking the error-bar definition with it.
             ax.set_ylabel("deviation z", fontsize=9)
+        ax.text(-0.18, 1.03, "ABC"[j], transform=ax.transAxes, fontsize=11, fontweight="bold",
+                va="bottom", ha="left")
         ax.legend(frameon=False, fontsize=8)
     # Title in the Figure S6 caption, not in the image (Clinical Neurophysiology).
     fig.tight_layout()

@@ -9,8 +9,8 @@ Printed size is what the figure measures once it is scaled to fit Clinical Neuro
 | `Figure1_normative_model.png` | 2 (keystone_growth_grid.png, topo_rel_delta_by_age_stage.png) | `scripts/76, 77` | 152 x 240 | 1.13 |
 | `Figure2_detection.png` | 2 (s0d_single_occasion_generalized.png, s0e_occasion_focal.png) | `scripts/54, 55, 66` | 190 x 192 | 1.41 |
 | `Figure3_sandor_external.png` | 1 (sandor100_slowing.png) | `scripts/sandor100_external_validation` | 190 x 88 | 1.34 |
-| `Figure4_example_focal.png` | 1 (s4_examples_eeg_focal.png) | `scripts/62, 63` | 171 x 240 | 1.21 |
-| `Figure5_example_generalized.png` | 1 (s4_examples_eeg_generalized.png) | `scripts/62, 63` | 171 x 240 | 1.21 |
+| `Figure4_example_focal.png` | 1 (s4_examples_eeg_focal.png) | `scripts/62, 63` | 167 x 240 | 1.18 |
+| `Figure5_example_generalized.png` | 1 (s4_examples_eeg_generalized.png) | `scripts/62, 63` | 167 x 240 | 1.18 |
 | `Figure6_description_contrast.png` | 2 (s4_d2.png, s4_d5.png) | `scripts/57` | 190 x 157 | 1.41 |
 | `Figure7_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/fig6_sleep_naming (95b stat)` | 190 x 98 | 1.34 |
 | `FigureS1_architecture.png` | 1 (architecture.png) | `scripts/architecture_diagram` | 190 x 186 | 1.34 |

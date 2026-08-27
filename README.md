@@ -101,8 +101,8 @@ executed rather than asserted: `PYTHONPATH=src python3 scripts/certify_reproduci
 declared display item has a producer and an output, that every producer is in the runner, that every number
 the manuscript quotes appears in `results/`, and that the committed results match what the producers emit;
 `scripts/verify_fresh_install.sh` re-runs all 22 stage-4 producers with only what git + S3 provide and
-diffs the output. One known gap: **Figure 3 needs the SAI-100 expert workbook**, which is DUA-governed
-third-party data and is not in the S3 prefix — see `docs/review/comment_tracker.md` R2-28.
+diffs the output — **every display item, with no exceptions**, since the de-identified SAI-100 panel Figure 3
+needs is now published to the credentialed prefix (`scripts/export_sai100_panel.py`).
 
 Environment: `PYTHONPATH=src`, `KMP_DUPLICATE_LIB_OK=TRUE`; the norms engine is R (GAMLSS,
 `scripts/gamlss_fit.R`); pinned versions in `requirements.lock.txt`.

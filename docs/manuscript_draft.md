@@ -47,27 +47,22 @@ Sahar F. Zafar 0000-0001-5252-5376; Robert J. Thomas 0000-0002-5575-3953; Mouhsi
 
 ## Abstract
 
-**Objective.** Norms for abnormal EEG background slowing rest on small, mostly awake samples. We built LENS:
-lifespan- and sleep-stage-resolved EEG growth charts, and the deviation-from-normal field they yield.
+**Objective.** EEG slowing norms rest on small, mostly awake samples. LENS provides lifespan- and
+sleep-stage-resolved EEG growth charts and the deviation-from-normal field they yield.
 
 **Methods.** From 25,536 clinical EEGs (21,757 patients; infancy to \>90 y) we fitted age × sleep-stage
-percentile curves (GAMLSS) for spectral power and its ratios, scoring every 15-s segment as a deviation z
-from its matched normal. Report-trained logistic detectors identify and localize slowing; the written
-description is read off the same field, not from those detectors. The **detectors** were validated unchanged on
-two external 100-EEG multi-expert sets --- ON-100 (18 experts) and SAI-100 (14 experts, plus SCORE-AI),
-which carry expert calls but no report text. The **description** is validated against the internal report
-corpus by dose-response contrast.
+percentile curves (GAMLSS), scoring each 15-s segment against its matched normal. Report-trained detectors
+identify and localize slowing; the description reads the same field. Detectors were validated unchanged on
+ON-100 (18 experts) and SAI-100 (14 experts, plus SCORE-AI); the description, by dose-response against reports.
 
-**Results.** Curves reproduced development and sleep physiology and were calibrated on held-out normals
-(median centile error 1.1 points). Against the ON-100 majority LENS reached AUROC 0.961 (generalized) and
-0.908 (focal), placing 83% and 53% of experts under its curves and beating the best published qEEG index by
-+0.14 and +0.08. On SAI-100 it beat SCORE-AI for focal slowing but ranked last of three for generalized,
-where the foundation-model gate led. Expert agreement on slowing was low (κ 0.37--0.45), and reports named it
-far less often when it was confined to sleep (54% vs 75%).
+**Results.** Curves reproduced development and sleep physiology; held-out calibration error was 1.1 centiles. Against the ON-100 majority LENS reached AUROC 0.961 (generalized) and 0.908 (focal), placing 83%
+and 53% of experts under its curves and beating the best qEEG index by +0.14/+0.08. On SAI-100 it beat
+SCORE-AI on focal slowing but ranked last of three on generalized. Slowing was experts' least reliable
+judgement (κ 0.37--0.45); reports named it far less often when confined to sleep (54% vs 75%).
 
-**Conclusions.** One deviation field, shared by detection and description, identifies focal slowing at expert
-level and yields stage-aware automated reports. LENS measures departure from a matched norm; establishing its
-cause remains clinical.
+**Conclusions.** One deviation field serves both detection and description, identifying focal slowing at
+expert level and yielding stage-aware reports. LENS measures departure from a matched norm; cause remains
+clinical.
 
 **Significance.** The first lifespan- and sleep-stage-resolved deviation-from-normal instrument for EEG.
 
@@ -362,12 +357,12 @@ display item has a producer and an output, that every number quoted here appears
 the committed results match what the producers emit. The full input→output contract is*
 [`REPRODUCE.md`](../REPRODUCE.md)*.*
 
-***One exception.** Figure 3 needs the SAI-100 expert-vote workbook from the SCORE-AI validation study. That
-is third-party, DUA-governed data which we are not free to redistribute, so it is not in the project's
-credentialed S3 prefix (the 100 recordings' derived feature tables are). Everything else --- all 20 remaining
-display items --- rebuilds from this repository plus that prefix, verified by*
+*All 21 display items rebuild from this repository plus that prefix, with no exceptions, verified by*
 `scripts/verify_fresh_install.sh`*, which re-runs every producer with only what git and S3 provide and finds
-zero difference in any* `results/` *file.*
+zero difference in any* `results/` *file. That includes Figure 3: the SAI-100 expert votes and comparator
+predictions are published as a de-identified table (study pseudonyms, integer rater ids, ages above 89
+binned) alongside the derived data; the SCORE-AI study's own workbooks and the EEG signal are not
+redistributed.*
 
 | Display item | Producing script(s) | Output artifact |
 |---|---|---|

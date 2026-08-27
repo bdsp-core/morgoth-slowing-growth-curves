@@ -33,6 +33,7 @@ recording_labels_sap.parquet
 recording_meta.parquet
 report_ordinals.parquet
 report_pairing.parquet
+sai100_panel.parquet
 sandor_morph.parquet
 seg2eeg_recovery.parquet
 seg_norm.json

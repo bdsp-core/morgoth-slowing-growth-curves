@@ -399,7 +399,9 @@ def main():
     fig, ax = plt.subplots(figsize=(7.1, 2.7))
     xx = np.arange(len(comps))
     for i, (lab_, v, n, solid) in enumerate(comps):
-        ax.bar(xx[i], v, color=("#2c7fb8" if solid else "#8aa9c4"), alpha=.9, edgecolor="#5a6b7a")
+        # The x-axis names each component; blue here collided with SCORE-AI (Fig 3) and "visible in wake"
+        # (Fig 7). Neutral fill, with the lighter tone still marking the provisional components.
+        ax.bar(xx[i], v, color=(palette.NEUTRAL if solid else "#c9c9c9"), alpha=.95, edgecolor="#5a6b7a")
         ax.text(xx[i], v + .01, f"{v*100:.0f}%\n(n={n})", ha="center", fontsize=8)
     ax.axhline(1/3, ls="--", color="#666", lw=1); ax.text(xx[-1]+.15, 1/3, "chance (1/3)", color="#666", fontsize=8, va="bottom")
     ax.set_xticks(xx); ax.set_xticklabels([c[0] for c in comps], fontsize=8.5)

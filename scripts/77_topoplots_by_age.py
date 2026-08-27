@@ -80,7 +80,7 @@ def render(tab, info, feature):
             # pad=0.01 put the colorbar hard against the last topomap, where it clipped the next row's
             # "80+ / n=..." label (n=387 rendered as "n=38"). shrink keeps it clear of the title band too.
             cb = fig.colorbar(im, ax=list(axes[ri]), fraction=0.015, pad=0.035, shrink=0.82)
-            cb.set_label(feature, fontsize=7); cb.ax.tick_params(labelsize=6.5)
+            cb.set_label(palette.flabel(feature), fontsize=7); cb.ax.tick_params(labelsize=6.5)
     # No in-figure title. It used to overprint the first row's per-column n= labels (the suptitle sits at
     # y=0.98 by default and the top row of topomap titles reaches into it), and Clinical Neurophysiology
     # wants the descriptive title in the caption regardless. What it said -- median per 10-20 electrode over

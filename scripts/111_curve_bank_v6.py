@@ -25,6 +25,7 @@ FEATURES = ["log_delta", "log_theta", "rel_delta", "rel_theta", "DAR", "TAR", "D
 REGIONS = ["whole_head", "L_temporal", "R_temporal", "L_parasagittal", "R_parasagittal"]
 STAGES = ["W", "N1", "N2", "N3", "REM"]
 GRID = np.arange(0.25, 90, 0.5)
+from morgoth_slowing.viz import palette
 from morgoth_slowing.viz.palette import NORMAL as C_NORM, ABNORMAL as C_ABN, stage_colors
 XT = [0.25, 0.5, 1, 2, 5, 10, 20, 40, 60, 90]
 XL = ["3 mo", "6 mo", "1", "2", "5", "10", "20", "40", "60", "90"]
@@ -89,8 +90,8 @@ def main():
                 ax.plot(GRID, qa[0.5], color=C_ABN, lw=2.3, ls="--",
                         label=f"slowing-positive median (n={len(abn):,})")
             axfmt(ax)
-            ax.set_ylabel(f"{feat}  ({reg})")
-            ax.set_title(f"{feat} — {reg}, wake (v6: corrected labels + exact ages)", fontsize=10)
+            ax.set_ylabel(f"{palette.flabel(feat)}  ({reg})")
+            ax.set_title(f"{palette.flabel(feat)} — {reg}, wake", fontsize=10)
             ax.legend(frameon=False, fontsize=7)
             fig.tight_layout()
             fig.savefig(f"figures/curves/{feat}__{reg}.png", dpi=300)
@@ -116,8 +117,10 @@ def main():
             drew = True
         if drew:
             axfmt(ax)
-            ax.set_ylabel(f"{feat}  (whole head)")
-            ax.set_title(f"{feat} by sleep stage — clean-normals (v6)", fontsize=9.5)
+            # "(whole head)" is in the Figure S5 caption; with the full display name the label ran
+            # off the top of the canvas.
+            ax.set_ylabel(palette.flabel(feat), fontsize=9)
+            ax.set_title(f"{palette.flabel(feat)}, whole head — clean-normals", fontsize=9.5)
             ax.legend(frameon=False, fontsize=8, title="stage")
             fig.tight_layout()
             fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300, bbox_inches="tight")

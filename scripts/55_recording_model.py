@@ -134,8 +134,14 @@ def main():
                 mm = MP[MP.axis == mx].set_index("fid").M_pred; mm.index = [f"ON_{int(i)}" for i in mm.index]
                 cm = m54.panel_curve(None, y.values[ok], mm.reindex(idx).values[ok], pts, C_MORG, "Morgoth")
                 fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
+                # Both comparators carry an interval. Only LENS did, so Figure 2 showed Morgoth's focal
+                # AUROC bare while Figure S3 gave [0.83, 0.97] for the same quantity -- the review read that
+                # as two different estimates.
+                mlo, mhi = m54.boot_ci(y.values[ok], mm.reindex(idx).values[ok])
+                CIS = {"LENS": (lo, hi), "Morgoth": (mlo, mhi)}
                 for cur2, lab, cc in [(cm, "Morgoth", C_MORG), (cur, "LENS", C_OURS)]:
-                    ci = f" [{lo:.2f}–{hi:.2f}]" if lab == "LENS" else ""
+                    _lo, _hi = CIS[lab]
+                    ci = f" [{_lo:.2f}\u2013{_hi:.2f}]"
                     a0.plot(cur2["fpr"], cur2["tpr"], color=cc, lw=2.4, label=f"{lab}  {cur2['auc']:.2f}{ci}\n{round(cur2['ur']*len(pts)/100)}/{len(pts)} experts under")
                     a1.plot(cur2["rec"], cur2["prec"], color=cc, lw=2.4, label=f"{lab}  AP {cur2['ap']:.2f}\n{round(cur2['up']*len(pts)/100)}/{len(pts)} experts under")
                 for r, p in pts.items():

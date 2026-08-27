@@ -16,8 +16,9 @@ import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 from morgoth_slowing.viz import palette  # noqa: F401  (applies shared Tufte publication style)
 
 FEATURES = (sys.argv[1].split(",") if len(sys.argv) > 1 else ["rel_delta", "TAR", "DAR"])
-FEAT_LABEL = {"rel_delta": "Relative delta  (δ / total)", "TAR": "Theta/alpha ratio  (TAR)",
-              "DAR": "Delta/alpha ratio  (DAR)", "log_delta": "log delta power", "low_freq_rel": "low-freq / total"}
+# One display name per quantity, from the shared registry -- the same string this feature gets on every
+# other axis, colourbar and legend in the paper.
+FEAT_LABEL = {k: palette.flabel(k) for k in ("rel_delta", "TAR", "DAR", "log_delta", "low_freq_rel")}
 FEAT_AUC = {"rel_delta": 0.72, "TAR": 0.82, "DAR": 0.79, "log_delta": 0.74, "low_freq_rel": 0.72}
 TABLE = "data/derived/channel_stage_features.parquet"
 # Review C100: the posterior dominant rhythm is read clinically from O1/O2 (at most P3/P4), not C3/C4, so

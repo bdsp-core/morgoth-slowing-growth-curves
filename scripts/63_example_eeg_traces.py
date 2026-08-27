@@ -226,6 +226,9 @@ def main():
                                 RIGHT - LEFT, TRACE_H_IN / FIG_H])
             axt = fig.add_axes([LEFT, top - cell / FIG_H, RIGHT - LEFT, TEXT_H / FIG_H]); axt.axis("off")
             axt.set_zorder(-1)
+            # One letter per example, so the three cases are citable from the text individually.
+            axe.text(-0.075, 1.14, "ABC"[rr], transform=axe.transAxes, fontsize=11, fontweight="bold",
+                     va="bottom", ha="left")
             kind = "Focal" if r.isfoc else "Generalized"
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()
             head = f"{kind} · {r.peakz:.1f} SD · {r.domstage} · {age}{sex}"

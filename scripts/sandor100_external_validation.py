@@ -62,6 +62,34 @@ def _resolve_sandor_dir():
         "or run scripts/reproduce_story.sh, which skips this step cleanly when SANDOR_DIR is unset.")
 
 
+# The published, de-identified panel (scripts/export_sai100_panel.py). When present this is the source, so
+# Figure 3 rebuilds from git + S3 like every other display item; the Box/DUA workbook is only the fallback
+# for regenerating the export itself. See REPRODUCE.md.
+PANEL = Path("data/derived/sai100_panel.parquet")
+
+
+def _panel(axis: str) -> pd.DataFrame:
+    """The SAI-100 panel for one axis: expert votes + SCORE-AI + gate, published or from the workbook."""
+    if PANEL.exists():
+        d = pd.read_parquet(PANEL)
+        return d[d.axis == axis].drop(columns=["axis"]).reset_index(drop=True)
+    return pd.read_excel(Path(os.environ.get("SANDOR_DIR") or _resolve_sandor_dir())
+                         / "Morgoth_results" / AXIS_FILE[axis])
+
+
+def _ages() -> dict:
+    """Study pseudonym -> age. Ages above 89 are binned to 90 in the published table (Safe Harbor)."""
+    if PANEL.exists():
+        d = pd.read_parquet(PANEL).drop_duplicates("file_name")
+        return {str(k).strip(): float(v) for k, v in zip(d.file_name, d.age_years)}
+    demo = pd.read_excel(Path(os.environ.get("SANDOR_DIR") or _resolve_sandor_dir())
+                         / "validation_study_excel_export.xlsx", sheet_name="Demographics")
+    return {str(r[demo.columns[0]]).strip(): float(r["age_years"]) for _, r in demo.iterrows()}
+
+
+AXIS_FILE = {"focal": "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx",
+             "generalized": "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx"}
+
 SB_DIR = Path(os.environ.get("SANDOR_DIR") or
               _resolve_sandor_dir())
 MR = SB_DIR / "Morgoth_results"
@@ -85,8 +113,7 @@ def train_heads():
 
 
 def score_sandor(gen, foc, foc_med, amt_med):
-    demo = pd.read_excel(SB_DIR / "validation_study_excel_export.xlsx", sheet_name="Demographics")
-    age_of = {str(r[demo.columns[0]]).strip(): float(r["age_years"]) for _, r in demo.iterrows()}
+    age_of = _ages()
     rows = []
     for out in sorted(SM.glob("eeg_id=SB_*")):
         eid = out.name.split("=")[1]; n = int(eid.split("_")[1]); key = f"ID{n:03d}"
@@ -107,8 +134,8 @@ def score_sandor(gen, foc, foc_med, amt_med):
 
 
 def eval_axis(scores, axis, mr_file, ax):
-    """axis in {focal, generalized}; merge our score with the pre-joined SCORE-AI/Morgoth/expert file."""
-    d = pd.read_excel(MR / mr_file)
+    """axis in {focal, generalized}; merge our score with the pre-joined SCORE-AI/Morgoth/expert panel."""
+    d = _panel(axis)
     d["key"] = d.file_name.astype(str).str.strip()
     m = scores.merge(d, on="key", how="inner")
     expert_cols = [c for c in d.columns if c.startswith("expert_")]

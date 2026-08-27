@@ -27,19 +27,62 @@ PY="${PY:-$([ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)}"
 command -v "$PY" >/dev/null 2>&1 || { echo "no usable python (PY=$PY)"; exit 1; }
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/fresh_install.XXXXXX")" || exit 1
-STASH="$WORK/stash"; LOGS="$WORK/logs"; mkdir -p "$STASH/files" "$LOGS"
+LOGS="$WORK/logs"; mkdir -p "$LOGS"
 D=data/derived
+# The hidden copies stay INSIDE data/derived, under a name that says what they are. An earlier version
+# moved them to a temp directory: if this script then died, or anything else touched data/derived while it
+# ran, the real tables ended up orphaned in /tmp and data/derived was left holding empty directories. Keeping
+# them here means a crash leaves the data one obvious rename from correct, and recover_stash() below puts it
+# back automatically on the next run.
+STASH="$D/.fresh_install_stash"
+LOCK="$D/.fresh_install.lock"
 
-restore() {
+recover_stash() {
+  # A previous run died before restoring. Put everything back before doing anything else.
+  [ -d "$STASH" ] || return 0
+  echo "!! a previous run left hidden tables in $STASH — restoring them first"
   for d in segment_master segment_summary segment_deviation; do
-    if [ -d "$STASH/$d" ] || [ -L "$STASH/$d" ]; then rm -rf "$D/$d"; mv "$STASH/$d" "$D/$d"; fi
+    [ -e "$STASH/$d" ] || continue
+    rm -rf "$D/$d"; mv "$STASH/$d" "$D/$d"; echo "   recovered $d"
   done
   if [ -d "$STASH/files" ]; then
     find "$STASH/files" -maxdepth 1 -mindepth 1 -exec mv {} "$D/" \; 2>/dev/null
   fi
+  rmdir "$STASH/files" 2>/dev/null; rmdir "$STASH" 2>/dev/null
+}
+
+restore() {
+  for d in segment_master segment_summary segment_deviation; do
+    if [ -e "$STASH/$d" ]; then rm -rf "$D/$d"; mv "$STASH/$d" "$D/$d"; fi
+  done
+  if [ -d "$STASH/files" ]; then
+    find "$STASH/files" -maxdepth 1 -mindepth 1 -exec mv {} "$D/" \; 2>/dev/null
+  fi
+  rmdir "$STASH/files" 2>/dev/null; rmdir "$STASH" 2>/dev/null
+  rm -rf "$LOCK"
   echo "[restored local install]"
 }
+
+# Exclusive lock. While this runs, data/derived does NOT contain the full local install, so a producer or a
+# second copy of this script running at the same time silently reads a partial tree -- which is how 198 panel
+# partitions ended up empty. mkdir is atomic, so this is a real mutex, not a check-then-act.
+if ! mkdir "$LOCK" 2>/dev/null; then
+  echo "REFUSING: $LOCK exists — another verify_fresh_install.sh is running, or one died."
+  echo "  If nothing is running: rm -rf $LOCK  (and re-run; it will recover $STASH automatically)."
+  exit 1
+fi
+echo "$$ $(date -u +%FT%TZ)" > "$LOCK/owner"
 trap restore EXIT INT TERM
+recover_stash
+mkdir -p "$STASH/files"
+
+cat <<'BANNER'
+------------------------------------------------------------------------------
+  data/derived is being reduced to what S3 publishes for the duration of this
+  run. DO NOT run any producer, notebook or reproduce tier against this
+  checkout until it prints "[restored local install]".
+------------------------------------------------------------------------------
+BANNER
 
 # Snapshot the committed state of everything a producer may write, so step 2 can diff against it.
 BASE="$WORK/baseline.sha"

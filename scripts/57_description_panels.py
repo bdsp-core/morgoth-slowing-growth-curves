@@ -85,10 +85,10 @@ def main():
     fig, ax = plt.subplots(1, 3, figsize=(7.1, 2.08))
     sl = d[d.slowing]; cn = d[d.clean_normal == True]                                      # noqa: E712
     sub = d.sample(min(4000, len(d)), random_state=0)
-    cmap = {True: "#c8443c", False: "#bbb"}
-    ax[0].scatter(cn.delta_p90, cn.theta_p90, s=4, alpha=.15, color="#888", label="clean-normal", rasterized=True)
+    cmap = {True: palette.ABNORMAL, False: palette.NEUTRAL}
+    ax[0].scatter(cn.delta_p90, cn.theta_p90, s=4, alpha=.15, color=palette.NEUTRAL, label="clean-normal", rasterized=True)
     ax[0].scatter(sl.sample(min(3000, len(sl)), random_state=0).delta_p90,
-                  sl.sample(min(3000, len(sl)), random_state=0).theta_p90, s=4, alpha=.2, color="#c8443c",
+                  sl.sample(min(3000, len(sl)), random_state=0).theta_p90, s=4, alpha=.2, color=palette.ABNORMAL,
                   label="report slowing", rasterized=True)
     ax[0].axvline(1, ls=":", color="#666"); ax[0].axhline(1, ls=":", color="#666")
     ax[0].set_xlabel("delta-excess z (p90)"); ax[0].set_ylabel("theta-excess z (p90)")
@@ -96,10 +96,12 @@ def main():
     ax[0].set_xlim(-2, 5); ax[0].set_ylim(-2, 5)
     l1 = contrast(ax[1], [("report: theta\n(theta/mixed)", sl[sl.rep_theta].theta_p90),
                           ("report: no theta\n(delta only)", sl[~sl.rep_theta].theta_p90)],
-                  "Our THETA measure by report band", "theta-excess z (p90)", ["#2c7fb8", "#bbb"], ylim=(-2, 5))
+                  "Our THETA measure by report band", "theta-excess z (p90)",
+                  [palette.BAND["theta"], palette.NEUTRAL], ylim=(-2, 5))
     l2 = contrast(ax[2], [("report: delta\n(delta/mixed)", sl[sl.rep_delta].delta_p90),
                           ("report: no delta\n(theta only)", sl[~sl.rep_delta].delta_p90)],
-                  "Our DELTA measure by report band", "delta-excess z (p90)", ["#c8443c", "#bbb"], ylim=(-2, 5))
+                  "Our DELTA measure by report band", "delta-excess z (p90)",
+                  [palette.BAND["delta"], palette.NEUTRAL], ylim=(-2, 5))
     fig.tight_layout(w_pad=2.0)
     fig.savefig(FIG / "s4_d1.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     pth = mannwhitneyu(sl[sl.rep_theta].theta_p90.dropna(), sl[~sl.rep_theta].theta_p90.dropna()).pvalue
@@ -113,7 +115,8 @@ def main():
     fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.84))
     foc = d[d.slowing_focal == True].copy()                                                 # noqa: E712
     ll = contrast(ax[0], [(s, foc[foc.focal_side == s].lat_signed) for s in ["left", "bilateral", "right"]],
-                  "LENS L-R asymmetry by report side", "signed asymmetry z  (+ = left)", ["#c8443c", "#999", "#2c7fb8"], ylim=(-3, 3))
+                  "LENS L-R asymmetry by report side", "signed asymmetry z  (+ = left)",
+                  palette.side_colors(["left", "bilateral", "right"]), ylim=(-3, 3))
     ax[0].axhline(0, ls="--", color="#666")
 
     md += ["## D2 — laterality & region", "- laterality: " + "; ".join(ll)]
@@ -139,7 +142,9 @@ def main():
         bi = rng.choice(i.values, size=(2000, len(i)), replace=True).mean(axis=1)
         bo = rng.choice(o.values, size=(2000, len(o)), replace=True).mean(axis=1)
         dcis.append(tuple(np.percentile(bi - bo, [2.5, 97.5])))
-    ax[1].bar(xx, diffs, .5, color=palette.ABNORMAL, zorder=2)
+    # The x-axis already names the lobes, so the bars carry no colour encoding (review: do not spend a hue
+    # where the axis has already said it).
+    ax[1].bar(xx, diffs, .5, color=palette.NEUTRAL, zorder=2)
     ax[1].errorbar(xx, diffs, yerr=[[d - lo for d, (lo, _) in zip(diffs, dcis)],
                                     [hi - d for d, (_, hi) in zip(diffs, dcis)]],
                    fmt="none", ecolor="#333", elinewidth=1.2, capsize=3, zorder=3)
@@ -171,7 +176,8 @@ def main():
     # forces the whole composite to be scaled down to fit the page height, shrinking every panel's type.
     fig, ax = plt.subplots(figsize=(7.1, 2.55))
     aa = contrast(ax, [(t, d[d.gen_topography == t].antpost) for t in ["anterior", "posterior", "unspec"]],
-                  "Our A-P gradient by report topography", "anterior − posterior z  (+ = frontal)", ["#c8443c", "#2c7fb8", "#bbb"], ylim=(-2, 2))
+                  "Our A-P gradient by report topography", "anterior − posterior z  (+ = frontal)",
+                  palette.topo_colors(["anterior", "posterior", "unspec"]), ylim=(-2, 2))
     ax.axhline(0, ls="--", color="#666")
     fig.tight_layout()
     fig.savefig(FIG / "s4_d3.png", dpi=300, bbox_inches="tight"); plt.close(fig)
@@ -180,13 +186,13 @@ def main():
 
     # ---------- D4 persistence ----------
     fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.84))
-    ax[0].hist(d[d.clean_normal == True].prevalence, bins=40, alpha=.6, color="#888", density=True, label="clean-normal")  # noqa: E712
-    ax[0].hist(d[d.slowing].prevalence, bins=40, alpha=.6, color="#c8443c", density=True, label="report slowing")
+    ax[0].hist(d[d.clean_normal == True].prevalence, bins=40, alpha=.6, color=palette.NEUTRAL, density=True, label="clean-normal")  # noqa: E712
+    ax[0].hist(d[d.slowing].prevalence, bins=40, alpha=.6, color=palette.ABNORMAL, density=True, label="report slowing")
     for x, lab_ in [(.01, "occasional"), (.10, "frequent"), (.50, "abundant"), (.90, "continuous")]:
         ax[0].axvline(x, ls=":", color="#666"); ax[0].text(x, ax[0].get_ylim()[1]*.9, lab_, rotation=90, fontsize=7, va="top")
     ax[0].set_xlabel("prevalence (frac abnormal segments)"); ax[0].set_ylabel("density")
     ax[0].set_title("Prevalence + ACNS scale", fontsize=9); ax[0].legend(frameon=False, fontsize=8, loc="upper right")
-    ax[1].hist(np.clip(d[d.slowing].longest_run_min, 0, 30), bins=40, color="#c8443c", alpha=.7)
+    ax[1].hist(np.clip(d[d.slowing].longest_run_min, 0, 30), bins=40, color=palette.ABNORMAL, alpha=.7)
     ax[1].set_xlabel("longest continuous run (min)"); ax[1].set_ylabel("recordings")
     ax[1].set_title("Longest run (report slowing)", fontsize=9)
     fig.tight_layout(w_pad=2.0)
@@ -202,14 +208,15 @@ def main():
     fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.84))
     Sm = S.merge(d[["eeg_id", "clean_normal", "slowing"]], on="eeg_id")
     xs = range(len(STAGES))
-    for grp, dd, col in [("report slowing", Sm[Sm.slowing], "#c8443c"), ("clean-normal", Sm[Sm.clean_normal == True], "#888")]:  # noqa: E712
+    for grp, dd, col in [("report slowing", Sm[Sm.slowing], palette.ABNORMAL),
+                         ("clean-normal", Sm[Sm.clean_normal == True], palette.NEUTRAL)]:  # noqa: E712
         m = [dd[dd.stage == st].prevalence.mean() for st in STAGES]
         ax[0].plot(xs, m, "o-", color=col, label=grp)
     ax[0].set_xticks(list(xs)); ax[0].set_xticklabels(STAGES)
     ax[0].set_ylabel("prevalence (mean)", fontsize=8.5)
     ax[0].set_title("Slowing prevalence by stage", fontsize=9)
     ax[0].legend(frameon=False, fontsize=8, loc="center left"); ax[0].grid(alpha=.2)
-    for band, col in [("delta_p90", "#c8443c"), ("theta_p90", "#2c7fb8")]:
+    for band, col in [("delta_p90", palette.BAND["delta"]), ("theta_p90", palette.BAND["theta"])]:
         m = [Sm[Sm.slowing][Sm[Sm.slowing].stage == st][band].median() for st in STAGES]
         ax[1].plot(xs, m, "o-", color=col, label=band.replace("_p90", "-excess z"))
     ax[1].set_xticks(list(xs)); ax[1].set_xticklabels(STAGES)

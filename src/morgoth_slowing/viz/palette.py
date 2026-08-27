@@ -34,6 +34,67 @@ def stage_colors(stages=STAGE_ORDER):
     return [STAGE[s] for s in stages]
 
 
+# --- one hue, one concept ------------------------------------------------------------------------------
+# The figure review found red carrying eight meanings across the set and blue nearly as many: red was
+# "left hemisphere" in one panel, "report slowing" in the next, "delta band" in a third and "anterior" in a
+# fourth, so a reader who learned the encoding from Figure 6 misread Figure 7. The fix is not a nicer
+# palette, it is a REGISTRY: every concept that gets a colour anywhere gets it here, once, and the families
+# below never share a hue.
+#
+# Reserved above and not reused for anything else:
+#   MORGOTH purple · OURS orange (LENS) · SCORE_AI blue · EXPERTS/CHANCE grey · ABNORMAL brick
+#
+# Rule of thumb before adding to this file: if the x-axis already names the categories, do not encode them
+# in colour at all -- use NEUTRAL and let the axis do the work.
+
+NEUTRAL = "#8c8c8c"      # clean-normal / reference / "the other group" -- the SAME grey everywhere
+
+# bands (delta vs theta). Never the method hues, never the laterality hues.
+BAND = {"delta": ABNORMAL, "theta": "#1b9e77", "mixed": NEUTRAL}
+
+# laterality. Anatomy, not pathology -- deliberately outside the warm/cool axis used for bands.
+SIDE = {"left": "#762a83", "bilateral": NEUTRAL, "right": "#1b7837"}
+
+# anterior/posterior topography.
+TOPO = {"anterior": "#a6761d", "posterior": "#386cb0", "unspec": NEUTRAL}
+
+
+def band_colors(keys):
+    return [BAND[k] for k in keys]
+
+
+def side_colors(keys):
+    return [SIDE[k] for k in keys]
+
+
+def topo_colors(keys):
+    return [TOPO[k] for k in keys]
+
+
+# --- one display name per quantity ----------------------------------------------------------------------
+# The same measure appeared as "Relative delta (δ / total)", "rel_delta" and "relative delta" on three axes
+# of the same paper, and the theta/alpha ratio as "TAR", "log TAR" and "theta/alpha ratio". Column names are
+# not display names; look the display name up here.
+FEATURE_LABEL = {
+    "rel_delta":    "relative delta (δ / total)",
+    "rel_theta":    "relative theta (θ / total)",
+    "rel_alpha":    "relative alpha (α / total)",
+    "TAR":          "theta/alpha ratio (TAR)",
+    "DAR":          "delta/alpha ratio (DAR)",
+    "DTR":          "delta/theta ratio (DTR)",
+    "log_delta":    "delta excess (log δ)",
+    "log_theta":    "theta excess (log θ)",
+    "log_TAR":      "theta/alpha ratio (TAR)",
+    "log_DAR":      "delta/alpha ratio (DAR)",
+    "low_freq_rel": "low-frequency relative power",
+}
+
+
+def flabel(key: str) -> str:
+    """Display name for a feature column. Unknown keys pass through, so a new feature is visible, not silent."""
+    return FEATURE_LABEL.get(key, key)
+
+
 # --- shared publication style (Tufte-leaning) ---------------------------------------------------------------
 # Applied once at import so every figure script that imports this module inherits the same look: no top/right
 # spines (drop the box), frameless legends, thin axes, and one consistent font ladder. Individual scripts can

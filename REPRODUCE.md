@@ -76,6 +76,13 @@ aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/segment_devi
     data/derived/segment_deviation/
 ```
 
+The first sync line above also brings down `sai100_panel.parquet` (19 KB): the de-identified SAI-100 expert
+votes and comparator predictions that **Figure 3** needs. Until 2026-08-27 that panel was read from the
+SCORE-AI study's Excel workbooks on one developer's Box mount, so Figure 3 was the one display item that
+rebuilt on exactly one machine. `scripts/export_sai100_panel.py` regenerates the published table from those
+workbooks and asserts the de-identification (study pseudonyms only, integer rater ids, ages above 89 binned
+to 90); the workbooks themselves stay where they are, and the EEG signal is not redistributed.
+
 `scripts/preflight_reproduce.py` detects which tier you have and checks only what that tier needs; it still
 fails loudly on a table that is present but INCOMPLETE, which is the failure mode that silently changed
 Table S2 during this revision.
@@ -104,7 +111,7 @@ Figures are assembled into the submission set by
 |---|---|---|---|
 | **Figure 1** normative model | `76_keystone_growth_grid.py`, `77_topoplots_by_age.py` | `grid_norm.json`, `segment_deviation/` | `figures/growth_v2/{keystone_growth_grid,topo_rel_delta_by_age_stage}.png` |
 | **Figure 2** detection (gen + focal) | `54_single_model_train_eval.py`, `55_recording_model.py` | `single_model_segfeats.parquet` | `figures/story/{s0d_single_occasion_generalized,s0e_occasion_focal}.png` |
-| **Figure 3** SAI-100 external | `sandor100_external_validation.py` | SAI-100 set + `segment_master/eeg_id=SB_*` | `figures/story/sandor100_slowing.png` |
+| **Figure 3** SAI-100 external | `sandor100_external_validation.py` | `sai100_panel.parquet` + `segment_master/eeg_id=SB_*` | `figures/story/sandor100_slowing.png` |
 | **Figure 4** example focal | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_focal.png` |
 | **Figure 5** example generalized | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_generalized.png` |
 | **Figure 6** description contrast | `57_description_panels.py` | `description_recording.parquet`, `description_stage.parquet` | `figures/story/{s4_d2,s4_d5}.png` |

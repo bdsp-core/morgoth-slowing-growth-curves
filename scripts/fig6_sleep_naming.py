@@ -13,7 +13,7 @@ from pathlib import Path
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from morgoth_slowing.viz import palette  # noqa: F401  (shared Tufte publication style)
-from morgoth_slowing.viz.palette import NORMAL, ABNORMAL, EXPERTS
+from morgoth_slowing.viz.palette import ABNORMAL, NEUTRAL, CHANCE
 
 MD = Path("results/p6_sleep_underreporting.md")
 OUT = Path("figures/growth_v2/v4a_wake_sleep.png")
@@ -38,7 +38,10 @@ def main():
         + "".join(f"| {l.replace(chr(10), ' ')} | {n:,} | {r:.1f}% |\n"
                  for l, n, r in zip(labels, ns, rates))
         + f"| **classified total** | **{sum(ns):,}** | |\n")
-    colors = ["#2c7fb8", ABNORMAL, EXPERTS]                    # wake (blue) / sleep-only (red) / base (grey)
+    # The x-axis names all three groups, so colour is not doing categorical work here. One neutral fill,
+    # with only the finding -- slowing visible ONLY in sleep -- carrying the abnormal accent. Blue used to
+    # mean "visible in wake" in this figure and SCORE-AI two figures earlier.
+    colors = [NEUTRAL, ABNORMAL, NEUTRAL]
 
     # 6.4 in wide made this the largest type in the set (ticks ~11 pt against ~7 pt elsewhere) once the
     # journal scaled it to column width. Page-width canvas, so a specified point size IS the printed size.
@@ -61,7 +64,7 @@ def main():
     for b, r, n, (lo, hi) in zip(bars, rates, ns, cis):
         ax.text(b.get_x() + b.get_width() / 2, hi + 1.4, f"{r:.1f}% [{lo:.0f}\u2013{hi:.0f}]\n(n={n:,})",
                 ha="center", va="bottom", fontsize=8, fontweight="bold")
-    ax.axhline(rates[2], ls="--", lw=1, color="#bbb")          # base-rate reference
+    ax.axhline(rates[2], ls="--", lw=1, color=CHANCE)          # base-rate reference
     ax.set_ylabel("reports that name slowing (%)", fontsize=9)
     ax.set_ylim(0, max(rates) + 20)
     ax.set_yticks(range(0, 81, 20))
