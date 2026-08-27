@@ -38,8 +38,10 @@ against clinical EEG reports and the human inter-rater ceiling. Part of the [bds
   against (and beats on generalized slowing on ON-100, trails on SAI-100), not a component of LENS.
   It cannot support any claim about seeing what experts miss: it is trained on their calls.
 - **Governance:** every reportable clause is ALLOWED / PROVISIONAL / FORBIDDEN in
-  [docs/claims_table.md](docs/claims_table.md) (severity adjectives, ACNS frequency words, and
-  band-from-our-features are forbidden output).
+  [docs/claims_table.md](docs/claims_table.md). Severity adjectives and ACNS frequency words are FORBIDDEN
+  output; the δ/θ/mixed band is **PROVISIONAL** — it ships only as a low-confidence gloss, calibrated to the
+  report distribution rather than to accuracy, because its agreement (κ ≈ 0.10) sits at the expert-vs-expert
+  floor. Prevalence is reported as a percentage, never as a word.
 
 ## Canonical facts (do not re-derive)
 

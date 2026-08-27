@@ -129,12 +129,14 @@ def compose(out_path: Path, panels: list[str], ncols: int) -> bool:
     cell_h = [COLW * im.shape[0] / im.shape[1] for im in imgs]   # height each panel needs at width COLW
     row_h = [max(cell_h[r * ncols:(r + 1) * ncols]) for r in range(nrows)]
     fig = plt.figure(figsize=(COLW * ncols, sum(row_h)))
-    gs = fig.add_gridspec(nrows, ncols, height_ratios=row_h, hspace=0.03, wspace=0.03)
+    # hspace was 0.03, which put each panel letter on top of the previous panel's x-axis labels (the "B"
+    # of Figure 2 and Figure 6 sat in among the tick labels of panel A). The letter needs a line of its own.
+    gs = fig.add_gridspec(nrows, ncols, height_ratios=row_h, hspace=0.075, wspace=0.03)
     for i, im in enumerate(imgs):
         r, c = divmod(i, ncols)
         ax = fig.add_subplot(gs[r, c]); ax.imshow(im); ax.axis("off")
         if n > 1:
-            ax.text(0.0, 1.0, chr(65 + i), transform=ax.transAxes, fontsize=17, fontweight="bold",
+            ax.text(0.0, 1.01, chr(65 + i), transform=ax.transAxes, fontsize=17, fontweight="bold",
                     va="bottom", ha="left")
     fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
     fig.savefig(out_path.with_suffix(".pdf"), dpi=300, bbox_inches="tight", facecolor="white")  # publication PDF

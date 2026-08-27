@@ -129,6 +129,16 @@ def main():
               f"({100*_both/_nf:.1f}% of the focal set, {100*_both/_ng:.1f}% of the pathologic generalized "
               f"set). The two axes are therefore substantially independent, which is why they are detected "
               f"by separate heads."]
+    # Band denominator. SS3.1's band row is a share of all cleanly paired abnormals; SS3.7 and SS5 quote the
+    # share among the recordings that NAME a band, which is a different denominator and was the source of a
+    # "~64% mixed" figure that did not reconcile with 50.9%. Emit both so neither has to be recomputed.
+    _bn = {b: int(((_ab.focal_band == b) | (_ab.gen_band == b)).sum()) for b in ("delta", "theta", "mixed")}
+    _bt = sum(_bn.values())
+    L += ["", f"**Band denominator.** {_bt:,} of the {len(_ab):,} cleanly paired abnormal recordings name a "
+              f"band at all. Among those, **{100*_bn['mixed']/_bt:.1f}% say mixed** "
+              f"({100*_bn['delta']/_bt:.1f}% delta, {100*_bn['theta']/_bt:.1f}% theta) --- the denominator "
+              f"SS3.7 and SS5 use. The percentages in the Band rows above are of all "
+              f"{len(_ab):,} cleanly paired abnormals instead."]
     L += ["", f"_Generated from the new run's canonical tables (recording_meta + recording_labels); "
               f"n={len(d):,} included recordings, {d.patient_id.nunique():,} unique patients._"]
     OUT.parent.mkdir(parents=True, exist_ok=True)

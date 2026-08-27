@@ -47,6 +47,8 @@ CLASSIFIED = {
     "reproduce_story": "the runner itself, not a producer",
     "sandor100_": "prefix of sandor100_external_validation / sandor100_stage_extract, both in the runner",
     "assemble_manuscript_figures": "stage 5 - composits committed figures for the docx, produces no new result",
+    "verify_fresh_install": "a VERIFIER, not a producer - re-runs every producer with only git + S3 and diffs",
+    "certify_reproducibility": "this script",
 }
 
 

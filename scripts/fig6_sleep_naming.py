@@ -28,6 +28,16 @@ def main():
     ns = [int(n.replace(",", "")) for n, _ in rows]
     rates = [float(r) for _, r in rows]
     labels = ["visible in\nwake", "visible only\nin sleep", "visible in\nneither (base)"]
+    # SS3.8 quotes the classified total, which is the sum of the three groups; nothing emitted it, so the
+    # reader was left to add three numbers that do not obviously sum to any denominator stated elsewhere.
+    Path("results/story").mkdir(parents=True, exist_ok=True)
+    Path("results/story/p6_naming_totals.md").write_text(
+        "# Figure 7 denominators (where LENS finds the slowing visible)\n\n"
+        "One cleanly paired recording per patient. Groups are exclusive and exhaust the classified set.\n\n"
+        "| group | n | reports that name slowing |\n|---|---|---|\n"
+        + "".join(f"| {l.replace(chr(10), ' ')} | {n:,} | {r:.1f}% |\n"
+                 for l, n, r in zip(labels, ns, rates))
+        + f"| **classified total** | **{sum(ns):,}** | |\n")
     colors = ["#2c7fb8", ABNORMAL, EXPERTS]                    # wake (blue) / sleep-only (red) / base (grey)
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6))
