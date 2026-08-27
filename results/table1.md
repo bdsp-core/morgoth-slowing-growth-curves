@@ -38,4 +38,6 @@ Analysis set: recordings passing inclusion (SAP §3.2), panels excluded (§3.6 i
 |     Band theta | 1,709 (13.5%) | 1,264 (13.9%) | 445 (12.4%) | — | 1,709 (13.5%) |
 |     Band mixed | 6,447 (50.9%) | 4,553 (50.1%) | 1,894 (52.8%) | — | 6,447 (50.9%) |
 
+**Focal / generalized co-occurrence (Abnormal column).** Of 8,016 focal-slowing and 6,841 pathologic generalized-slowing recordings, **2,338 carry both** (29.2% of the focal set, 34.2% of the pathologic generalized set). The two axes are therefore substantially independent, which is why they are detected by separate heads.
+
 _Generated from the new run's canonical tables (recording_meta + recording_labels); n=25,536 included recordings, 21,757 unique patients._

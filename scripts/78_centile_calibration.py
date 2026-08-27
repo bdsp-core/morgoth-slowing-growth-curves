@@ -225,6 +225,36 @@ def main() -> None:
         lines += [f"**{arm}** — max |observed − nominal| = **{a.err.max():.1f} points** "
                   f"(median {a.err.median():.1f}); "
                   f"{a.n_obs.max():,} observations, {a.n_patients.max():,} patients.", ""]
+    # PER-STAGE breakdown. SS3.2 quotes the deep-sleep coverage specifically ("N held-out N3 observations
+    # from M patients, calibrating to a median X-point discrepancy") because N3 is where the staging
+    # objection bites, but only the ARM-level totals were emitted, so those three numbers had no source.
+    lines += ["## Per-stage coverage and discrepancy", "",
+              "| arm | stage | observations | patients | median \\|observed − nominal\\| | max |",
+              "|---|---|---|---|---|---|"]
+    # SS3.2 also quotes the held-out SPLIT ("a 3,000-recording sample ... the remaining N clean-normal
+    # recordings"), which nothing emitted, so those counts had no source either. State them here.
+    try:
+        _lab = pd.read_parquet("data/derived/recording_labels_sap.parquet").drop_duplicates("eeg_id")
+        _all_cn = _lab[(_lab.clean_normal == True) & (_lab.clean_pair == True) & _lab.age.notna()]  # noqa: E712
+        _fit = fitted_ids()                      # the seeded 3,000 the norms are fitted on
+        _held = _all_cn[~_all_cn.eeg_id.isin(_fit)]
+        lines += [f"**Held-out split.** The norms are fitted on a seeded **{len(_fit):,}**-recording sample "
+                  f"of the clean-normal reference; the remaining **{len(_held):,}** clean-normal recordings "
+                  f"(**{_held.patient_id.nunique():,}** patients) are held out and are what this page "
+                  f"scores.", ""]
+    except Exception as _e:                      # never fail the figure over a provenance line
+        lines += [f"_(held-out split sizes unavailable: {type(_e).__name__})_", ""]
+
+    te = t.assign(err=(t.observed - t.nominal).abs())        # `err` is added per-arm above, not on `t`
+    for arm in arms:
+        a = te[te.arm == arm]
+        for stage in [s for s in ["W", "N1", "N2", "N3", "REM"] if s in set(a.stage)]:
+            s_ = a[a.stage == stage]
+            if not len(s_):
+                continue
+            lines.append(f"| {arm} | {stage} | {s_.n_obs.max():,} | {s_.n_patients.max():,} | "
+                         f"{s_.err.median():.1f} | {s_.err.max():.1f} |")
+    lines += [""]
     lines += ["| stage | feature | arm | nominal | observed | 95% CI |", "|---|---|---|---|---|---|"]
     for _, r in t.iterrows():
         lines.append(f"| {r.stage} | {r.feature} | {r.arm} | {r.nominal} | {r.observed} | "

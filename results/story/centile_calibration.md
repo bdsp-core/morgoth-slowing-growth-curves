@@ -6,6 +6,22 @@ Fraction of held-out observations below each model-predicted centile. A calibrat
 
 **external no-slowing (ON-100)** — max |observed − nominal| = **21.0 points** (median 2.3); 1,882 observations, 66 patients.
 
+## Per-stage coverage and discrepancy
+
+| arm | stage | observations | patients | median \|observed − nominal\| | max |
+|---|---|---|---|---|---|
+**Held-out split.** The norms are fitted on a seeded **3,000**-recording sample of the clean-normal reference; the remaining **7,216** clean-normal recordings (**6,779** patients) are held out and are what this page scores.
+
+| internal held-out normals | W | 42,631 | 1,454 | 0.9 | 5.4 |
+| internal held-out normals | N1 | 14,113 | 1,275 | 0.6 | 3.2 |
+| internal held-out normals | N2 | 17,820 | 1,086 | 1.1 | 2.6 |
+| internal held-out normals | N3 | 4,836 | 420 | 3.7 | 9.2 |
+| internal held-out normals | REM | 8,629 | 1,155 | 0.8 | 4.0 |
+| external no-slowing (ON-100) | W | 1,882 | 66 | 2.6 | 4.9 |
+| external no-slowing (ON-100) | N1 | 837 | 66 | 3.5 | 21.0 |
+| external no-slowing (ON-100) | N2 | 835 | 61 | 2.8 | 7.7 |
+| external no-slowing (ON-100) | REM | 493 | 59 | 1.8 | 8.1 |
+
 | stage | feature | arm | nominal | observed | 95% CI |
 |---|---|---|---|---|---|
 | W | relative delta | internal held-out normals | 3 | 2.08 | 1.7–2.51 |

@@ -120,6 +120,19 @@ run 4 results/table5_human_ceiling.md          "S2 human ceiling (recompute_huma
 run 4 results/severity_null_v6.md              "S1 severity null (109)"                           -- py scripts/109_severity_null_v6.py
 # -- Table 1: cohort
 run 4 results/table1.md                        "Table 1 cohort (table1_sap)"                      -- py scripts/table1_sap.py
+# Figures 4, 5, S1, S2 and S3 were MISSING from this runner: their producers existed and worked, but nothing
+# invoked them, so `reproduce_story.sh results` left whatever was committed in place and the one-command
+# reproduction silently did not cover five display items. 62 must precede 63 (63 reads s4_examples.parquet).
+run 4 figures/story/architecture.png           "Fig S1 architecture (architecture_diagram)"       -- py scripts/architecture_diagram.py
+run 4 results/story/s4_examples.md             "Fig 4 example cards (62)"                         -- py scripts/62_example_reports_panel.py
+run 4 figures/story/s4_examples_eeg_focal.png  "Fig 4/5 example EEG traces (63)"                  -- py scripts/63_example_eeg_traces.py
+run 4 figures/story/s9_centile_calibration.png "Fig S2 held-out centile calibration (78)"         -- py scripts/78_centile_calibration.py
+run 4 figures/figs/vanputten_panel_s7.png      "Fig S3 van Putten panel head-to-head (vanputten_panel_s7)" -- py scripts/vanputten_panel_s7.py
+
+# These back numbers quoted in the text (SS2.5 curve-fit agreement, SS2.7 top-k choice) and were likewise
+# never invoked, so those numbers could drift from the code with nothing to catch it.
+run 4 results/story/curve_fit_diagnostic.md    "SS2.5 curve-fit agreement sweep (79)"              -- py scripts/79_curve_fit_diagnostic.py
+run 4 results/story/topk_sweep.md              "SS2.7 top-k aggregation sweep (80)"                -- py scripts/80_topk_sweep.py
 
 hdr "STAGE 5 — assemble the dashboard + the manuscript figure set"
 run 5 __always__ "story dashboard (build_story_dashboard)" -- py scripts/build_story_dashboard.py

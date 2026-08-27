@@ -115,6 +115,20 @@ def main():
          "|---|" + "---|" * len(cols)]
     for r in rows:
         L.append(f"| {r} | " + " | ".join(c.get(r, "—") for _, c in cols) + " |")
+    # Focal/generalized CO-OCCURRENCE. SS3.1 quotes this alongside the two marginals in the Abnormal column,
+    # but nothing emitted it, so the only number in that sentence with no source was the intersection -- and
+    # it could not be re-derived from recording_labels_sap either, because this table applies its own
+    # inclusion + clean_pair filtering. Compute it here, from the same frame the marginals come from.
+    _ab = d[(d.clean_pair == True) & (d.is_abnormal == True)]                      # noqa: E712
+    _f = _ab.has_focal_slow == True                                                # noqa: E712
+    _g = (_ab.has_gen_slow == True) & (_ab.is_abnormal == True)                    # noqa: E712
+    _both = int((_f & _g).sum())
+    _nf, _ng = int(_f.sum()), int(_g.sum())
+    L += ["", f"**Focal / generalized co-occurrence (Abnormal column).** Of {_nf:,} focal-slowing and "
+              f"{_ng:,} pathologic generalized-slowing recordings, **{_both:,} carry both** "
+              f"({100*_both/_nf:.1f}% of the focal set, {100*_both/_ng:.1f}% of the pathologic generalized "
+              f"set). The two axes are therefore substantially independent, which is why they are detected "
+              f"by separate heads."]
     L += ["", f"_Generated from the new run's canonical tables (recording_meta + recording_labels); "
               f"n={len(d):,} included recordings, {d.patient_id.nunique():,} unique patients._"]
     OUT.parent.mkdir(parents=True, exist_ok=True)

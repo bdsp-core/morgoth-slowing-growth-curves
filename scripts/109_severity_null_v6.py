@@ -118,6 +118,51 @@ def main():
     fig.savefig("figures/growth_v2/severity_recalibrated.png", dpi=300)
     plt.close(fig)
 
+    # ---- robustness sweep -------------------------------------------------------------------------
+    # The manuscript claimed the null "is true over an exhaustive search across 168 combinations of
+    # feature x statistic x normalization x stratum, where the largest |rho| anywhere is 0.179". No such
+    # sweep existed anywhere in this repository and no committed file contained those numbers, so the claim
+    # was unsupported. This runs the sweep it describes and reports what it actually finds.
+    sweep_rows = []
+    for feat in FEATS:
+        fz = d.dropna(subset=[feat]).copy()
+        for norm in ("raw", "age-normed |z|"):
+            col = feat if norm == "raw" else "absz"
+            for stratum in ["all"] + STAGES:
+                s = fz if stratum == "all" else fz[fz.stage == stratum]
+                if col not in s.columns:
+                    continue
+                agg = s.dropna(subset=[col]).groupby("eeg_id")[col].agg(
+                    MAX="max", P95=lambda x: np.nanquantile(x, .95)).reset_index()
+                agg = agg.merge(lab[["eeg_id", "patient_id"]], on="eeg_id", how="left")
+                agg["date"] = agg.eeg_id.str.split("_").str[-1].str[:8]
+                agg = agg.merge(ro[["bdsp_id", "date", "rep_sev"]].drop_duplicates(["bdsp_id", "date"]),
+                                left_on=["patient_id", "date"], right_on=["bdsp_id", "date"], how="left")
+                mm = agg[agg.rep_sev.notna() & agg.rep_sev.between(1, 3)]
+                if len(mm) < 50:
+                    continue
+                for stat in ("MAX", "P95"):
+                    r, pv = spearmanr(mm.rep_sev.values, mm[stat].values)
+                    if np.isfinite(r):
+                        sweep_rows.append(dict(feature=feat, normalization=norm, stratum=stratum,
+                                               statistic=stat, rho=float(r), p=float(pv), n=int(len(mm))))
+    sw = pd.DataFrame(sweep_rows)
+    sw.to_csv("results/story/severity_sweep.csv", index=False)
+    top = sw.reindex(sw.rho.abs().sort_values(ascending=False).index)
+    bonf = 0.05 / max(len(sw), 1)
+    n_sig = int((top.p < bonf).sum())
+    Path("results/story/severity_sweep.md").write_text(
+        "# Severity robustness sweep (does ANY parameterisation recover the adjective?)\n\n"
+        f"**{len(sw)} combinations** of feature x normalization x stratum x statistic. Largest |rho| anywhere "
+        f"is **{top.rho.abs().max():.3f}** ({top.iloc[0].feature}, {top.iloc[0].normalization}, "
+        f"{top.iloc[0].stratum}, {top.iloc[0].statistic}; p = {top.iloc[0].p:.2g}, n = {int(top.iloc[0].n):,}). "
+        f"Bonferroni threshold at {len(sw)} tests is p < {bonf:.2g}; **{n_sig}** combination(s) clear it.\n\n"
+        "| feature | normalization | stratum | statistic | rho | p | n |\n|---|---|---|---|---|---|---|\n"
+        + "\n".join(f"| {r.feature} | {r.normalization} | {r.stratum} | {r.statistic} | {r.rho:+.3f} | "
+                     f"{r.p:.2g} | {int(r.n):,} |" for r in top.head(20).itertuples()) + "\n")
+    print(f"  sweep: {len(sw)} combinations, max |rho| = {top.rho.abs().max():.3f}, "
+          f"{n_sig} clear Bonferroni (p < {bonf:.2g})")
+
     Path("results/severity_null_v6.md").write_text(
         "# Figure S1 — severity is a null result (regenerated on v6)\n\n"
         "Our continuous deviation score against the reader's own **mild / moderate / marked** adjective, on "
