@@ -14,11 +14,13 @@ FIGDIR = Path("figures/manuscript")
 # Tables live in results/ and are cited by legend in the manuscript, but the legend alone is not the table.
 # Round-1 review asked "where is Table 1? I don't see it anywhere" — so the table BODY is inlined here,
 # directly under its legend, and a missing source is fatal rather than silently omitted.
+# Keyed on the table's IDENTIFIER, not on its caption prose. The map used to hold the full legend string,
+# so the builder died the first time a caption was reworded -- and the .docx is the copy co-authors read.
 TABLES = {
-    "**Table 1 --- Cohort characteristics**":                  Path("results/table1.md"),
-    "**Table S1 --- van Putten qEEG full-family benchmark**":   Path("results/vanputten_fullcoverage.md"),
-    "**Table S2 --- Human ceiling**":                           Path("results/table5_human_ceiling.md"),
-    "**Table S3 --- Band calibration.**":                       Path("results/story/band_calibration.md"),
+    "Table 1":  Path("results/table1.md"),
+    "Table S1": Path("results/vanputten_fullcoverage.md"),
+    "Table S2": Path("results/table5_human_ceiling.md"),
+    "Table S3": Path("results/story/band_calibration.md"),
 }
 
 
@@ -40,19 +42,21 @@ def pipe_tables(md: str) -> str:
 
 
 def inline_tables(body: str) -> str:
-    for legend, src in TABLES.items():
-        if legend not in body:
-            raise SystemExit(f"table legend not found in manuscript: {legend}")
+    """Drop each table's rows in under its caption, found by identifier rather than by exact wording."""
+    for tid, src in TABLES.items():
+        pat = re.compile(rf"^- \*\*{re.escape(tid)} ---.*$", re.M)
+        m = pat.search(body)
+        if not m:
+            raise SystemExit(f"no caption line for {tid} in the manuscript "
+                             f"(expected a bullet starting '- **{tid} --- ')")
         if not src.exists():
             raise SystemExit(f"table source missing: {src} (regenerate via the results reproduce tier)")
         tbl = pipe_tables(src.read_text())
         if not tbl:
             raise SystemExit(f"no pipe table found in {src}")
-        # insert the table body after the full legend line (legend runs to the end of its paragraph)
-        i = body.index(legend)
-        j = body.index("\n", i)
+        j = m.end()
         body = body[:j] + "\n\n" + tbl + "\n" + body[j:]
-        print(f"  inlined {src} ({tbl.count(chr(10)) + 1} rows) under {legend[:34]}...")
+        print(f"  inlined {src} ({tbl.count(chr(10)) + 1} rows) under {tid}")
     return body
 
 
