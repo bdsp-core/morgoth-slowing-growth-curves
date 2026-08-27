@@ -89,10 +89,17 @@ def main():
 
     # Sized for the page, not for the screen: the composite gives each figure 7in of width, so authoring
     # wider than that shrinks every label below legibility (review C103). Kept at 7.1in.
-    fig = plt.figure(figsize=(7.1, 1.42 * nrow + 1.05))
+    # Height budget is set by the PAGE, not by the screen. Figure 1 is this grid stacked over the
+    # topography panel, and a journal prints the composite inside 190 x 240 mm. A composite taller than
+    # ~1.4x its width has to be scaled DOWN to fit the page height, which shrinks every label with it: at
+    # the old 1.42 in/row plus a 4-line in-figure title the 5.6 pt ticks printed at ~4 pt, which is what
+    # review comment C103 ("Figure 1 illegible") was actually about -- re-exporting at 300 dpi raised the
+    # resolution but not the printed point size. Shorter rows + the title moved to the caption (where CN
+    # wants it anyway) keep the composite under that limit, so nothing prints below 6 pt.
+    fig = plt.figure(figsize=(7.1, 1.22 * nrow + 0.42))
     # two sub-columns per feature: log-age development | linear-age adulthood
     gs = fig.add_gridspec(nrow, 2 * ncol, width_ratios=[1.35, 1.0] * ncol,
-                          hspace=0.16, wspace=0.06, left=0.115, right=0.995, top=0.855, bottom=0.085)
+                          hspace=0.16, wspace=0.06, left=0.135, right=0.995, top=0.935, bottom=0.115)
     tsplit = A2T(SPLIT_AGE)
 
     for cj, feat in enumerate(FEATURES):
@@ -127,7 +134,7 @@ def main():
                         ax.plot(xc, emp[m_c], color="k", lw=0.8, ls=(0, (3, 2)), alpha=0.7, zorder=4)
                 ax.set_ylim(ylo, yhi)
                 ax.grid(alpha=0.16, lw=0.4)
-                ax.tick_params(labelsize=5.6, length=2, pad=1.5)
+                ax.tick_params(labelsize=6.6, length=2, pad=1.5)
                 if dev:
                     ax.set_xlim(A2T(1 / 12), tsplit)
                     ax.set_xticks(A2T(DEV_TICKS))
@@ -143,24 +150,23 @@ def main():
                 # so hiding all but the first column leaves two thirds of the grid without a readable axis.
                 if k == 0:
                     if cj == 0:
-                        ax.set_ylabel(stage, fontsize=8.5, fontweight="bold", rotation=0,
-                                      ha="right", va="center", labelpad=30)
+                        ax.set_ylabel(stage, fontsize=9, fontweight="bold", rotation=0,
+                                      ha="right", va="center", labelpad=26)
                 else:
                     ax.tick_params(labelleft=False)
             if ri == 0:
                 axes_pair[0].set_title(f"{FEAT_LABEL.get(feat, feat)}\nAUROC ≈ {FEAT_AUC.get(feat, 0):.2f}",
-                                       fontsize=7.2, fontweight="bold", loc="left", pad=4)
+                                       fontsize=8, fontweight="bold", loc="left", pad=4)
             if ri == nrow - 1:
-                axes_pair[0].set_xlabel("age (log)", fontsize=6.2, labelpad=1)
-                axes_pair[1].set_xlabel("age (linear)", fontsize=6.2, labelpad=1)
+                axes_pair[0].set_xlabel("age (log)", fontsize=7, labelpad=1)
+                axes_pair[1].set_xlabel("age (linear)", fontsize=7, labelpad=1)
 
-    fig.suptitle("Normative EEG-slowing growth curves across the lifespan, by sleep stage and feature\n"
-                 f"{REGION_LABEL}; sexes pooled; GAMLSS/LMS BCT — solid median, dashed = model-free rolling "
-                 "median,\nbands p3–p97 / p10–p90 / p25–p75. Each cell: log-spaced development to "
-                 f"{SPLIT_AGE:.0f}y, then a linear adult axis.",
-                 fontsize=7.6, y=0.985)
+    # No in-figure title: what it used to say (region, sex pooling, BCT fit, the dashed model-free median,
+    # the three percentile bands, the log/linear age split) now lives in the Figure 1 caption in
+    # docs/manuscript_draft.md, which is where Clinical Neurophysiology wants it and where it costs no
+    # printed height. Keep the two in sync when either changes.
     out = Path("figures/growth_v2/keystone_growth_grid.png"); out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=300, facecolor="white"); plt.close(fig)
+    fig.savefig(out, dpi=300, facecolor="white", bbox_inches="tight"); plt.close(fig)
     print("wrote", out, f"[region={REGION}]")
 
 

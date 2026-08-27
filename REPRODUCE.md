@@ -122,6 +122,7 @@ Figures are assembled into the submission set by
 | **Table S1** van Putten full-coverage | `recompute_vanputten_fullcov.py` | `occasion_features.parquet` | `results/vanputten_fullcoverage.md` |
 | **Table S2** human ceiling | `recompute_human_ceiling_v6.py` | ON-100 panel votes | `results/table5_human_ceiling.md` |
 | **Table S3** band (δ/θ/mixed) calibration | `band_calibration.py` | `description_recording.parquet` (`band_dtr`) | `results/story/band_calibration.md` |
+| **Table S4** example generated vs clinical report text | `62_example_reports_panel.py` | `description_recording.parquet`, `report_manifest_v6.parquet`, source EDFs (S3) | `results/story/s4_examples.md` |
 
 ## Key quoted numbers → where they come from
 
@@ -134,6 +135,38 @@ Figures are assembled into the submission set by
 | Sleep under-reporting naming rates; spindle-verified AUROC | `95b_v4a_spindle_check.py` | `description_stage.parquet` + source EDFs |
 | Severity null (ρ≈0.05; 168-combination sweep) | `109_severity_null_v6.py` | `occasion_features.parquet` |
 | Slow-frequency null (ρ = 0.13 all-seg, 0.04 abnormal-only) | `81_slow_peak_frequency.py` | `report_manifest_v6.parquet` + source EDFs (S3) |
+
+### Known issue: `scripts/95b`'s spindle checkpoint GROWS, so §3.8's numbers move with it
+
+`scripts/95b_v4a_spindle_check.py` keeps a checkpoint at `data/derived/v4a_work/v4a_spindle_results_v2.parquet`
+and **skips any recording already in it**. That is deliberate — each recording costs an EDF pull from S3 — but
+it has a consequence worth stating plainly: a re-run on a machine that can reach more EDFs than the last one
+**adds** recordings and every §3.8 number shifts slightly. This is not nondeterminism; it is a larger sample.
+
+Measured on 2026-08-26: a re-run took the checkpoint from 601 to 627 attempted recordings and the usable set
+from 89/229 to **90 cases / 237 controls**. Every conclusion held and every AUROC moved by ≤0.004
+(spindle-verified log delta 0.858 → 0.860, DAR 0.789 → 0.789; N3 log delta 0.767 → 0.771, DAR 0.784 → 0.782).
+The manuscript now quotes the 90/237 figures.
+
+**So:** if your §3.8 numbers differ from the paper's, compare checkpoint composition before suspecting a bug —
+
+```bash
+python3 -c "import pandas as pd; d=pd.read_parquet('data/derived/v4a_work/v4a_spindle_results_v2.parquet'); \
+            print(len(d)); print(d.groupby(['group','status']).size())"
+# the paper's numbers: 627 rows; case ok=90, control ok=237
+```
+
+To reproduce the paper's figures exactly, sync the published checkpoint and do **not** re-run `95b`:
+
+```bash
+aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/v4a_work/ data/derived/v4a_work/
+```
+
+If you do re-run it and the checkpoint grows, publish it back so everyone else lands on the same numbers:
+
+```bash
+aws s3 sync data/derived/v4a_work/ s3://bdsp-opendata-credentialed/morgoth-slowing/derived/v4a_work/
+```
 
 ### Known issue: scripts/95 reads age from the manifest, not `metadata/ages_v6.parquet`
 

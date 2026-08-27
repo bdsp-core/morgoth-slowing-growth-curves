@@ -179,11 +179,17 @@ def main():
             a1.axhline(y.mean(), ls="--", color="#ccc", lw=1)
             a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{tag.upper()} — ROC", fontsize=11)
             a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{tag.upper()} — PRC", fontsize=11)
-            a0.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3); a1.legend(frameon=False, fontsize=5.6, handlelength=1.2, borderaxespad=0.3, loc="upper right")
+            a0.legend(frameon=False, fontsize=6.5, loc="lower right", handlelength=1.2, borderaxespad=0.3)
+            # PRC curves live along the TOP of the panel, so an upper-right legend overprints them
+            # (round-1 render: the LENS-v2 entry was struck through by its own curve). Bottom-left is empty.
+            a1.legend(frameon=False, fontsize=6.5, handlelength=1.2, borderaxespad=0.3, loc="lower left")
             for a in (a0, a1):
                 a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
-            fig.suptitle(f"ON-100 {tag} — ONE report-trained model (MIL) vs Morgoth vs {len(pts)} experts", fontsize=10.5)
-            fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / f"s0d_single_{ds}_{tag}.png", dpi=300); plt.close(fig)
+            # Title in the caption, not in the image (Clinical Neurophysiology). The subplot titles still
+            # carry the axis identity (GENERALIZED/FOCAL - ROC/PRC), and dropping the suptitle buys the
+            # height that keeps the two-panel Figure 2 composite inside a printed page.
+            fig.tight_layout()
+            fig.savefig(FIG / f"s0d_single_{ds}_{tag}.png", dpi=300, bbox_inches="tight"); plt.close(fig)
 
     (RES / "s0d_single_model.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote results/story/s0d_single_model.md + figures/story/s0d_single_*.png")

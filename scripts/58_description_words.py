@@ -394,7 +394,9 @@ def main():
 
     comps = [("side\n(L/R/bilat)", a_side, n_side, True), ("region\n(T/F/P)", a_reg, n_reg, True),
              ("band\n(delta/theta/mix)", a_band, n_band, False)]
-    fig, ax = plt.subplots(figsize=(6.6, 4.4))
+    # Page-width and short -- see the note on the D3 panel in scripts/57: Figure S8 stacks four of these,
+    # and one tall panel scales the entire composite (and all of its type) down to fit the page.
+    fig, ax = plt.subplots(figsize=(7.1, 2.7))
     xx = np.arange(len(comps))
     for i, (lab_, v, n, solid) in enumerate(comps):
         ax.bar(xx[i], v, color=("#2c7fb8" if solid else "#8aa9c4"), alpha=.9, edgecolor="#5a6b7a")
@@ -402,9 +404,9 @@ def main():
     ax.axhline(1/3, ls="--", color="#666", lw=1); ax.text(xx[-1]+.15, 1/3, "chance (1/3)", color="#666", fontsize=8, va="bottom")
     ax.set_xticks(xx); ax.set_xticklabels([c[0] for c in comps], fontsize=8.5)
     ax.set_ylabel("concordance with report word"); ax.set_ylim(0, 1)
-    ax.set_title("Generated descriptor words concordant with the report", fontsize=12)
+    ax.set_title("Generated descriptor words concordant with the report", fontsize=9.5)
     ax.grid(alpha=.2, axis="y")
-    fig.tight_layout(); fig.savefig(FIG / "s4_d6.png", dpi=300); plt.close(fig)
+    fig.tight_layout(); fig.savefig(FIG / "s4_d6.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     md += ["## Component concordance (generated word vs report structured field)",
            "| component | concordance | n | chance | note |", "|---|---|---|---|---|",
            f"| side (L/R/bilateral) | **{a_side*100:.0f}%** | {n_side} | 33% | above chance |",

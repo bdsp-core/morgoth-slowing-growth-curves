@@ -164,7 +164,10 @@ def main() -> None:
              "external no-slowing (ON-100)": dict(color="#c1440e", marker="s")}
 
     ncol, nrow = len(CELLS), len(STAGES)
-    fig, axes = plt.subplots(nrow, ncol, figsize=(2.35 * ncol, 2.15 * nrow),
+    # 2.15 in per row made a 7.0 x 10.8 in figure -- aspect 0.65, so a journal scales it to ~148 mm wide
+    # to fit the 240 mm page height and every label with it. Shorter cells keep it inside the page at full
+    # column width, where the type prints at the size it was authored.
+    fig, axes = plt.subplots(nrow, ncol, figsize=(2.35 * ncol, 1.58 * nrow),
                              sharex=True, sharey=True, squeeze=False)
     rows = []
     for ri, stage in enumerate(STAGES):
@@ -202,9 +205,8 @@ def main() -> None:
     if h:
         fig.legend(h, l, loc="upper center", ncol=2, fontsize=9, frameon=False,
                    bbox_to_anchor=(0.5, 1.005))
-    fig.suptitle("Held-out centile calibration of the normative curves\n"
-                 "(dashed = perfect; bands are patient-clustered bootstrap 95% CIs)",
-                 fontsize=11, y=1.055)
+    # Title in the Figure S2 caption, not in the image (Clinical Neurophysiology), which also removes the
+    # y=1.055 overshoot that only worked because of bbox_inches="tight".
     fig.tight_layout()
     out = FIG / "s9_centile_calibration.png"
     fig.savefig(out, dpi=300, bbox_inches="tight", facecolor="white")
@@ -238,6 +240,13 @@ def main() -> None:
         _all_cn = _lab[(_lab.clean_normal == True) & (_lab.clean_pair == True) & _lab.age.notna()]  # noqa: E712
         _fit = fitted_ids()                      # the seeded 3,000 the norms are fitted on
         _held = _all_cn[~_all_cn.eeg_id.isin(_fit)]
+        _ref = len(_all_cn)                  # the whole clean-normal reference: fitted + held out
+        lines += [f"**Reference denominator.** The norm-fitting reference is every clean-normal, cleanly "
+                  f"paired recording with a known age: **{_ref:,}**. That is not the {10189:,} clean-normal "
+                  f"count in Table 1, which is additionally restricted by the recording-level inclusion "
+                  f"filter that defines the 25,536-recording analysis cohort; norm fitting is deliberately "
+                  f"not gated on it, since a wider normal reference is the conservative choice. The "
+                  f"difference is {_ref - 10189} recordings.\n"]
         lines += [f"**Held-out split.** The norms are fitted on a seeded **{len(_fit):,}**-recording sample "
                   f"of the clean-normal reference; the remaining **{len(_held):,}** clean-normal recordings "
                   f"(**{_held.patient_id.nunique():,}** patients) are held out and are what this page "

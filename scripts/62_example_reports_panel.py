@@ -320,7 +320,14 @@ def main():
         emit("LENS (brief): " + finding, "#127a3d")
         emit("LENS (full): " + paragraph, "#12608a")
         emit("Report (structured): " + rep, "#a5561f")
-        md.append(f"**Case {i+1} — {header}**  \n- LENS (brief): {finding}  \n- LENS (full): {paragraph}  \n- Report (structured): {rep}\n")
+        # This markdown IS Table S4 in the manuscript, so it must carry the report's own words -- the two
+        # sentences Figures 4/5 could not fit -- not only the structured descriptors.
+        md.append(f"**Case {i+1} — {header}**  \n"
+                  f"- LENS (brief): {finding}  \n"
+                  f"- Report impression: {report_impression_text or '(no slowing sentence)'}  \n"
+                  f"- LENS (full): {paragraph}  \n"
+                  f"- Report description: {report_detail_text or '(no slowing sentence)'}  \n"
+                  f"- Report (structured): {rep}\n")
     fig.suptitle("Example automated slowing reports vs the clinical report — focal & generalized, varying degree & sleep stage",
                  fontsize=12, y=0.995)
     fig.savefig(FIG / "s4_examples_panel.png", dpi=300, bbox_inches="tight"); plt.close(fig)

@@ -72,19 +72,38 @@ def render(tab, info, feature):
                                              show=False, cmap="RdYlBu_r", vlim=(vmin, vmax),
                                              contours=4, sensors=True, image_interp="cubic",
                                              extrapolate="head", res=128)
-            ax.set_title(f"{BIN_LABELS[ci]}\nn={nrec}", fontsize=6.5)
+            ax.set_title(f"{BIN_LABELS[ci]}\nn={nrec}", fontsize=7)
             if ci == 0:
-                ax.text(-0.3, 0.5, stage, transform=ax.transAxes, fontsize=8, fontweight="bold",
+                ax.text(-0.32, 0.5, stage, transform=ax.transAxes, fontsize=9, fontweight="bold",
                         rotation=90, va="center")
         if im is not None:
-            fig.colorbar(im, ax=list(axes[ri]), fraction=0.015, pad=0.01).set_label(feature, fontsize=6.5)
-    fig.suptitle(f"Regional {feature} across the head by age & sleep stage (normal EEGs, cohort+expansion)\n"
-                 f"per 10-20 electrode (median over patients, mean of incident bipolar chains); "
-                 f"n={tab.bdsp_id.nunique()} recordings", fontsize=7.5)
+            cb = fig.colorbar(im, ax=list(axes[ri]), fraction=0.015, pad=0.01)
+            cb.set_label(feature, fontsize=7); cb.ax.tick_params(labelsize=6.5)
+    # No in-figure title. It used to overprint the first row's per-column n= labels (the suptitle sits at
+    # y=0.98 by default and the top row of topomap titles reaches into it), and Clinical Neurophysiology
+    # wants the descriptive title in the caption regardless. What it said -- median per 10-20 electrode over
+    # patients, mean of incident bipolar chains, normal EEGs from cohort+expansion, and the recording count
+    # -- is in the Figure 1 / Figure S4 captions in docs/manuscript_draft.md. Keep the two in sync.
+    fig.subplots_adjust(top=0.94)
     out = Path(f"figures/growth_v2/topo_{feature}_by_age_stage.png")
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=300, bbox_inches="tight"); plt.close(fig)
-    print("wrote", out)
+
+    # The per-cell coverage the caption quotes. Emitted as a results artifact rather than left only in the
+    # figure, so scripts/certify_reproducibility.py check C can find every number the manuscript states.
+    res = Path("results/story"); res.mkdir(parents=True, exist_ok=True)
+    md = [f"# Topography coverage — {feature} by age x sleep stage (Figure 1B / Figure S4)", "",
+          f"Median per 10-20 electrode over patients (mean of the incident bipolar chains), in clean-normal "
+          f"recordings from cohort + expansion. Total contributing recordings: **{tab.bdsp_id.nunique():,}**. "
+          f"Each row carries its own colour scale, because the physiological range differs by an order of "
+          f"magnitude between wake and N3.", "",
+          "| stage | " + " | ".join(BIN_LABELS) + " |", "|---|" + "---|" * len(BIN_LABELS)]
+    for stage in STAGES:
+        ns = [tab[(tab.stage == stage) & (tab.age >= lo) & (tab.age < hi)].bdsp_id.nunique()
+              for (lo, hi) in AGE_BINS]
+        md.append(f"| {stage} | " + " | ".join(str(n) for n in ns) + " |")
+    (res / f"topo_coverage_{feature}.md").write_text("\n".join(md) + "\n")
+    print("wrote", out, f"+ results/story/topo_coverage_{feature}.md")
 
 
 def main():

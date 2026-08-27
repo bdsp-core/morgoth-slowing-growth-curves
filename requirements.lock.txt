@@ -1,0 +1,37 @@
+# Exact environment the committed results and figures were last regenerated and verified in.
+#
+# requirements.txt names the dependencies; this file pins the versions. Use it when you want the numbers
+# and the rendered figures to come out the same as the ones in this repository:
+#
+#     pip install -r requirements.lock.txt
+#
+# Why the pin exists. The NUMBERS are robust -- re-running every stage-4 producer under a different but
+# recent scientific stack reproduces every file under results/ byte-for-byte. The rendered PNGs are not:
+# matplotlib and FreeType place glyphs and line edges differently between versions, so the same figure
+# re-rendered elsewhere differs on a few percent of (anti-aliased, edge) pixels and the tight bounding box
+# can move by a pixel. scripts/verify_fresh_install.sh therefore compares results/ byte-for-byte and figures
+# by blurred intensity; install these pins if you want bit-identical PNGs as well.
+#
+# Regenerate with:  python3 -m pip freeze | grep -iE '^(numpy|scipy|...)=' > requirements.lock.txt
+# Verified: 2026-08-26, macOS 15 (arm64), Python 3.14.4.
+
+PyYAML==6.0.3
+boto3==1.42.86
+h5py==3.15.1
+matplotlib==3.10.8
+mne==1.12.1
+numpy==2.4.2
+pandas==2.3.3
+pillow==12.1.1
+pyEDFlib==0.1.42
+pyarrow==23.0.1
+s3fs==2026.2.0
+scikit-learn==1.8.0
+scipy==1.17.1
+seaborn==0.13.2
+statsmodels==0.14.6
+
+# Not pip-installable -- pin these by hand:
+#   R 4.5.2  with  gamlss 5.5.0     (scripts/gamlss_fit.R, scripts/gamlss_norm_grid.R, scripts/76, scripts/115)
+#   pandoc                          (scripts/build_manuscript_docx.py only)
+#   awscli v2                       (aws s3 sync, in the worker and in REPRODUCE.md's data pull)

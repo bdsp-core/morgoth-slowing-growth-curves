@@ -98,7 +98,10 @@ def main():
             n += 1
 
         # stage-resolved variant, whole head
-        fig, ax = plt.subplots(figsize=(7.5, 4.8))
+        # Figure S5 stacks three of these. At 4.8 in tall each the composite was 13 in tall, which the
+        # journal has to scale to ~120 mm wide to fit the page height -- every label at 65% of authored
+        # size. Page-width and short keeps the stack inside the page at full width.
+        fig, ax = plt.subplots(figsize=(7.1, 2.65))
         drew = False
         for st, col in zip(STAGES, ["#4575b4", "#91bfdb", "#fdae61", "#d73027", "#7b3294"]):
             s = d[(d.stage == st) & (d.region == "whole_head") & (d.clean_normal == True)]   # noqa: E712
@@ -110,10 +113,10 @@ def main():
         if drew:
             axfmt(ax)
             ax.set_ylabel(f"{feat}  (whole head)")
-            ax.set_title(f"{feat} by sleep stage — clean-normals (v6)", fontsize=10)
+            ax.set_title(f"{feat} by sleep stage — clean-normals (v6)", fontsize=9.5)
             ax.legend(frameon=False, fontsize=8, title="stage")
             fig.tight_layout()
-            fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300)
+            fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300, bbox_inches="tight")
             n += 1
         plt.close(fig)
 

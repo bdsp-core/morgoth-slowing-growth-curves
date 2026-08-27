@@ -14,7 +14,7 @@ Status: `done` · `partial` · `open` · `blocked`
 
 **Round-1 outcome: 75 of 76 items done. One remains open -- REL-4 (bdsp.io version bump), deliberately held
 until the draft is agreed. Nothing is blocked: the SAI-100 workbook was recovered from Box, so 3.4b is now
-scored at top-20 like ON-100 and Figure 3 regenerates at page width. Zero figures trip the legibility guard.** The open items are listed at the
+scored at top-20 like ON-100 and Figure 3 regenerates at page width. Zero figures trip the width legibility guard -- but see round 2 below: the guard only measured WIDTH, and four figures were failing on printed HEIGHT.** The open items are listed at the
 bottom of this file with the reason each was not closed.
 
 | ID | Reviewer | Item | Phase | Status | Where addressed |
@@ -93,24 +93,71 @@ bottom of this file with the reason each was not closed.
 | REL-2 | — | Run `results` reproduce tier; verify contract table | 5 | done | — |
 | REL-3 | — | Stale bdsp.io slug in `DATA_SOURCE.md` | 5 | done | — |
 | REL-4 | — | Publish updated bdsp.io version; refresh DOI | 5 | open | — |
-| REL-5 | — | `REPRODUCE.md` names nonexistent `opendata` profile | 5 | done | working profile is `bidmc` |
+| REL-5 | — | `REPRODUCE.md` names nonexistent `opendata` profile | 5 | done | replaced with the placeholder `<your-bdsp-profile>` + a `aws s3 ls` check, since the working profile name is per-machine (`bdsp` and `opendata` both work here; `bidmc` does not exist) |
 
 ## Not closed in this pass
 
+*(This table used to list ~15 items as open while the header above said 75 of 76 were done. It was left
+behind by an earlier pass and contradicted the disposition table, which is the authority. It is replaced by
+the round-2 log below; the only round-1 item still open is REL-4.)*
+
 | ID | Why |
 |---|---|
-| aut-1 | Beniczky's email address is not available to me. Needed for submission. |
-| C171 | Human-vs-LENS side/region concordance on ON-100 / SAI-100. Needs per-expert side and region calls, which are not in the panel tables I have (`occasion_expert_votes` carries focal/generalized flags only, not laterality or lobe). Needs the raw panel workbook. |
-| C51 | Lateralized anterior/posterior regions. Requires editing `config/channels_regions.yaml` and re-running the whole feature and deviation chain (`scripts/31` → `43`) over 27k recordings — a fleet-scale job, not a laptop one. |
-| C146-a | N3 spindle verification. `scripts/95b` implements the N2 spindle check; extending it to N3 needs source EDFs pulled from S3 for the case set. The framing fix in 2.11/3.8 stands on its own, but the empirical answer to the staging-circularity charge is still owed. |
-| C146-b..e | Figure 4 panel content: the periodic-discharge exemplar, the 3–5 Hz vs theta–delta precision gap, the "abnormal in 0% of segments" contradiction, and the undefined "episodes". All require regenerating `scripts/62`/`63`, which read source EDFs from S3. |
-| C19 | Textbook citations for "textbook-settled" — needs someone to name the textbooks they want cited. |
-| C63 | GAMLSS design matrix / unit of observation / weighting. Partly answered by the C70 tensor description; the per-patient weighting question needs a decision on what the intended weighting *is*, not just documentation. |
-| C72 | Report→EEG pairing prose. The mechanism is understood but the paragraph needs rewriting with Ganglberger to confirm what was actually done upstream. |
-| C122 | Move the two-axes ablation to supplementary — a structural move best done once the figure set is final. |
-| C153, C156 | Chart-mark changes to the description panels (violins → something that shows the effect; named−unnamed differences). Needs `scripts/57` regenerated. |
-| CN-1 | Abstract is 234 words against CN's 200. Pure wordsmithing is exhausted; the remaining 34 words mean dropping content the reviewers asked to add (the calibration result, the SAI-100 caveat, or the sleep finding). An author call. |
-| CN-2 | ORCIDs, CRediT contributions, Acknowledgements — all need author input. |
-| REL-2 | Full `results` reproduce-tier run. Blocked on ~10 figure producers that read source EDFs or `segment_master` partitions not synced locally. |
-| REL-4 | bdsp.io version bump + DOI refresh. Deliberately not done: it publishes outward and should follow your review of this draft, not precede it. |
-| legibility | 10 of 15 figures are still authored wider than the 7in composite (worst: S8 description panels at 47%). Figure 1 and S5 are fixed; the rest need the same figsize treatment in their producing scripts. `scripts/assemble_manuscript_figures.py` now reports them on every run. |
+| REL-4 | bdsp.io version bump + DOI refresh. Deliberately not done: it publishes outward and should follow the co-authors' sign-off on this draft, not precede it. |
+
+---
+
+# Round 2 — automated pre-submission audit, 2026-08-26
+
+Run of the two BDSP checker pipelines against this draft, plus the reproducibility certificate:
+
+- `bdsp-core/paper-agents-figures` on all 16 composited submission figures (8 agents: story, composition,
+  colour, typography, format, caption, statistics, cross-figure consistency).
+- `bdsp-core/paper-agents-manuscript` on `docs/manuscript_draft.md` with `--repo-path .` (13 agents incl.
+  truthfulness/code-grounding and internal consistency).
+- `scripts/certify_reproducibility.py` (checks A/B/C/E) and `scripts/verify_fresh_install.sh` (check D).
+
+**Both checkers were broken on Claude Opus 5 before this run** — they read `resp.content[0].text`, which is a
+`ThinkingBlock` on any model with thinking on, so every agent failed with an `AttributeError`. Both were
+patched locally (`_text_of()` + a real `max_tokens`); those patches are in the checker clones, not in this
+repo, and should be pushed upstream.
+
+| ID | Source | Item | Status | Where addressed |
+|---|---|---|---|---|
+| R2-1 | manuscript checker | Highlights claim "detects slowing above experts and a foundation model" and "beats SCORE-AI", contradicting §3.4b where LENS is last of three on SAI-100 generalized. Same overclaim in the Conclusion. (This is C133 re-opening: it was closed in §3.4b but never propagated to the Highlights.) | done | Highlights rewritten axis- and site-explicit; Conclusion states both sites and both axes |
+| R2-2 | manuscript checker | Discussion never confronts the SAI-100 generalized negative | done | new §4 subsection "Generalized detection does not yet transfer; focal does" — three candidate explanations, and what we would deploy |
+| R2-3 | manuscript checker | Abstract "identify, localize **and describe**" conflates the supervised detectors with the unsupervised description layer | done | Abstract Methods |
+| R2-4 | manuscript checker | Abstract "median centile error 1.0 point" vs `results/story/centile_calibration.md` median 1.1 | done | Abstract |
+| R2-5 | manuscript checker | Abstract "exceeding … by 0.09--0.14" excludes the actual focal margin (+0.08) and misstates the gate margin | done | Abstract; `vanputten_panel_s7.py` now emits the margins so they cannot drift again |
+| R2-6 | manuscript checker | "83% and 53% of **the 18 experts**" — 53% is not attainable at n=18; the focal panel has 17 operating points | done | §3.4a explains the operating-point rule; Figure 2 caption states it |
+| R2-7 | manuscript checker | SAI-100: paper says 14 experts, `sandor_focal_label_correction.csv` says `n_raters = 11` | done | Settled from the source workbook: **14 expert columns, exactly 11 non-null per recording** (incomplete design). §2.7/§3.4b now say so and reconcile both numbers |
+| R2-8 | manuscript checker | `docs/claims_table.md` clause 1 says the Morgoth-free detector reaches 0.946 / 0.923; the paper says 0.961 / 0.908 | done | claims table refreshed and the superseded pre-C51 numbers labelled as such |
+| R2-9 | manuscript checker | 7,216 held out vs 10,189 − 3,000 = 7,189 | done | The reference is 10,216 (norm fitting is not gated on the cohort inclusion filter); §3.3 and `centile_calibration.md` now state the denominator and the 27-recording difference |
+| R2-10 | manuscript checker | §2.2 cites `config/channels_regions.yaml` for eleven regions; that file defines six and says it is not read by the fleet | done | §2.2 now cites `scripts/43` (`REGIONS`, 11) and `recording.py` (`AGG_REGIONS`, 6) |
+| R2-11 | manuscript checker | Discussion quotes van Putten focal 0.723 vs gate 0.870 while §3.5 quotes 0.825 vs 0.908, unlabelled | done | Both sets now named (full report cohort vs clean ON-100 panel) with the reason they differ |
+| R2-12 | manuscript checker | `docs/audits/audit-report-1.md` ships unresolved, alleging the norms are a Gaussian kernel not GAMLSS, no cross-fitting, and a headline AUROC collapse | done | Marked **SUPERSEDED** with a per-finding resolution table and the command that verifies each. Verified: 110 BCT + 220 normal-family cells in `grid_norm.json`, held-out calibration in `scripts/78`, and neither 0.848 nor `scripts/96` exists any more |
+| R2-13 | manuscript checker | "open-source package" vs a CC BY-NC 4.0 licence | done | "openly available"/"under CC BY-NC 4.0" |
+| R2-14 | manuscript checker | Missing limitation: the normal reference is clinically-normal EEG from referred patients, not healthy volunteers | done | new first paragraph of §5, incl. the expected direction of the bias |
+| R2-15 | manuscript checker | Captions are file paths, not prose | done | every caption rewritten self-contained; provenance moved to one table at the end of the section |
+| R2-16 | figure checker + own inspection | **Figure 1 axis labels print at ~4 pt.** C103 was closed by re-exporting at 300 dpi, which raises resolution but not printed point size: the composite is too tall for a 190×240 mm page, so the journal scales it down and every label with it | done | `scripts/76` shorter rows + no in-figure title, type raised to ≥6.6 pt; `assemble_manuscript_figures.py` now measures printed size and type scale and fails loudly below 6 pt |
+| R2-17 | own inspection | Figure 1A row label "REM" clipped off the canvas | done | `scripts/76` margins + `bbox_inches="tight"` |
+| R2-18 | own inspection | Figure 1B in-figure title overprints the first row's n= labels | done | title moved to the caption (`scripts/77`) |
+| R2-19 | own inspection | **Figure 6 / S8 panel titles clipped at both edges**; the right subplot's y-label overprints the left subplot's title | done | `scripts/57` suptitles removed to the captions, labels shortened, `bbox_inches="tight"` everywhere |
+| R2-20 | own inspection | Figure 2 PRC legend struck through by its own curve; legend type 5.6 pt | done | `scripts/54`/`55` legend moved to lower-left, 6.5 pt |
+| R2-21 | own inspection | **Figure 4/5: 10 of 18 channel labels overprint their neighbour** — unreadable exactly where a clinical reader needs it. C146-f was closed by re-export and did not fix this | done | `scripts/63` lays out in absolute inches derived from the type size, and `check_label_spacing()` now fails the build if labels are ever closer together than they are tall |
+| R2-22 | C153 (round 1, marked done) | "violins underplay the effect" — the violins were still bare | done | `contrast()` overlays mean + bootstrap 95% CI and per-group n |
+| R2-23 | C156 (round 1, marked done) | "plot the named−unnamed difference" — two absolute bars were still plotted | done | `scripts/57` D2 now plots the difference with a bootstrap 95% CI |
+| R2-24 | own inspection | Figures S2, S5, S8 authored too tall to fit a page; type printed at 62–88% | done | `scripts/78`, `111`, `57`, `58` reshaped; every figure now prints its smallest type at ≥6 pt |
+| R2-25 | reproducibility | `scripts/verify_fresh_install.sh` hardcoded `/Users/mbwest/Desktop/...`, read `/tmp/exids.txt`, required `.venv`, and **never checked byte-identity** despite being the check-D evidence | done | rewritten: repo-root-relative, pins read from `PINNED_EXAMPLES` in `scripts/62`, results/ compared byte-for-byte and figures by blurred intensity |
+| R2-26 | reproducibility | Nothing pinned the environment, so "bit-identical figures" could not hold | done | `requirements.lock.txt` (measured: numbers reproduce byte-for-byte across matplotlib versions, PNGs do not) |
+| R2-27 | reproducibility | Table S4 (the full generated-vs-clinical report text) existed as `results/story/s4_examples.md` but was cited by no display item | done | promoted to Table S4, wired into `REPRODUCE.md`, and `scripts/62` now writes the report's own sentences into it |
+
+## Still open after round 2
+
+| ID | Item | Why it is not closed |
+|---|---|---|
+| REL-4 | bdsp.io version bump + DOI refresh | Publishes outward; should follow co-author sign-off |
+| CN-1 | Abstract is 240 words against CN's 200 | Structural, not wordsmithing. The remaining 40 words are one whole result. Dropping the calibration result, the qEEG margin, or the sleep finding is an author call — round 1 reached the same conclusion |
+| R2-28 | **Figure 3 does not reproduce from git + S3.** `scripts/sandor100_external_validation.py` reads the SAI-100 expert workbook from a Box mount. It runs here because that mount exists on this machine; for a co-author or a reviewer it does not | The 100 recordings' `segment_master` partitions are already published to the credentialed prefix, but the expert-vote workbook is not. Publishing it is a third-party data-sharing decision (it is the SCORE-AI validation study's data), so it needs Beniczky's agreement, not a unilateral `aws s3 cp` |
+| R2-29 | Promote Figure S1 (the architecture schematic) to Figure 1 | The manuscript checker's strongest structural suggestion: S1 is the only image that carries the thesis and skimmers never see it. It reorders the whole display set and changes what the co-authors reviewed, so it is a call for the senior authors |
+| R2-30 | Related-work gaps: SCORE-AI in the Introduction, normative-modelling toolkits, HarMNqEEG / Cuban lifespan qEEG norms, the aperiodic-component literature | Needs the Scholar-backed reference agents (skipped in this run to avoid Google Scholar rate-limiting) and an author decision on which to cite |
