@@ -358,7 +358,7 @@ reference, crimson report-slowing/abnormal.*
 
 - **Table S3 --- Band calibration.** How the δ/θ/mixed band word is derived and how well it agrees with the report: absolute delta/theta power dominance separates the reports' delta-from-theta at AUROC 0.74 (against 0.68 for the deviation axis), with three-way agreement at the expert-versus-expert floor (κ ≈ 0.10), marginal-matched to the report distribution.
 
-- **Table S4 --- Generated report versus clinical report, in full, for the six example recordings.** For each of the six recordings in Figures 4 and 5: LENS's brief finding and its full generated paragraph, beside the clinical report's impression and description sentences, all verbatim and de-identified, with the report's structured descriptors.
+- **Table S4 --- Generated report versus clinical report, in full, for the six example recordings.** For each of the six recordings in Figures 4 and 5: LENS's brief finding and its full generated paragraph, beside the clinical report's impression and description sentences, quoted from the de-identified notes, with the report's structured descriptors. Report text is verbatim except that an ellipsis marks elided intervening text and square brackets an author correction: two notes give a voltage in the wrong unit ("amplitude up to 100 hz"; "predominantly 20-40 v") and both are shown as [µV], which is what was meant --- the first of those notes writes "30 uv" correctly two sentences later.
 
 ### Provenance of every display item
 

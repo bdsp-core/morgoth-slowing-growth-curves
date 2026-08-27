@@ -27,14 +27,14 @@ LENS's BRIEF finding line and FULL report paragraph (governed by docs/claims_tab
 - LENS (brief): Continuous diffuse theta–delta (mixed) slowing, present in wakefulness and sleep; most prominent in N2.  
 - Report impression: this is an abnormal eeg, due to the presence of generalized symmetric theta/ delta slowing.  
 - LENS (full): Diffuse theta–delta (mixed) slowing. Peak deviation 4.8 SD above the age- and stage-matched normal (>99.9th centile), abnormal in 100% of analysed segments (continuous); longest continuous run ≈24.3 min over 1 episode. Present in wakefulness and sleep; most prominent in N2.  
-- Report description: the resting background showed generalized symmetric theta/ delta slowing with an amplitude up to 100 hz.  
+- Report description: the resting background showed generalized symmetric theta/ delta slowing with an amplitude up to 100 [µV].  
 - Report (structured): generalized slowing (mixed)
 
 **Case 5 — Generalized slowing · peak 2.2 SD (99th centile) · prominent in N3 · 49F**  
 - LENS (brief): Abundant diffuse delta slowing, present during sleep; most prominent in N3.  
 - Report impression: disorganized diffusely slow background  
 - LENS (full): Diffuse delta slowing. Peak deviation 2.2 SD above the age- and stage-matched normal (99th centile), abnormal in 76% of analysed segments (abundant); longest continuous run ≈6.3 min over 10 episodes. Present during sleep; most prominent in N3.  
-- Report description: the background is disorganized with no clear discernible posterior rhythm, but rather predominantly 20-40 v, theta and delta slowing.  
+- Report description: the background is disorganized with no clear discernible posterior rhythm, but rather predominantly 20-40 [µV], theta and delta slowing.  
 - Report (structured): generalized slowing, posterior (mixed)
 
 **Case 6 — Generalized slowing · peak 1.6 SD (95th centile) · prominent in N1 · 42F**  

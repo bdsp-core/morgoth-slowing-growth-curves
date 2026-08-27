@@ -35,6 +35,18 @@ EXCLUDE_IDS = ("S0001121298232",)
 # are illustrations, not results. So the identities are fixed here and only their CARDS are recomputed, which
 # is what actually needed updating: the committed cards were built from the superseded 7-region descriptors.
 # Order is the display order: 3 focal (marked/moderate/mild), then 3 generalized.
+# Recordings that must never be shown as a background-slowing exemplar, whatever the search returns. The
+# report-text screen below cannot catch these: it reads the NOTE, and these are cases where the note says
+# "slowing" while the signal shows something else. Only reachable via the fallback search (the pins normally
+# decide), but that fallback is exactly the path that runs unattended.
+EXCLUDED_EXAMPLES = {
+    # Retired as Figure 5A on co-author review 2026-08-27: the displayed window is a right-frontal-predominant
+    # rhythmic run that reads as LRDA / lateralised periodic discharges, not diffuse slowing. Its report says
+    # "occasional PERIODS of generalized delta slowing", which matches no \bperiodic\b pattern, so PERIODIC
+    # below would re-admit it.
+    "S0001119160767_20190930133101",
+}
+
 PINNED_EXAMPLES = (
     "S0001112857553_20160206081631",   # focal, marked
     "S0001120133802_20120917122010",   # focal, moderate
@@ -134,7 +146,12 @@ def report_two_part(imp_raw, det_raw):
 # but reports are written description-first / conclusion-last, so the true impression sinks into the detail slot.
 # These six were hand-selected from the de-identified reports (impression = the report's conclusion; description =
 # the descriptive body) to make the two-way LENS↔report comparison faithful. Text is verbatim from the reports
-# (already de-identified; committable per project policy); "…" marks author-elided intervening text.
+# (already de-identified; committable per project policy); "…" marks author-elided intervening text, and square
+# brackets mark an author correction of an obvious clerical slip in the source note. Two reports give a voltage
+# in the wrong unit ("amplitude up to 100 hz", "predominantly 20-40 v"); both are corrected to [µV], which is
+# unambiguously what was meant -- the first of those same reports writes "30 uv" correctly two sentences later.
+# The alternative, quoting an amplitude in hertz verbatim, reads as our transcription error rather than the
+# clinician's and invites a reviewer comment on a point that is not about the method.
 REPORT_OVERRIDES = {
     "S0001112857553_20160206081631": (
         "focal slowing in the right posterior region",
@@ -150,14 +167,16 @@ REPORT_OVERRIDES = {
         "over the left hemisphere, there is moderate amplitude left temporo-parietal delta/theta slowing which "
         "rarely form fluctuating semi-rhythmic activity…intermittent drowsiness is characterized by attenuation of "
         "the background, slow roving eye movements and bilateral slowing in the theta and delta range, l>>r."),
-    "S0001119160767_20190930133101": (
-        "occasional periods of generalized delta slowing alternating with periods of lower voltage theta slowing "
-        "of the background.",
-        "there is frequent 3-5 hz generalized slowing in the 60-100 uv range"),
+    # Replaced the retired S0001119160767 exemplar (see PINNED_EXAMPLES). The automated split already put the
+    # right sentences in the right slots for this report; the override exists only to correct the unit.
+    "S0001116438689_20121214164651": (
+        "this is an abnormal eeg, due to the presence of generalized symmetric theta/ delta slowing.",
+        "the resting background showed generalized symmetric theta/ delta slowing with an amplitude up to "
+        "100 [µV]."),
     "S0002114400117_20220102134116": (
         "disorganized diffusely slow background",
         "the background is disorganized with no clear discernible posterior rhythm, but rather predominantly "
-        "20-40 v, theta and delta slowing."),
+        "20-40 [µV], theta and delta slowing."),
     "S0002119199989_20170830132221": (
         "abnormal, due to frequent bilateral anterior slowing, as well as bilateral high voltage theta bursts",
         "there is frequent bifrontal slowing with mostly theta activity. there are also independent bursts of "
@@ -234,6 +253,8 @@ def candidate_frame():
         impr, det = report_two_part(man.report_impression.get(eid, ""), man.report_text.get(eid, ""))
         return bool(impr) and not det.startswith("—")
     d = d[d.eeg_id.map(_two_part)]
+
+    d = d[~d.eeg_id.isin(EXCLUDED_EXAMPLES)]      # hand-vetted rejects the report text cannot identify
 
     # drop recordings whose report describes a PERIODIC epileptiform pattern (LPDs etc.) — not clean slowing
     def _no_periodic(eid):
