@@ -69,6 +69,11 @@ for p in segment_master segment_summary; do
 done
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/segment_master/_done/ \
     data/derived/segment_master/_done/ --exclude "*" --include "ON_*.done"
+# the six Figure 4/5 example recordings' deviation partitions (2.4 MB). scripts/63 reads per-region z and
+# t_start_s from segment_deviation/ to choose WHICH 10-s window to plot; the whole-head cache does not carry
+# either, so without these the traces are drawn at a different offset.
+aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/segment_deviation_examples/ \
+    data/derived/segment_deviation/
 ```
 
 `scripts/preflight_reproduce.py` detects which tier you have and checks only what that tier needs; it still

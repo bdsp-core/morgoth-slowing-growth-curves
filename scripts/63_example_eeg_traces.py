@@ -89,7 +89,15 @@ def pick_segment(eid, domstage, region=None):
     GENERALIZED: the max whole-head amount. Restricted to the dominant stage, first hour."""
     f = f"{DEV}/eeg_id={eid}/part.parquet"
     if not os.path.exists(f):
-        return None
+        # Returning None here silently changed which 10-s window got plotted: fetch_window falls back to a
+        # default offset, so on an install without segment_deviation/ this figure rendered DIFFERENT traces
+        # for the same patients, with no error. The figure-loop tier deliberately ships only the whole-head
+        # cache (no per-region z, no t_start_s), so the six example partitions are published separately --
+        # see REPRODUCE.md. Fail loudly rather than draw the wrong window.
+        raise FileNotFoundError(
+            f"{f} is required to choose the displayed window for {eid}. Sync the example partitions:\n"
+            f"  aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/segment_deviation_examples/ "
+            f"data/derived/segment_deviation/")
     d = pd.read_parquet(f); d = d[d.t_start_s < 3600]
     cols = [f"z__{region}__{ft}" for ft in ("log_delta", "log_theta", "log_TAR")] if region else AMT_Z
     have = [c for c in cols if c in d.columns] or [c for c in AMT_Z if c in d.columns]
