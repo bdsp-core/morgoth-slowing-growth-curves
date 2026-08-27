@@ -30,6 +30,12 @@ DER = Path("data/derived")
 OUT = Path("data/manifest"); OUT.mkdir(parents=True, exist_ok=True)
 
 # report-derived feature columns carried into the PHI-free manifest
+# `gen_class` and `p_gen_pathologic` are VESTIGIAL: they name an exploratory LLM pass over the report text
+# (data/derived/gen_labels_llm.csv) that predates the label rules and is not part of the pipeline. Neither
+# column survives into report_manifest_v6.parquet, nothing downstream reads either one, and the
+# pathologic-vs-physiologic split the paper uses is the RULE in scripts/label_rederive_sap.py: generalized
+# slowing is pathologic only if the reader lists it among the abnormalities. Left in the request list so the
+# builder still works against older sources; see REPRODUCE.md "Artifacts in data/derived that nothing reads".
 FEATURE_COLS = ["is_normal", "is_abnormal", "has_focal_slow", "has_gen_slow", "clean_normal",
                 "report_stratum", "focal_side", "focal_region", "focal_band",
                 "gen_band", "gen_topography", "gen_state", "gen_class", "p_gen_pathologic"]
