@@ -3,9 +3,14 @@
 Everything is driven by one script, [`scripts/reproduce_story.sh`](scripts/reproduce_story.sh), in three
 tiers (pick by how much you want to rebuild):
 
-**Prerequisites.** Python 3.12+, and — for the `features` and `scratch` tiers — **R with the `gamlss`
-package** (the normative curves in `scripts/115` and `76` are fitted in R; these are the steps marked `[R]`
-below) and **pandoc** (only for `scripts/build_manuscript_docx.py`). On macOS:
+**Prerequisites.** Python 3.12+, **R with the `gamlss` package**, and **pandoc** (the last only for
+`scripts/build_manuscript_docx.py`).
+
+R is needed by **every tier, including `results`** — not just `features`/`scratch`, as this line used to say.
+`scripts/115` fits the scoring norms and is a `features` step, but `scripts/76` re-fits the displayed curves
+for **Figure 1a** and runs at stage 4, inside the fast results tier. Without R the results tier fails on
+Figure 1a alone; the other 19 display items are pure Python. Steps that call R are marked `[R]` below. On
+macOS:
 
 ```bash
 brew install r pandoc
