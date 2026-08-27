@@ -131,7 +131,7 @@ def compose(out_path: Path, panels: list[str], ncols: int) -> bool:
     fig = plt.figure(figsize=(COLW * ncols, sum(row_h)))
     # hspace was 0.03, which put each panel letter on top of the previous panel's x-axis labels (the "B"
     # of Figure 2 and Figure 6 sat in among the tick labels of panel A). The letter needs a line of its own.
-    gs = fig.add_gridspec(nrows, ncols, height_ratios=row_h, hspace=0.075, wspace=0.03)
+    gs = fig.add_gridspec(nrows, ncols, height_ratios=row_h, hspace=0.115, wspace=0.03)
     for i, im in enumerate(imgs):
         r, c = divmod(i, ncols)
         ax = fig.add_subplot(gs[r, c]); ax.imshow(im); ax.axis("off")

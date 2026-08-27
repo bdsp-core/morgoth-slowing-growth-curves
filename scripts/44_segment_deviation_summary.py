@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from morgoth_slowing.viz.palette import NORMAL, ABNORMAL
+from morgoth_slowing.viz.palette import EXPERTS as NEUTRAL, ABNORMAL
 
 DEV = "data/derived/segment_deviation"
 STAGES = ["W", "N1", "N2", "N3", "REM"]
@@ -88,7 +88,10 @@ def main():
     fig, axes = plt.subplots(1, 3, figsize=(7.1, 2.33), sharey=True)
     for j, (col, label) in enumerate(FEATS):
         ax = axes[j]
-        for grp, D, color in [("clean-normal", cn_d, NORMAL), ("abnormal", ab_d, ABNORMAL)]:
+        # clean-normal is NEUTRAL GREY here, matching Figures 6B and S8. It used to be green against a red
+        # "abnormal", which (a) contradicted the grey used for the same group elsewhere and (b) is the one
+        # colour pair that vanishes under deuteranopia and in greyscale.
+        for grp, D, color in [("clean-normal", cn_d, NEUTRAL), ("abnormal", ab_d, ABNORMAL)]:
             meds, q1s, q3s = [], [], []
             for st in STAGES:
                 v = D[D.stage == st][col].replace([np.inf, -np.inf], np.nan).dropna()
@@ -103,7 +106,8 @@ def main():
         ax.set_xticks(range(len(STAGES))); ax.set_xticklabels(STAGES)
         ax.set_title(label, fontsize=10); ax.grid(alpha=.2)
         if j == 0:
-            ax.set_ylabel("per-segment deviation z (median, IQR)")
+            # The full label was clipped by the canvas edge, taking the error-bar definition with it.
+            ax.set_ylabel("deviation z", fontsize=9)
         ax.legend(frameon=False, fontsize=8)
     # Title in the Figure S6 caption, not in the image (Clinical Neurophysiology).
     fig.tight_layout()

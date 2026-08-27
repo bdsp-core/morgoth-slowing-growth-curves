@@ -115,6 +115,7 @@ def main():
     ll = contrast(ax[0], [(s, foc[foc.focal_side == s].lat_signed) for s in ["left", "bilateral", "right"]],
                   "LENS L-R asymmetry by report side", "signed asymmetry z  (+ = left)", ["#c8443c", "#999", "#2c7fb8"], ylim=(-3, 3))
     ax[0].axhline(0, ls="--", color="#666")
+
     md += ["## D2 — laterality & region", "- laterality: " + "; ".join(ll)]
     # region as DOSE-RESPONSE (not a confusion matrix): a lobe's relative prominence (focality = that lobe's
     # magnitude minus the mean of the other two) is higher when the report names that lobe. Absolute temporal
@@ -155,7 +156,13 @@ def main():
     ax[1].set_ylabel("focality: named \u2212 unnamed", fontsize=8.5)
     ax[1].set_title("Lobe focality rises when the report names that lobe", fontsize=9)
     ax[1].grid(alpha=.2, axis="y")
-    fig.tight_layout(w_pad=2.2)
+
+    # ONE key for the whole panel. Two per-axes keys collided in the middle of the figure.
+    fig.tight_layout(w_pad=2.2, rect=[0, 0.075, 1, 1])
+    fig.text(0.5, 0.012,
+             "left \u2014 violin: distribution (KDE, 1\u201399th percentile); point and bar: mean with bootstrap "
+             "95% CI.    right \u2014 bar: mean difference; error bar: bootstrap 95% CI; *** p < 10\u207b\u00b3 "
+             "(Mann\u2013Whitney).", ha="center", va="bottom", fontsize=6.4, color="#555")
     fig.savefig(FIG / "s4_d2.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     md.append("- region (focality dose-response): " + "; ".join(rl) + "\n")
 
@@ -201,7 +208,7 @@ def main():
     ax[0].set_xticks(list(xs)); ax[0].set_xticklabels(STAGES)
     ax[0].set_ylabel("prevalence (mean)", fontsize=8.5)
     ax[0].set_title("Slowing prevalence by stage", fontsize=9)
-    ax[0].legend(frameon=False, fontsize=8, loc="upper right"); ax[0].grid(alpha=.2)
+    ax[0].legend(frameon=False, fontsize=8, loc="center left"); ax[0].grid(alpha=.2)
     for band, col in [("delta_p90", "#c8443c"), ("theta_p90", "#2c7fb8")]:
         m = [Sm[Sm.slowing][Sm[Sm.slowing].stage == st][band].median() for st in STAGES]
         ax[1].plot(xs, m, "o-", color=col, label=band.replace("_p90", "-excess z"))
