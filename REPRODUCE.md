@@ -28,7 +28,7 @@ bash scripts/reproduce_story.sh scratch            # ~24 h — from raw EDFs on 
 
 **How much you actually need depends on the tier.** A figure-loop install is **~1.9 GB**, not 71 GB: the
 flat parquets, the norm grids, the report manifest, `figure_cache/` and ~90 MB of panel partitions (ON-100
-and SAI-100). That regenerates **all 17** stage-4 producers — every figure and every table — and does so
+and SAI-100). That regenerates **all 22** stage-4 producers — every figure and every table — and does so
 **bit-identically** to a full install. That equivalence is tested, not asserted: hiding all 71 GB and
 re-running produces byte-identical result files.
 
@@ -55,7 +55,7 @@ features, which is all the `results` tier reads out of the per-segment field, an
 change to the deviation field.
 
 ```bash
-# figure loop (~1.9 GB) -- rebuilds ALL 17 producers, bit-identically to a full install
+# figure loop (~1.9 GB) -- rebuilds ALL 22 producers, bit-identically to a full install
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/ data/derived/ --exclude "*/*"
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/figure_cache/ data/derived/figure_cache/
 # the spindle sub-study checkpoint: the top-level sync above uses --exclude "*/*" and would skip it, and
@@ -212,3 +212,18 @@ locally, continues from `features`.
 `results/story/s0c_morgoth_free.md` (the in-domain focal/generalized trajectory in dashboard block 2b) is a
 hand-authored summary of the design search, not a script-generated artifact. Everything else is produced by
 the stages above.
+
+### Artifacts in `data/derived/` that nothing reads
+
+Three files sit in the derived tree and are **not inputs to anything the paper reports**. They are named
+here because an automated audit of this repository flagged each as a possible undocumented methods step,
+which is the correct thing to suspect if you only see the file:
+
+| file | what it is | why it is not a methods step |
+|---|---|---|
+| `gen_labels_llm.csv` | 998 rows of LLM-suggested `gen_class` (pathologic / physiologic / normal / unsure) with a confidence and a rationale | An exploratory pass from before the label rules were fixed. **No script reads it** (`grep -rn gen_labels_llm scripts/ src/` returns nothing). The pathologic-vs-physiologic split the paper uses is entirely rule-based, in `scripts/label_rederive_sap.py`. |
+| `seg_zcrit.json` | per-stage critical z (W 1.493 … N3 1.022) | Superseded. **No script reads it.** The abnormality threshold the descriptors actually use is a single fixed `THR = 1.5` in `scripts/56_description_descriptors.py`, the same in every stage — which is the right shape, since the deviation is already stage-matched. |
+| `config.example.yaml: norms.cross_fit: true` | a flag for out-of-fold z on normals | Stale. Nothing reads `cross_fit`. Held-out scoring is done the way §3.2 describes: the norms are fitted on a seeded 3,000-recording sample and evaluated on the 7,216-recording complement (`scripts/78_centile_calibration.py`). |
+
+The `moe` panel (1,761 recordings in the v5 manifest) is likewise carried through the fleet but contributes
+to no reported quantity; the expert-panel results are ON-100 and SAI-100 only.
