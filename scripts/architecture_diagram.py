@@ -23,8 +23,8 @@ FIG = Path("figures/story")
 
 # Fills are pale and carry NO information -- they group rows for the eye only, and every box is also named.
 # That keeps the figure readable in greyscale and under any colour-vision deficiency.
-C_IN, C_HUB, C_DET, C_DESC, C_VAL = "#e8eef4", "#fbe6cd", "#e3efe0", "#e9e4f2", "#f0f0f0"
-EDGE, HUB_EDGE = "#5a6b7a", "#b06a1a"
+C_IN, C_HUB, C_DET, C_DESC, C_VAL = "#e8eef4", "#f2eee6", "#e3efe0", "#e9e4f2", "#f0f0f0"
+EDGE, HUB_EDGE = "#5a6b7a", "#4a4a4a"   # not orange: that is LENS's colour in six figures
 
 W_IN, H_IN = 7.1, 6.4                      # canvas inches
 XMAX, YMAX = 12.0, 12.0                    # data units

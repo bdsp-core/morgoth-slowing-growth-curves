@@ -104,13 +104,14 @@ def main():
         rho, p = spearmanr(m.rep_sev.values, m[stat].values)
         kp = kruskal(*groups).pvalue if all(len(g) > 2 for g in groups) else np.nan
         ax.boxplot(groups, tick_labels=[f"{SEV_LBL[k]}\n(n={len(g)})" for k, g in zip((1, 2, 3), groups)],
-                   showfliers=False, medianprops=dict(color="#d95f02", lw=2))
+                   # orange is LENS's colour in six figures; a boxplot median is not a method
+                   showfliers=False, medianprops=dict(color="#333333", lw=2))
         # The long y-label used to run up into this title. Both are trimmed and a panel letter added.
-        ax.set_title(f"{stat} of |z|\nSpearman ρ = {rho:+.3f} (p = {p:.2g})", fontsize=9)
-        ax.text(-0.20, 1.03, "AB"[i], transform=ax.transAxes, fontsize=11, fontweight="bold",
-                va="bottom", ha="left")
-        ax.set_xlabel("reader's severity adjective", fontsize=9)
-        ax.set_ylabel("deviation from matched normal, |z|", fontsize=9)
+        ax.set_title(f"{stat} of |z|\nSpearman ρ = {rho:+.3f} (p = {p:.2g})", fontsize=palette.TITLE_PT)
+        palette.panel_letter(ax, i, dx=-0.20)
+        ax.set_xlabel("reader's severity adjective", fontsize=palette.LABEL_PT)
+        ax.set_ylabel("deviation from matched normal, |z|", fontsize=palette.LABEL_PT)
+        ax.tick_params(labelsize=palette.TICK_PT)
         ax.grid(alpha=.25, axis="y")
         med = [float(np.median(g)) for g in groups]
         lines.append(f"| {stat} | {rho:+.3f} | {p:.2g} | {kp:.2g} | " +

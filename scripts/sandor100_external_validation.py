@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette
 from sklearn.metrics import roc_auc_score
 
 m53 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m53", "scripts/53_single_model_features.py"))
@@ -153,21 +154,19 @@ def eval_axis(scores, axis, mr_file, ax):
         cur = m54.panel_curve(None, y[ok], s[ok], pts, c, name)
         lo, hi = m54.boot_ci(y[ok], s[ok])
         ax.plot(cur["fpr"], cur["tpr"], color=c, lw=2.4,
-                label=f"{name} (AUROC {cur['auc']:.2f} [{lo:.2f}\u2013{hi:.2f}], "
-                          f"{round(cur['ur']*len(pts)/100)}/{len(pts)} experts under)")
+                label=f"{name}  {cur['auc']:.2f} [{lo:.2f}\u2013{hi:.2f}]\n"
+                          f"{round(cur['ur']*len(pts)/100)}/{len(pts)} experts under")
         res.append((name, cur["auc"], lo, hi, cur["ur"], cur["ap"]))
     for r, p in pts.items():
         ax.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
     ax.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
-    ax.set_aspect("equal", adjustable="box")   # 0-1 on both axes: chance must sit at 45 deg
-    ax.set_xlabel("1 − specificity"); ax.set_ylabel("sensitivity"); ax.set_xlim(-.02, 1.02); ax.set_ylim(-.02, 1.02)
+    palette.style_roc(ax)                      # shared with Figures 2, S3 and S7
     # At page width the two titles collide and the long legend labels overrun the y-axis, so the title wraps
     # onto two lines and the legend is sized to sit inside its own axes.
     ttl = "FOCAL slowing" if axis == "focal" else "GENERALIZED slowing"
-    ax.set_title(f"{ttl}\nn={len(m)}, {int(y.sum())} positive", fontsize=8.5)
-    ax.legend(frameon=False, fontsize=6.2, loc="lower right", handlelength=1.2, borderaxespad=0.3)
-    ax.tick_params(labelsize=7)
-    ax.xaxis.label.set_size(8); ax.yaxis.label.set_size(8)
+    ax.set_title(f"{ttl}\nn={len(m)}, {int(y.sum())} positive", fontsize=palette.TITLE_PT)
+    ax.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
+              borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
     return res, len(m), int(y.sum()), len(pts)
 
 
@@ -183,8 +182,7 @@ def main():
     rg, ng, pg, _ = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
     # Title in the Figure 3 caption (Clinical Neurophysiology); panel letters so the two axes are citable.
     for k, a in enumerate((a0, a1)):
-        a.text(-0.14, 1.02, chr(65 + k), transform=a.transAxes, fontsize=11, fontweight="bold",
-               va="bottom", ha="left")
+        palette.panel_letter(a, k)
     fig.tight_layout()
     fig.savefig(FIG / "sandor100_slowing.png", dpi=300, bbox_inches="tight"); plt.close(fig)
 

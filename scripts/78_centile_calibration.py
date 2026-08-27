@@ -33,6 +33,7 @@ from scipy.stats import norm as _norm
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette
 
 SD = Path("data/derived/segment_deviation")
 FIG = Path("figures/story")
@@ -160,8 +161,10 @@ def main() -> None:
     for k, v in arms.items():
         print(f"  {k}: {len(v):,} observations, {v.patient_id.nunique():,} patients")
 
+    # Orange is LENS's colour in six figures; these are cohorts, not methods. Two neutral-family tones,
+    # separated by marker as well as hue so the pair survives greyscale.
     style = {"internal held-out normals": dict(color="#1b6ca8", marker="o"),
-             "external no-slowing (ON-100)": dict(color="#c1440e", marker="s")}
+             "external no-slowing (ON-100)": dict(color="#5e3c99", marker="s")}
 
     ncol, nrow = len(CELLS), len(STAGES)
     # 2.15 in per row made a 7.0 x 10.8 in figure -- aspect 0.65, so a journal scales it to ~148 mm wide
@@ -195,8 +198,9 @@ def main() -> None:
             ax.set_yticks([3, 25, 50, 75, 97])
             ax.tick_params(labelsize=8)
             ax.grid(alpha=0.18)
+            palette.panel_letter(ax, ri * ncol + ci, dx=-0.24, dy=1.00)
             if ri == 0:
-                ax.set_title(nice, fontsize=10)
+                ax.set_title(nice, fontsize=palette.TITLE_PT)
             if ci == 0:
                 ax.set_ylabel(f"{stage}\nobserved %", fontsize=9)
             if ri == nrow - 1:

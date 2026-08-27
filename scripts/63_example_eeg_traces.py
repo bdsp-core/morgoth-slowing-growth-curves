@@ -21,6 +21,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette
 from scipy.signal import butter, filtfilt, iirnotch
 
 from morgoth_slowing.io.edf import load_edf_referential
@@ -227,8 +228,7 @@ def main():
             axt = fig.add_axes([LEFT, top - cell / FIG_H, RIGHT - LEFT, TEXT_H / FIG_H]); axt.axis("off")
             axt.set_zorder(-1)
             # One letter per example, so the three cases are citable from the text individually.
-            axe.text(-0.075, 1.14, "ABC"[rr], transform=axe.transAxes, fontsize=11, fontweight="bold",
-                     va="bottom", ha="left")
+            palette.panel_letter(axe, rr, dx=-0.075, dy=1.14)
             kind = "Focal" if r.isfoc else "Generalized"
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()
             head = f"{kind} · {r.peakz:.1f} SD · {r.domstage} · {age}{sex}"

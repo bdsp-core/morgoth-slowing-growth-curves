@@ -16,7 +16,9 @@ VANPUTTEN = "#9aa0a6"    # van Putten qEEG indices (grey)
 
 # --- data classes ---
 NORMAL = "#31a354"       # clean-normal reference (green = healthy)
-ABNORMAL = "#c8443c"     # report-slowing / abnormal (brick red)
+ABNORMAL = "#99000d"     # report-slowing / abnormal (deep crimson). Deliberately NOT the brick red
+                         # it used to be: that sat next to the LENS orange above and the two read as
+                         # one colour across the manuscript even though they never share a figure.
 
 CHANCE = "#bbbbbb"       # diagonal / chance reference lines
 
@@ -56,7 +58,9 @@ BAND = {"delta": ABNORMAL, "theta": "#1b9e77", "mixed": NEUTRAL}
 SIDE = {"left": "#762a83", "bilateral": NEUTRAL, "right": "#1b7837"}
 
 # anterior/posterior topography.
-TOPO = {"anterior": "#a6761d", "posterior": "#386cb0", "unspec": NEUTRAL}
+# NOT the stage blues: a reader meets gold=W / blue=N2 across ~20 panels of Figures 1A and S5, and
+# S8B follows immediately -- reusing those hues for anterior/posterior invites a false association.
+TOPO = {"anterior": "#a6761d", "posterior": "#5e3c99", "unspec": NEUTRAL}
 
 
 def band_colors(keys):
@@ -88,6 +92,35 @@ FEATURE_LABEL = {
     "log_DAR":      "delta/alpha ratio (DAR)",
     "low_freq_rel": "low-frequency relative power",
 }
+
+
+# --- one style for the ROC/PRC family ------------------------------------------------------------------
+# Figures 2, 3, S3 and S7 plot the same 0-1 space and are read against each other, but were drawn with two
+# tick sets, two decimal conventions (x at 2 dp against y at 1 dp in the same panel), three type sizes and
+# two title cases. Everything that makes them comparable lives here.
+ROC_TICKS = (0.0, 0.25, 0.50, 0.75, 1.0)
+PANEL_PT = 10          # panel letters: one size, everywhere
+TITLE_PT = 9.5
+LABEL_PT = 8.5
+TICK_PT = 7.5
+LEGEND_PT = 6.5
+
+
+def style_roc(ax, xlabel="1 \u2212 specificity", ylabel="sensitivity"):
+    """Apply the shared ROC/PRC axis style. Square, same ticks, same decimals, same type."""
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlim(-0.02, 1.02); ax.set_ylim(-0.02, 1.02)
+    ax.set_xticks(ROC_TICKS); ax.set_yticks(ROC_TICKS)
+    ax.set_xticklabels([f"{t:.2f}" for t in ROC_TICKS])
+    ax.set_yticklabels([f"{t:.2f}" for t in ROC_TICKS])
+    ax.tick_params(labelsize=TICK_PT)
+    ax.set_xlabel(xlabel, fontsize=LABEL_PT); ax.set_ylabel(ylabel, fontsize=LABEL_PT)
+
+
+def panel_letter(ax, i, dx=-0.16, dy=1.02):
+    """One panel-letter convention for the whole set: bold, PANEL_PT, top-left, outside the axes."""
+    ax.text(dx, dy, "ABCDEFGHIJKLMNO"[i], transform=ax.transAxes, fontsize=PANEL_PT,
+            fontweight="bold", va="bottom", ha="left")
 
 
 def flabel(key: str) -> str:

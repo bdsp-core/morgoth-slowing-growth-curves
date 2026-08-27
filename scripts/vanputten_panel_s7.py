@@ -133,12 +133,10 @@ def main():
         for p in pts.values():
             ax.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
         ax.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
-        ax.set_aspect("equal", adjustable="box")   # match Figures 2/3/S7: chance at 45 deg
-        ax.text(-0.22, 1.04, "AB"[axi], transform=ax.transAxes, fontsize=11, fontweight="bold",
-                va="bottom", ha="left")
-        ax.set_xlabel("1 − specificity"); ax.set_ylabel("sensitivity"); ax.set_xlim(-.02, 1.02); ax.set_ylim(-.02, 1.02)
-        ax.set_title(f"{axis.upper()} slowing\nn={len(idx)}, {int(y.sum())} positive", fontsize=9)
-        ax.legend(frameon=False, fontsize=6.0, loc="lower right", handlelength=1.0,
+        palette.style_roc(ax)                      # shared with Figures 2, 3 and S7
+        palette.panel_letter(ax, axi)
+        ax.set_title(f"{axis.upper()} slowing\nn={len(idx)}, {int(y.sum())} positive", fontsize=palette.TITLE_PT)
+        ax.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
                   borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
     # Title in the Figure S3 caption, not in the image (Clinical Neurophysiology).
     fig.tight_layout()

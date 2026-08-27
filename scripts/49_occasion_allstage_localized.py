@@ -150,27 +150,26 @@ def evaluate(T, V, name, ax, cols, color):
     # panel sits next to S3.
     a0.plot([], [], "o", mfc="none", mec="k", label=f"expert under curve ({sum(fr.values())})")
     a0.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"expert above ({len(pts)-sum(fr.values())})")
-    a0.set_aspect("equal", adjustable="box")   # match Figures 2/3/S3: chance at 45 deg
-    a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity")
-    a0.set_title(f"{name.upper()} — ROC\n{sum(fr.values())}/{len(pts)} experts under", fontsize=9.5)
-    a0.legend(frameon=False, fontsize=7.5, loc="lower right"); a0.set_xlim(-.02, 1.02); a0.set_ylim(-.02, 1.02)
-    a1.plot(rec, prec, color=color, lw=2.4, label=f"LENS (AP {ap:.2f})"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
+    palette.style_roc(a0)                      # shared with Figures 2, 3 and S3
+    a0.set_title(f"{name.upper()} — ROC\n{sum(fr.values())}/{len(pts)} experts under", fontsize=palette.TITLE_PT)
+    a0.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
+              borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
+    a1.plot(rec, prec, color=color, lw=2.4, label=f"LENS  AP {ap:.2f}"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
     for r, pp in pts.items():
         if np.isfinite(pp["precision"]):
             a1.plot(pp["recall"], pp["precision"], "o", ms=6, mfc=("none" if fp.get(r) else palette.NEUTRAL), mec="k", mew=.4, alpha=.85)
     a1.plot([], [], "o", mfc="none", mec="k", label=f"expert under curve ({sum(fp.values())})")
     a1.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"expert above ({len(fp)-sum(fp.values())})")
-    a1.set_aspect("equal", adjustable="box")
-    a1.set_xlabel("recall"); a1.set_ylabel("precision")
-    a1.set_title(f"{name.upper()} — PRC\n{sum(fp.values())}/{len(fp)} experts under", fontsize=9.5)
-    a1.legend(frameon=False, fontsize=7.5, loc="upper right"); a1.set_xlim(-.02, 1.02); a1.set_ylim(-.02, 1.02)
+    palette.style_roc(a1, xlabel="recall", ylabel="precision")
+    a1.set_title(f"{name.upper()} — PRC\n{sum(fp.values())}/{len(fp)} experts under", fontsize=palette.TITLE_PT)
+    a1.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower left", handlelength=1.0,
+              borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
     # No in-figure title, and no "Morgoth-FREE": across the figure set "Morgoth" already names the sleep
     # stager (Figure S1) and the reference detector (Figures 2, 3, S3), and using it a third time as a
     # negation made it unclear whether this evaluates the same LENS as Figure 2. It does. Title is in the
     # Figure S7 caption.
     for k, a in enumerate((a0, a1)):
-        a.text(-0.14, 1.02, chr(65 + k), transform=a.transAxes, fontsize=11, fontweight="bold",
-               va="bottom", ha="left")
+        palette.panel_letter(a, k)
     fig.tight_layout()
     fig.savefig(FIG / f"s0_occasion_ours_v4_{name}.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     return f"| {name} | {'+'.join(STAGESET)} | {int(y.sum())}/{len(y)} | {auc:.3f} | {ap:.3f} | {len(pts)} | **{100*pu_roc:.0f}%** | **{100*pu_pr:.0f}%** |"

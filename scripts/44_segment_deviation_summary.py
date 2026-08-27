@@ -107,8 +107,7 @@ def main():
         if j == 0:
             # The full label was clipped by the canvas edge, taking the error-bar definition with it.
             ax.set_ylabel("deviation z", fontsize=9)
-        ax.text(-0.18, 1.03, "ABC"[j], transform=ax.transAxes, fontsize=11, fontweight="bold",
-                va="bottom", ha="left")
+        palette.panel_letter(ax, j, dx=-0.18)
         ax.legend(frameon=False, fontsize=8)
     # Title in the Figure S6 caption, not in the image (Clinical Neurophysiology).
     fig.tight_layout()

@@ -301,6 +301,17 @@ We present LENS (Lifespan EEG Normative Scoring), which is to our knowledge the 
 *Supplementary: 4 tables + 9 figures. Captions are self-contained; the script and file that produce each
 item are listed once, in the provenance table at the end of this section, rather than inside the captions.*
 
+***Conventions used in every figure.*** *Uncertainty is a* **95% confidence interval** *throughout ---
+percentile bootstrap resampling the recording (which on the expert panels is also the
+patient) --- shown as brackets on a point estimate or as a shaded band on a curve. The one deliberate
+exception is Figures 1A and S5, where the shaded bands are* **normative percentiles, not confidence
+intervals** *(p3--p97, p10--p90, p25--p75), because the spread of the normal population is the object being
+displayed; those two captions say so again. Detection figures share one axis style (square axes, so the
+chance diagonal is at 45°, identical ticks) and one read-out:* **experts under the curve as a count**, *not a
+percentage, over the number of experts contributing an operating point. Colour means one thing throughout:
+orange is LENS, purple the foundation-model gate, blue SCORE-AI, grey the experts and the clean-normal
+reference, crimson report-slowing/abnormal.*
+
 ### Main
 
 - **Table 1 --- Cohort characteristics.** Demographics, recording type, segment-weighted sleep-stage composition and label strata for the 25,536 analysed recordings. Percentages in the label rows are of the 23,872 cleanly paired recordings, not of the 25,536 total; the two denominators are reconciled in §3.1.

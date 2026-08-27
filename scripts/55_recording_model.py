@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette
 from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
 
 m54 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m54", "scripts/54_single_model_train_eval.py"))
@@ -149,17 +150,17 @@ def main():
                     if np.isfinite(p["precision"]): a1.plot(p["recall"], p["precision"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
                 a0.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
                 a1.axhline(y.mean(), ls="--", color="#ccc", lw=1)
-                a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{tag.upper()} — ROC", fontsize=11)
-                # ROC and PRC axes are both 0-1 probability scales, so the chance diagonal must be at 45 deg.
-                # Without this the four ROC figures render at four aspect ratios and curve "squareness" is
-                # not comparable between them.
-                a0.set_aspect("equal", adjustable="box"); a1.set_aspect("equal", adjustable="box")
-                a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{tag.upper()} — PRC", fontsize=11)
-                a0.legend(frameon=False, fontsize=6.0, loc="lower right", handlelength=1.0,
+                # One shared style for the whole ROC/PRC family (Figures 2, 3, S3, S7): square axes, the same
+                # ticks and decimals, the same type ladder. See palette.style_roc.
+                palette.style_roc(a0)
+                palette.style_roc(a1, xlabel="recall", ylabel="precision")
+                a0.set_title(f"{tag.upper()} — ROC", fontsize=palette.TITLE_PT)
+                a1.set_title(f"{tag.upper()} — PRC", fontsize=palette.TITLE_PT)
+                a0.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
                       borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
                 # PRC curves live along the TOP of the panel, so an upper-right legend overprints them
                 # (round-1 render: the LENS-v2 entry was struck through by its own curve). Bottom-left is empty.
-                a1.legend(frameon=False, fontsize=6.0, handlelength=1.0, borderaxespad=0.2,
+                a1.legend(frameon=False, fontsize=palette.LEGEND_PT, handlelength=1.0, borderaxespad=0.2,
                       labelspacing=0.35, handletextpad=0.5, loc="lower left")
                 for a in (a0, a1): a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
                 # Title in the caption, not in the image (Clinical Neurophysiology). The subplot titles still
