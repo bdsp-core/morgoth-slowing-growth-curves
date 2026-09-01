@@ -163,6 +163,11 @@ def main():
                 mono, chs, fs = fetch_window(man.loc[r.eeg_id], t0, r.eeg_id)
                 plot_panel(axe, bipolar(mono, chs, fs), fs, f"{head}   (10 s, t≈{t0/60:.0f} min)")
                 ok += 1
+            except FileNotFoundError:
+                # A missing deviation partition means we cannot know WHICH window to plot, so the panel
+                # would be silently wrong rather than merely absent. The generic handler below exists for
+                # transient S3/EDF problems; provenance errors must stop the run instead of being drawn.
+                raise
             except Exception as e:
                 axe.axis("off"); axe.text(0.5, 0.5, f"EEG unavailable\n{type(e).__name__}", ha="center", va="center",
                                           fontsize=8, transform=axe.transAxes); axe.set_title(head, fontsize=8.5, fontweight="bold", loc="left")

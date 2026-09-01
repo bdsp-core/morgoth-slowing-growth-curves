@@ -33,10 +33,13 @@ echo "hidden $(ls $STASH/files | wc -l | tr -d ' ') unpublished top-level files"
 # 2. segment_deviation: only the six published Figure 4/5 example partitions survive
 if [ -d "$D/segment_deviation" ]; then
   mv "$D/segment_deviation" "$STASH/segment_deviation"; mkdir -p "$D/segment_deviation"; n=0
+  # IDs come from the committed examples table, never from a temp file: an earlier version read
+  # /tmp/exids.txt, which did not survive, so ZERO partitions were exposed and scripts/63 silently drew
+  # "EEG unavailable" panels that differed from the committed figures.
   while read -r e; do
     [ -d "$STASH/segment_deviation/eeg_id=$e" ] || continue
     ln -s "$STASH/segment_deviation/eeg_id=$e" "$D/segment_deviation/eeg_id=$e"; n=$((n+1))
-  done < /tmp/exids.txt
+  done < <(.venv/bin/python -c "import pandas as pd; print('\n'.join(pd.read_parquet('results/story/s4_examples.parquet').eeg_id))")
   echo "segment_deviation: exposed $n published example partitions (of $(ls $STASH/segment_deviation | wc -l | tr -d ' '))"
 fi
 
