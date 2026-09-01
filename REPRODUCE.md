@@ -4,7 +4,7 @@ Everything is driven by one script, [`scripts/reproduce_story.sh`](scripts/repro
 tiers (pick by how much you want to rebuild):
 
 **Prerequisites.** Python 3.12+, **R with the `gamlss` package**, and **pandoc** (the last only for
-`scripts/build_manuscript_docx.py`).
+`scripts/build_manuscript_docx.py` (which now writes both `docs/manuscript_draft.docx` and `docs/supplementary_material.docx`)).
 
 R is needed by **every tier, including `results`** — not just `features`/`scratch`, as this line used to say.
 `scripts/115` fits the scoring norms and is a `features` step, but `scripts/76` re-fits the displayed curves

@@ -33,6 +33,22 @@ import sys
 from pathlib import Path
 
 MS = Path("docs/manuscript_draft.md")
+SUPP = Path("docs/supplementary_material.md")   # split out for submission; checks B and C span BOTH files
+
+
+def manuscript_text() -> str:
+    """Main text + supplement.
+
+    The supplement became a separate file when the journal wanted it that way. Checks B and C must read both
+    or they silently lose half their input: the code-and-data map and 26 relocated blocks live in the
+    supplement, so scanning only the main text would drop most script citations and a large share of the
+    quoted numbers -- and both checks would still report PASS, which is the exact failure mode this file
+    exists to prevent.
+    """
+    parts = [MS.read_text()]
+    if SUPP.exists():
+        parts.append(SUPP.read_text())
+    return "\n".join(parts)
 RUNNER = Path("scripts/reproduce_story.sh")
 REPRO = Path("REPRODUCE.md")
 RESULTS = Path("results")
@@ -121,7 +137,11 @@ def check_numbers(ms: str) -> dict:
     Rounding is accepted in the quoting direction only: the prose may print 0.87 for a stored 0.871.
     """
     corpus = "\n".join(p.read_text(errors="ignore") for p in RESULTS.rglob("*.md"))
-    body = re.split(r"\n## References", ms)[0]
+    # Excise the reference LIST (citation years and page numbers are not results) without truncating the
+    # document at it. Splitting on "## References" and keeping [0] used to be right when everything lived in
+    # one file; once the supplement was split out, References sits in the middle of the combined text and
+    # that split silently discarded the entire supplement -- the check still said PASS on 23 fewer numbers.
+    body = re.sub(r"\n## References.*?(?=\n## |\Z)", "\n", ms, flags=re.S)
     body = re.sub(r"```.*?```", " ", body, flags=re.S)
     body = re.sub(r"\[[0-9,\-\s]+\]", " ", body)                 # bracketed citations
     body = re.sub(r"10\.\d{4,}/[^\s)\]]+", " ", body)            # DOIs
@@ -234,7 +254,7 @@ def main() -> int:
     ap.add_argument("--fresh", action="store_true", help="also run the slow fresh-install simulation (check D)")
     ap.add_argument("--json", help="write the certificate as JSON")
     a = ap.parse_args()
-    ms = MS.read_text()
+    ms = manuscript_text()
 
     checks = [check_display_items(ms), check_producers(ms), check_numbers(ms), check_integrity()]
     if a.fresh:
