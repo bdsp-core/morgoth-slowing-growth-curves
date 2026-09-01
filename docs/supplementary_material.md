@@ -16,6 +16,7 @@ Supplementary methods, robustness analyses and negative results supporting the m
 - **Figure S8 --- Description panels D1/D3/D4/D6** (type/amount, anterior--posterior, persistence, generated-word concordance).
 - **Figure S7 --- Why the two detection axes need different read-outs** (localized focal).
 - **Figure S9 --- Severity is a null result** .
+- **Figure S10 --- Mild example recordings: EEG segments with the automated report vs the clinical report.** The mildest focal and generalized examples, in the same format as Figures 4 and 5, which carry two panels each so that each prints at full size.
 - **Figure S3 --- van Putten indices vs LENS vs the Morgoth gate on the clean ON-100 panel** (ROC per axis, expert-majority labels). LENS leads on generalized slowing and ties the foundation-model gate on focal --- generalized 0.961, focal 0.908 --- outperforming the best hand-crafted index by +0.14 / +0.08 and edging the foundation-model gate.
 
 - **Figure S4 --- Scalp topography of the theta/alpha ratio (TAR) by age × sleep stage**. The TAR companion to Figure 1b, confirming that the regional development pattern is not specific to relative delta.

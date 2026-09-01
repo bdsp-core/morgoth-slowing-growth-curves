@@ -23,6 +23,9 @@ FIGS = {
     "Figure3_sandor_external.png":   ([f"{STY}/sandor100_slowing.png"], 1, "sandor100_external_validation"),
     "Figure4_example_focal.png":      ([f"{STY}/s4_examples_eeg_focal.png"], 1, "62, 63"),
     "Figure5_example_generalized.png": ([f"{STY}/s4_examples_eeg_generalized.png"], 1, "62, 63"),
+    # Figures 4 and 5 carry two panels each so they print at full size; the mildest focal and
+    # generalized examples move here rather than being dropped.
+    "FigureS10_example_mild.png":     ([f"{STY}/s4_examples_eeg_mild.png"], 1, "62, 63"),
     "Figure6_description_contrast.png": ([f"{STY}/s4_d2.png", f"{STY}/s4_d5.png"], 1, "57"),
     "Figure7_sleep_underreporting.png": ([f"{G}/v4a_wake_sleep.png"], 1, "fig6_sleep_naming (95b stat)"),
     # ---- SUPPLEMENTARY ----

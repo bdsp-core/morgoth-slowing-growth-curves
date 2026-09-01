@@ -144,16 +144,31 @@ def main():
     # text was unreadable. It cannot be narrowed -- bbox_inches="tight" grows the canvas to fit the text, so
     # shrinking the canvas or enlarging the fonts both make it worse. Split into two single-column figures
     # instead: each is page-width, so nothing is scaled down.
-    panels = [("focal", foc, "s4_examples_eeg_focal.png",
+    # TWO panels per figure, not three. Three stacked panels plus their report text cannot fit a portrait
+    # page at legible size: it gave each trace block 1.56 in for 19 channels (0.082 in/channel), which is why
+    # the derivation labels collided. The earlier 3x2 grid was no better in print -- 0.164 in/channel on
+    # screen, but the figure had to scale to 52% on the page, so 0.085 in/channel effective. Only reducing
+    # the panel count lets the figure print at 100%: 2 panels give 0.147 in/channel, inside the 0.15-0.20
+    # convention, with the report text unshrunk. The third (mildest) example of each axis moves to a
+    # supplementary figure rather than being dropped.
+    panels = [("focal", foc[:2], "s4_examples_eeg_focal.png",
                "Example focal slowing: 10-s EEG segments with the LENS automated report vs the clinical report"),
-              ("generalized", gen, "s4_examples_eeg_generalized.png",
-               "Example generalized slowing: 10-s EEG segments with the LENS automated report vs the clinical report")]
+              ("generalized", gen[:2], "s4_examples_eeg_generalized.png",
+               "Example generalized slowing: 10-s EEG segments with the LENS automated report vs the clinical report"),
+              ("mild", foc[2:3] + gen[2:3], "s4_examples_eeg_mild.png",
+               "Mild examples: 10-s EEG segments with the LENS automated report vs the clinical report")]
     ok = 0
     for kind_name, rows, outname, title in panels:
-        fig = plt.figure(figsize=(7.1, 9.4))
-        outer = fig.add_gridspec(3, 1, hspace=0.38, left=0.075, right=0.985, top=0.930, bottom=0.02)
+        if not rows:
+            continue
+        fig = plt.figure(figsize=(7.1, 4.6 * len(rows)))
+        outer = fig.add_gridspec(len(rows), 1, hspace=0.34, left=0.075, right=0.985,
+                                 top=0.93 if len(rows) > 1 else 0.88, bottom=0.03)
         for rr, r in enumerate(rows):
-            inner = outer[rr, 0].subgridspec(2, 1, height_ratios=[2.5, 1.9], hspace=0.42)
+            # Balance: the report block runs 5-7 wrapped lines at a FIXED font size, so squeezing its
+            # share makes the lines collide (1.15 did). 1.55 fits the longest block with the traces
+            # still at ~0.16 in/channel, inside the clinical convention.
+            inner = outer[rr, 0].subgridspec(2, 1, height_ratios=[3.7, 1.55], hspace=0.34)
             axe = fig.add_subplot(inner[0]); axt = fig.add_subplot(inner[1]); axt.axis("off")
             kind = "Focal" if r.isfoc else "Generalized"
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()

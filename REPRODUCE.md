@@ -118,6 +118,7 @@ Figures are assembled into the submission set by
 | **Figure S7** localized focal | `49_occasion_allstage_localized.py` | `occasion_features.parquet` | `figures/story/s0_occasion_ours_v4_focal.png` |
 | **Figure S8** description panels (D1–D6) | `57_description_panels.py`, `58_description_words.py` | `description_recording.parquet` | `figures/story/s4_d{1,3,4,6}.png` |
 | **Figure S9** severity null | `109_severity_null_v6.py` | `occasion_features.parquet` | `figures/growth_v2/severity_recalibrated.png` |
+| **Figure S10** mild examples | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_mild.png` |
 | **Table 1** cohort | `table1_sap.py` | `labels_unified.parquet`, manifest | `results/table1.md` |
 | **Table S1** van Putten full-coverage | `recompute_vanputten_fullcov.py` | `occasion_features.parquet` | `results/vanputten_fullcoverage.md` |
 | **Table S2** human ceiling | `recompute_human_ceiling_v6.py` | ON-100 panel votes | `results/table5_human_ceiling.md` |
