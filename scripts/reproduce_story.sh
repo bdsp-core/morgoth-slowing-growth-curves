@@ -133,6 +133,7 @@ run 4 figures/figs/vanputten_panel_s7.png      "Fig S3 van Putten panel head-to-
 # never invoked, so those numbers could drift from the code with nothing to catch it.
 run 4 results/story/curve_fit_diagnostic.md    "SS2.5 curve-fit agreement sweep (79)"              -- py scripts/79_curve_fit_diagnostic.py
 run 4 results/story/topk_sweep.md              "SS2.7 top-k aggregation sweep (80)"                -- py scripts/80_topk_sweep.py
+run 4 results/story/age_ablation.md            "SS3.4c age-shortcut ablation (112)"                -- py scripts/112_age_ablation.py
 
 hdr "STAGE 5 — assemble the dashboard + the manuscript figure set"
 run 5 __always__ "story dashboard (build_story_dashboard)" -- py scripts/build_story_dashboard.py

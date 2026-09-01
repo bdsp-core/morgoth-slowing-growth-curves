@@ -47,6 +47,8 @@ CLASSIFIED = {
     "reproduce_story": "the runner itself, not a producer",
     "sandor100_": "prefix of sandor100_external_validation / sandor100_stage_extract, both in the runner",
     "assemble_manuscript_figures": "stage 5 - composits committed figures for the docx, produces no new result",
+    "certify_reproducibility": "this checker; cited in the code-and-data map, not a producer",
+    "112": "in the runner as 112_age_ablation.py (review comment 14 ablations)",
 }
 
 

@@ -113,9 +113,19 @@ def eval_axis(scores, axis, mr_file, ax):
     m = scores.merge(d, on="key", how="inner")
     expert_cols = [c for c in d.columns if c.startswith("expert_")]
     wide = m.set_index("key")[expert_cols].apply(pd.to_numeric, errors="coerce")
-    # GROUND TRUTH = the actual expert-vote majority. The workbook's `majority` column is CORRUPTED for the
-    # focal sheet (disagrees with the 14-expert vote on 23/100; an independent model predicts the vote at
-    # 0.976 vs the stated column at 0.62). Verified 2026-07-18; the generalized sheet is unaffected.
+    # GROUND TRUTH = the expert-vote majority, recomputed from the individual expert columns.
+    #
+    # NOT the `majority` column of FocalSlowingOutput_*.xlsx. That column reproduces he_con_intictepifoc --
+    # the focal INTERICTAL EPILEPTIFORM consensus -- on 100/100 recordings, while the expert_* columns beside
+    # it carry focal NON-epileptiform (slowing) ratings. Scoring against it would compare a slowing detector
+    # to an epileptiform reference; it disagrees with the true focal-slowing majority on 23/100 (10 one way,
+    # 13 the other).
+    #
+    # This was previously described here, and in the manuscript, as the SOURCE workbook being corrupted. That
+    # was wrong and is corrected (Beniczky, 2026-08-31): validation_study_excel_export.xlsx is internally
+    # consistent -- its he_con_nonepifoc agrees with the majority of the individual nonepifoc ratings on
+    # 100/100. The inconsistency is in the derived FocalSlowingOutput workbook only. The recomputation below
+    # agrees with the true nonepifoc majority on 100/100 (26 positives), so results are unaffected.
     y = (wide.mean(axis=1).values >= 0.5).astype(int)
     pts = m46.expert_points(wide)
     models = [("LENS", m[f"ours_{axis}"].values, C_OURS), ("Morgoth", m["M_pred"].values, C_MORG),
@@ -139,7 +149,26 @@ def eval_axis(scores, axis, mr_file, ax):
     ax.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3)
     ax.tick_params(labelsize=7)
     ax.xaxis.label.set_size(8); ax.yaxis.label.set_size(8)
-    return res, len(m), int(y.sum()), len(pts)
+    # PAIRED bootstrap of the AUROC DIFFERENCE (review comments 8/34-36). Comparative claims -- "outperforms
+    # SCORE-AI on focal" -- rested on point estimates alone. Resampling recordings ONCE per replicate and
+    # scoring both models on the SAME resample keeps the comparison paired, so the interval reflects the
+    # difference rather than the sum of two independent uncertainties.
+    ok_all = np.isfinite(y)
+    for nm, s_, _c in models:
+        ok_all &= np.isfinite(s_)
+    yv = y[ok_all]
+    sc = {nm: s_[ok_all] for nm, s_, _c in models}
+    rng = np.random.default_rng(0)
+    idx = [rng.choice(len(yv), len(yv), replace=True) for _ in range(4000)]
+    idx = [j for j in idx if 0 < yv[j].sum() < len(j)]
+    diffs = {}
+    for other in ("SCORE-AI", "Morgoth"):
+        d = np.array([roc_auc_score(yv[j], sc["LENS"][j]) - roc_auc_score(yv[j], sc[other][j]) for j in idx])
+        lo_, hi_ = np.percentile(d, [2.5, 97.5])
+        # two-sided bootstrap p: how often the difference crosses zero
+        pv = 2 * min((d <= 0).mean(), (d >= 0).mean())
+        diffs[other] = (float(d.mean()), float(lo_), float(hi_), float(max(pv, 1 / len(d))))
+    return res, len(m), int(y.sum()), len(pts), diffs
 
 
 def main():
@@ -150,8 +179,8 @@ def main():
     scores = score_sandor(gen, foc, foc_med, amt_med)
     print(f"scored {len(scores)} recordings", flush=True)
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96))
-    rf, nf, pf, ne = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
-    rg, ng, pg, _ = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
+    rf, nf, pf, ne, df = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
+    rg, ng, pg, _, dg = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
     fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=9.5)
     fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "sandor100_slowing.png", dpi=300); plt.close(fig)
 
@@ -165,7 +194,15 @@ def main():
     for axis, res, npos in [("focal", rf, pf), ("generalized", rg, pg)]:
         for name, au, lo, hi, ur, ap in res:
             md.append(f"| {axis} ({npos}+) | {name} | {au:.3f} [{lo:.3f}, {hi:.3f}] | {ur:.0f}% | {ap:.3f} |")
-    (OUT / "sandor100_external.md").write_text("\n".join(md))
+    md += ["", "## Paired AUROC differences (LENS minus comparator)", "",
+           "Same 4,000 recording-level resamples for both models in each row, so the interval is on the "
+           "DIFFERENCE. A comparative claim is only supported where the interval excludes 0.", "",
+           "| axis | comparison | ΔAUROC [95% CI] | p | supported? |", "|---|---|---|---|---|"]
+    for axis, dd in [("focal", df), ("generalized", dg)]:
+        for other, (mu, lo, hi, pv) in dd.items():
+            sup = "**yes**" if (lo > 0 or hi < 0) else "no (interval includes 0)"
+            md.append(f"| {axis} | LENS − {other} | {mu:+.3f} [{lo:+.3f}, {hi:+.3f}] | {pv:.3g} | {sup} |")
+    (OUT / "sandor100_external.md").write_text("\n".join(md) + "\n")
     print("\n".join(md)); print("\nwrote results/sandor/sandor100_external.md + figures/story/sandor100_slowing.png")
 
 

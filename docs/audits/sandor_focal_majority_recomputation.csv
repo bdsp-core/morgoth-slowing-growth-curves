@@ -1,4 +1,4 @@
-file_name,n_focal_votes,n_raters,expert_vote_frac,majority_CORRECTED,majority_ORIGINAL_BUGGY,S_pred,M_pred,MISMATCH
+file_name,n_focal_votes,n_raters,expert_vote_frac,majority_from_expert_votes,majority_workbook_summary_col,S_pred,M_pred,MISMATCH
 ID001,3,11,0.273,0,0,0.478,0.315,False
 ID002,11,11,1.0,1,0,0.858,0.847,True
 ID003,0,11,0.0,0,0,0.066,0.19,False
