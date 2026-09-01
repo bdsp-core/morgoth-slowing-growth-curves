@@ -36,7 +36,19 @@ EXCLUDE_IDS = ("S0001121298232",)
 # is what actually needed updating: the committed cards were built from the superseded 7-region descriptors.
 # Order is the display order: 3 focal (marked/moderate/mild), then 3 generalized.
 PINNED_EXAMPLES = (
-    "S0001112857553_20160206081631",   # focal, marked
+    "S0001117361164_20120710082827",   # focal, marked. Chosen deliberately, not by the search: its
+                                       # impression reads "continuous right frontotemporal delta slowing.
+                                       # no epileptiform abnormalities were detected", in a patient with a
+                                       # right temporal GBM resection -- a clean focal exemplar with a
+                                       # structural cause, which is exactly what this figure illustrates. The automatic pick is not trustworthy here --
+                                       # de-identification redacts findings behind asterisks, so a text
+                                       # screen cannot see "abundant ****** sharp discharges", and ranking on
+                                       # peak z alone surfaced an attenuation case and a status-epilepticus
+                                       # case. Replaces S0001112857553_20160206081631, whose impression
+                                       # (S0001112857553_20160206081631) has "abundant spike and slow wave
+                                       # discharges" as the first item of its impression, so its displayed
+                                       # segment is epileptiform rather than the focal slowing the figure
+                                       # claims to show. Re-picked under the widened screen above.
     "S0001120133802_20120917122010",   # focal, moderate
     "S0002118633403_20191203074129",   # focal, mild
     "S0001119160767_20190930133101",   # generalized, marked
@@ -51,6 +63,28 @@ SLOW_KW = re.compile(r"\bslow(ing|ed|s)?\b", re.I)
 # (LPDs/PLEDs/GPDs/triphasic/LRDA) — those are ictal-interictal-continuum patterns, not background slowing, and
 # would dominate the displayed segment. (Narrow on purpose: 84% of reports mention some spike/discharge term.)
 PERIODIC = re.compile(r"\b(lpd|pled|lrda|periodic|triphasic|gpd|bipd)s?\b", re.I)
+# 22cad20 excluded PERIODIC exemplars after a reviewer noted a focal example was LPDs rather than slowing.
+# That filter was too narrow: it names periodic patterns only, so a report whose impression reads "1) abundant
+# spike and slow wave discharges in the right posterior quadrant 2) focal slowing in the right posterior"
+# passed it, and that recording became Figure 4's marked focal panel -- a figure illustrating focal SLOWING
+# whose displayed segment is substantially epileptiform, in the same region.
+EPILEPTIFORM = re.compile(r"\b(spike|sharp wave|sharp-wave|polyspike|epileptiform|electrographic seizure)s?\b",
+                          re.I)
+# ... but the mention must be ASSERTED. "there are no definite epileptiform abnormalities" is a clean report
+# and a legitimate exemplar, so a bare keyword search would throw away good cases along with bad ones.
+_NEG = re.compile(r"\b(no|not|without|absent|negative for|free of)\b", re.I)
+
+
+def asserts_epileptiform(impression: str) -> bool:
+    """True if the IMPRESSION asserts epileptiform activity (not merely mentions or negates it).
+
+    Scoped to the impression on purpose: the full report also carries indication, history and comparison to
+    prior studies, which mention epileptiform activity that is not in this recording at all.
+    """
+    for clause in re.split(r"[.;\n]|\d\)", str(impression or "")):
+        if (EPILEPTIFORM.search(clause) or PERIODIC.search(clause)) and not _NEG.search(clause):
+            return True
+    return False
 EXCLUDE = re.compile(r"\b(medication|treatment|administered|history|reason for|hemorrhage|h/o|epoch|start:|end:|"
                      r"comparison|clinical correlation|discharge|spike|seizure|anti-?seizure|dose|mg|bid|q\d+h|"
                      r"propofol|clobazam|lamotrigine|phenobarbital|phenytoin|lacosamide|keppra|levetiracetam)\b", re.I)
@@ -222,7 +256,9 @@ def main():
     def _no_periodic(eid):
         if eid not in man.index:
             return True
-        return not PERIODIC.search(str(man.report_impression.get(eid, "")) + " " + str(man.report_text.get(eid, "")))
+        if PERIODIC.search(str(man.report_impression.get(eid, "")) + " " + str(man.report_text.get(eid, ""))):
+            return False
+        return not asserts_epileptiform(man.report_impression.get(eid, ""))
     d = d[d.eeg_id.map(_no_periodic)]
 
     # --- pick 6 CONCORDANT examples (our field agrees slowing is present), 3 focal + 3 generalized,
@@ -250,10 +286,31 @@ def main():
     gen = d[(~d.isfoc) & d.gen & (d.slowing_gen_pathologic == True) & (d.slowing_focal != True)]                    # noqa: E712
     MARKED, MODERATE, MILD = (3.0, 12.0), (1.8, 3.0), (1.0, 1.8)
     chosen = []
-    by_id = {str(r.eeg_id): r for r in d.itertuples()}
-    missing = [e for e in PINNED_EXAMPLES if e not in by_id]
+    # iterrows, not itertuples: pick() returns a Series, and pd.DataFrame() cannot build a frame from a
+    # mix of namedtuples and Series once a reopened slot puts both in `chosen`.
+    by_id = {str(r.eeg_id): r for _, r in d.iterrows()}
+    # A pin of None reopens that slot: the identity is filled by the ordinary search while every other
+    # panel keeps the recording the reviewers saw. A pinned id that has DISAPPEARED is a different matter
+    # and still triggers the loud fallback below.
+    missing = [e for e in PINNED_EXAMPLES if e is not None and e not in by_id]
     if not missing:
-        chosen = [by_id[e] for e in PINNED_EXAMPLES]          # reviewed figure -> identities fixed
+        # Seed the "already used" sets from the PINNED rows first. Without this a reopened slot is filled
+        # before the picker knows which stages and regions the pinned panels occupy, so it can duplicate
+        # them -- reopening the marked-focal slot produced a second REM panel beside the pinned REM one.
+        used_ids = set(e for e in PINNED_EXAMPLES if e)
+        used_stages = [by_id[e].domstage for e in PINNED_EXAMPLES if e and e in by_id]
+        used_regions = set(by_id[e].peak_region for e in PINNED_EXAMPLES
+                           if e and e in by_id and pd.notna(by_id[e].peak_region))
+        for slot, (pool, band) in zip(PINNED_EXAMPLES,
+                                      [(foc, MARKED), (foc, MODERATE), (foc, MILD),
+                                       (gen, MARKED), (gen, MODERATE), (gen, MILD)]):
+            if slot is not None:
+                chosen.append(by_id[slot]); continue
+            r = pick(pool, used_ids, used_stages, used_regions, band)
+            if r is not None:
+                used_ids.add(r.eeg_id); used_stages.append(r.domstage)
+                used_regions.add(r.peak_region); chosen.append(r)
+                print(f"  reopened slot filled with {r.eeg_id} ({r.peakz:.1f} SD, {r.domstage})")
     else:
         # Only reachable if the pinned recordings drop out of the descriptor table entirely. Say so loudly
         # rather than silently swapping in different patients, which is exactly the failure this pin exists

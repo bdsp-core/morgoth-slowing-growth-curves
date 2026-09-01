@@ -30,7 +30,7 @@ importlib.util.spec_from_file_location("m31", "scripts/31_segment_master_worker.
 FIG = Path("figures/story"); RES = Path("results/story"); DEV = "data/derived/segment_deviation"
 CACHE = Path(".eeg_cache"); RC = os.environ.get("RCLONE_BIN", "/opt/homebrew/bin/rclone")
 MANIFEST = "data/manifest/report_manifest_v6.parquet"
-SEG_S = 10.0; AMT_Z = ["z__whole_head__log_delta", "z__whole_head__log_theta", "z__whole_head__log_TAR"]
+SEG_S = 10.0; PAD_S = 3.0; AMT_Z = ["z__whole_head__log_delta", "z__whole_head__log_theta", "z__whole_head__log_TAR"]
 
 # ---- house style (NeuroTech-Wrangling), black traces + chain gaps ----
 TRACE_COLOR = "#000000"; DARK = "#1f2937"; GRAY = "#6b7280"
@@ -110,7 +110,9 @@ def fetch_window(row, t0, eid):
     """Resolve+pull the EDF, return the SEG_S window (19 x n). Cached under .eeg_cache/ to avoid re-hitting S3."""
     cf = CACHE / f"{eid}_{int(round(t0))}.npz"
     if cf.exists():
-        z = np.load(cf, allow_pickle=True); return z["data"], [str(x) for x in z["chs"]], float(z["fs"])
+        z = np.load(cf, allow_pickle=True)
+        tr = tuple(z["trim"]) if "trim" in z else (0, 0)
+        return z["data"], [str(x) for x in z["chs"]], float(z["fs"]), tr
     # The manifest is pre-flight-resolved (scripts/129), so resolved_path already names the exact session
     # EDF. Prefer it: rclone is otherwise required just to re-discover a path we already know, and it is an
     # undocumented dependency that anyone with plain AWS credentials should not need.
@@ -129,10 +131,20 @@ def fetch_window(row, t0, eid):
         else:
             subprocess.run([RC, "copyto", uri, str(local)], check=True, capture_output=True, timeout=1800)
         data, chs, fs = load_edf_referential(str(local), max_hours=max(0.1, t0 / 3600 + 0.05))
-    s = int(round(t0 * fs)); n = int(round(SEG_S * fs)); s = min(s, data.shape[0] - n)
-    win = data[s:s + n].T                                       # (19, n)
-    CACHE.mkdir(exist_ok=True); np.savez(cf, data=win, chs=np.array(chs, dtype=object), fs=fs)
-    return win, chs, fs
+    # Take PAD_S extra seconds either side. bipolar() band-passes and notches the window it is given, and
+    # filtfilt rings at the edges of a short clip: on a 10 s window the settling transient was a visible
+    # exponential swing on the posterior derivations for the first second, which reads as a real waveform.
+    # The pad is filtered too and then cropped away, so the displayed 10 s is interior to the filtered span.
+    s = int(round(t0 * fs)); n = int(round(SEG_S * fs))
+    pad = int(round(PAD_S * fs))
+    lo = max(0, s - pad); hi = min(data.shape[0], s + n + pad)
+    if hi - lo < n:                                             # clip shorter than the window itself
+        lo, hi = max(0, data.shape[0] - n), data.shape[0]
+    win = data[lo:hi].T                                         # (19, n + padding)
+    trim = (s - lo, hi - (s + n))                               # samples of pad kept on each side
+    CACHE.mkdir(exist_ok=True); np.savez(cf, data=win, chs=np.array(chs, dtype=object), fs=fs,
+                                        trim=np.array(trim))
+    return win, chs, fs, trim
 
 
 def main():
@@ -175,8 +187,11 @@ def main():
             head = f"{kind} · {r.peakz:.1f} SD · {r.domstage} · {age}{sex}"
             try:
                 t0 = pick_segment(r.eeg_id, r.domstage, r.get("peak_region"))
-                mono, chs, fs = fetch_window(man.loc[r.eeg_id], t0, r.eeg_id)
-                plot_panel(axe, bipolar(mono, chs, fs), fs, f"{head}   (10 s, t≈{t0/60:.0f} min)")
+                mono, chs, fs, trim = fetch_window(man.loc[r.eeg_id], t0, r.eeg_id)
+                bip = bipolar(mono, chs, fs)
+                a_, b_ = int(trim[0]), int(trim[1])
+                bip = bip[:, a_: bip.shape[1] - b_] if (a_ or b_) else bip     # drop the filtered padding
+                plot_panel(axe, bip, fs, f"{head}   (10 s, t≈{t0/60:.0f} min)")
                 ok += 1
             except FileNotFoundError:
                 # A missing deviation partition means we cannot know WHICH window to plot, so the panel
