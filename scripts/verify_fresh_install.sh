@@ -62,6 +62,7 @@ PRODUCERS=(76_keystone_growth_grid.py 77_topoplots_by_age.py 54_single_model_tra
   58_description_words.py fig6_sleep_naming.py architecture_diagram.py 78_centile_calibration.py
   vanputten_panel_s7.py 111_curve_bank_v6.py 44_segment_deviation_summary.py 49_occasion_allstage_localized.py
   109_severity_null_v6.py table1_sap.py recompute_vanputten_fullcov.py recompute_human_ceiling_v6.py
+  112_age_ablation.py 79_curve_fit_diagnostic.py 80_topk_sweep.py
   band_calibration.py 95_v4a_wake_sleep.py)
 mkdir -p /tmp/flv3
 for s in "${PRODUCERS[@]}"; do
