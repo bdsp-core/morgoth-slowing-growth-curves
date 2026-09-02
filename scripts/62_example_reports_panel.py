@@ -36,11 +36,16 @@ EXCLUDE_IDS = ("S0001121298232",)
 # is what actually needed updating: the committed cards were built from the superseded 7-region descriptors.
 # Order is the display order: 3 focal (marked/moderate/mild), then 3 generalized.
 PINNED_EXAMPLES = (
-    "S0001117361164_20120710082827",   # focal, marked. Chosen deliberately, not by the search: its
-                                       # impression reads "continuous right frontotemporal delta slowing.
-                                       # no epileptiform abnormalities were detected", in a patient with a
-                                       # right temporal GBM resection -- a clean focal exemplar with a
-                                       # structural cause, which is exactly what this figure illustrates. The automatic pick is not trustworthy here --
+    "S0001116080658_20120620112030",   # focal, marked. Chosen deliberately, not by the search: its
+                                       # impression reads "high amplitude continuous FOCAL delta slowing
+                                       # over the left hemisphere, maximal over the left anterior temporal
+                                       # region. there were no epileptiform..." -- focal-first rather than
+                                       # diffuse-with-a-superimposed-focus, which is what this figure is
+                                       # for. Ranked on FOCALITY (peak region z minus the median region),
+                                       # not peak z alone: the highest-z recordings are diffusely slow with
+                                       # a focus riding on top, so LENS describes them as diffuse and the
+                                       # panel then contradicts the figure it sits in. Left-sided, which
+                                       # also contrasts with the right temporal panel beside it. The automatic pick is not trustworthy here --
                                        # de-identification redacts findings behind asterisks, so a text
                                        # screen cannot see "abundant ****** sharp discharges", and ranking on
                                        # peak z alone surfaced an attenuation case and a status-epilepticus
@@ -72,7 +77,15 @@ EPILEPTIFORM = re.compile(r"\b(spike|sharp wave|sharp-wave|polyspike|epileptifor
                           re.I)
 # ... but the mention must be ASSERTED. "there are no definite epileptiform abnormalities" is a clean report
 # and a legitimate exemplar, so a bare keyword search would throw away good cases along with bad ones.
-_NEG = re.compile(r"\b(no|not|without|absent|negative for|free of)\b", re.I)
+_NEG = re.compile(r"\b(no|not|none|without|absent|negative for|free of|unremarkable)\b", re.I)
+
+
+def _asserts(pat, s: str) -> bool:
+    """True if `pat` matches a clause of `s` that is not negated."""
+    for clause in re.split(r"[.;\n]|\d\)", str(s or "")):
+        if pat.search(clause) and not _NEG.search(clause):
+            return True
+    return False
 
 
 def asserts_epileptiform(impression: str) -> bool:
@@ -254,11 +267,24 @@ def main():
 
     # drop recordings whose report describes a PERIODIC epileptiform pattern (LPDs etc.) — not clean slowing
     def _no_periodic(eid):
+        """Reject only recordings whose report ASSERTS a periodic or epileptiform pattern.
+
+        The original screen matched PERIODIC anywhere in impression+text with no negation handling, so a
+        structured report reading "periodic or rhythmic patterns: none. epileptiform discharges: none."
+        was rejected for containing the word "periodic" -- it silently discarded exactly the cleanest
+        candidates, the ones whose reports state the absence explicitly.
+        """
         if eid not in man.index:
             return True
-        if PERIODIC.search(str(man.report_impression.get(eid, "")) + " " + str(man.report_text.get(eid, ""))):
-            return False
-        return not asserts_epileptiform(man.report_impression.get(eid, ""))
+        imp = str(man.report_impression.get(eid, "") or "")
+        txt = str(man.report_text.get(eid, "") or "")
+        # The IMPRESSION decides what this recording's primary abnormalities are, so epileptiform content
+        # there disqualifies it. The body text also carries indication, history and prior-study comparison,
+        # where an epileptiform mention says nothing about this recording -- scanning it for epileptiform
+        # rejected good exemplars. It is still scanned for PERIODIC patterns, because that was the original
+        # concern (an LPD run visible in the displayed segment), now negation-aware so a report stating
+        # "periodic or rhythmic patterns: none" is kept.
+        return not (asserts_epileptiform(imp) or _asserts(PERIODIC, txt))
     d = d[d.eeg_id.map(_no_periodic)]
 
     # --- pick 6 CONCORDANT examples (our field agrees slowing is present), 3 focal + 3 generalized,

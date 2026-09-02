@@ -2,10 +2,10 @@
 
 LENS's BRIEF finding line and FULL report paragraph (governed by docs/claims_table.md — magnitude in SD/centile, no severity adjective) beside the clinical report's STRUCTURED descriptors (raw report text withheld as PHI). Regional strip = per-region delta-excess deviation z (focal = one region high; diffuse = broadly elevated).
 
-**Case 1 — Focal slowing · peak 4.6 SD (>99.9th centile) · prominent in N1 · 37F**  
-- LENS (brief): Abundant diffuse theta–delta (mixed) slowing with a superimposed right temporal focus (max T4), present in wakefulness and sleep; activated in drowsiness.  
-- LENS (full): Diffuse theta–delta (mixed) slowing with a superimposed right temporal focus, maximal over the right temporal region, peaking at T4 (the T4-T6 derivation). Whole-head deviation 2.9 SD above the age- and stage-matched normal, with the focus reaching 4.6 SD (>99.9th centile) at that region, abnormal in 76% of analysed segments (abundant); longest continuous run ≈5.6 min over 12 episodes. Present in wakefulness and sleep; activated in drowsiness.  
-- Report (structured): focal slowing, right temporal (mixed)
+**Case 1 — Focal slowing · peak 4.1 SD (>99.9th centile) · prominent in N1 · 43F**  
+- LENS (brief): Abundant diffuse theta–delta (mixed) slowing with a superimposed left temporal focus (max T3), present in wakefulness and sleep; activated in drowsiness.  
+- LENS (full): Diffuse theta–delta (mixed) slowing with a superimposed left temporal focus. Whole-head deviation 1.8 SD above the age- and stage-matched normal, with the focus reaching 4.1 SD (>99.9th centile) at that region, abnormal in 67% of analysed segments (abundant); longest continuous run ≈4.4 min over 15 episodes. Present in wakefulness and sleep; activated in drowsiness.  
+- Report (structured): focal slowing, left temporal (delta)
 
 **Case 2 — Focal slowing · peak 1.9 SD (97th centile) · prominent in REM · 32F**  
 - LENS (brief): Frequent right temporal theta–delta (mixed) slowing (max T4), present only during sleep; most prominent in REM sleep.  
