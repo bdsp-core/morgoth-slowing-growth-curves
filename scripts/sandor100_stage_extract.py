@@ -16,7 +16,19 @@ from pathlib import Path
 import numpy as np, pandas as pd
 
 # --- Morgoth env (must be set BEFORE importing fleet.ingest, which reads them at import) ---
-os.environ.setdefault("MORGOTH2_DIR", os.path.expanduser("~/GithubRepos/morgoth2"))
+# The repo lives under ~/Desktop/GithubRepos on this machine; the old default pointed at
+# ~/GithubRepos/morgoth2, which does not exist, so staging failed with a missing-checkpoint error that
+# looked like the model was unavailable rather than mislocated. Search the plausible roots.
+def _morgoth_dir():
+    from pathlib import Path as _P
+    for c in (_P.home() / "Desktop/GithubRepos/morgoth2", _P.home() / "GithubRepos/morgoth2",
+              _P("../morgoth2").resolve()):
+        if (c / "checkpoints" / "ss_hm_1.pth").exists():
+            return str(c)
+    return str(_P.home() / "GithubRepos/morgoth2")
+
+
+os.environ.setdefault("MORGOTH2_DIR", _morgoth_dir())
 os.environ.setdefault("PILOT_VENV", sys.executable)
 os.environ.setdefault("MORGOTH_DEVICE", "mps")
 os.environ.setdefault("MORGOTH_SHIMS", os.path.abspath("scripts/shims"))
@@ -66,8 +78,11 @@ SB_DIR = Path(os.environ.get("SANDOR_DIR") or
               _resolve_sandor_dir())
 EDF = SB_DIR / "EDF"
 SM = Path("data/derived/segment_master")
-WORK = Path("/private/tmp/claude-501/-Users-mwestover-GithubRepos-morgoth-slowing-growth-curves/"
-            "543fcf0f-2e91-44f4-9ca9-c301964982e6/scratchpad/sandor100/work")
+# Scratch space for the Morgoth staging hand-off. This was hardcoded to one session's scratchpad on another
+# machine ("/private/tmp/claude-501/-Users-mwestover-.../543fcf0f-.../scratchpad/sandor100/work"), which is
+# the same defect as the old SANDOR_DIR default: it happens to be writable, so staging fails deep inside the
+# model call rather than at a clear "path does not exist". Honour SANDOR_WORK, else use a local scratch dir.
+WORK = Path(os.environ.get("SANDOR_WORK") or (Path(tempfile.gettempdir()) / "sandor100_work"))
 
 
 def stage_one(eid, data, chs, fs, n_seg, centers):
