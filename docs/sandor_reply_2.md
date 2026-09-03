@@ -15,8 +15,9 @@ a full 19-channel montage with no missing data. You were right that there is not
 fault was ours: the failure was on our side of the pipeline, not in your export, and I am sorry we reported
 it to you as "unreadable". Your note about ID-060 was still useful — the non-scalp channels are exactly the
 kind of thing that would have degraded the read had we not restricted to the scalp array, and we do drop them
-automatically. We are re-running the full pipeline on both now and will report SAI-100 on all 100 recordings
-in the revision.
+automatically. Both are now through the pipeline, and SAI-100 in the revision is n = 100.
+
+I should tell you what that changed, since you would otherwise find it in the next draft. Adding the two recordings moved our focal numbers **down**: one of them is focal-positive by expert majority and LENS does comparatively poorly on it, so focal AUROC goes from 0.938 to 0.930 and the fraction of individual experts falling under our ROC curve from 79% to 64%. The Morgoth gate edges up slightly, SCORE-AI is unchanged, and generalized is unchanged at 0.908. No comparative claim changes, because none of the paired differences was significant to begin with. The completed dataset gives a less flattering number than the truncated one, which is the right reason to prefer it, and I am glad we are reporting the complete set.
 
 **On the nomogram.** I like the idea a great deal, and your reasoning about the reception of AI papers matches
 what we have been hearing too. But I should be straightforward about a limitation rather than let it look
