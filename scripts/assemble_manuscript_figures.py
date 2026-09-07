@@ -102,10 +102,12 @@ def compose(out_path: Path, panels: list[str], ncols: int) -> bool:
         r, c = divmod(i, ncols)
         ax = fig.add_subplot(gs[r, c]); ax.imshow(im); ax.axis("off")
         if n > 1:
-            ax.text(0.0, 1.0, chr(65 + i), transform=ax.transAxes, fontsize=17, fontweight="bold",
-                    va="bottom", ha="left")
-    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
-    fig.savefig(out_path.with_suffix(".pdf"), dpi=300, bbox_inches="tight", facecolor="white")  # publication PDF
+            # OUTSIDE the axes: at (0, 1) the letter sat on the panel image and covered the neighbouring
+            # y-axis label ("signed asymmetry z" lost its first character in Figure 6).
+            ax.text(-0.015, 1.015, chr(65 + i), transform=ax.transAxes, fontsize=17, fontweight="bold",
+                    va="bottom", ha="right")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", pad_inches=0.06, facecolor="white")
+    fig.savefig(out_path.with_suffix(".pdf"), dpi=300, bbox_inches="tight", pad_inches=0.06, facecolor="white")  # publication PDF
     plt.close(fig)
     return True
 

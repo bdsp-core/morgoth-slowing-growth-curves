@@ -109,13 +109,21 @@ def main():
     ax[1].bar(xx + w/2, [g.mean() for g in out], w, color="#bbb", label="report names another lobe")
     for i in range(len(lobes)):
         p = mannwhitneyu(inn[i], out[i]).pvalue
-        ax[1].text(xx[i], max(inn[i].mean(), out[i].mean()) + .02, "***" if p < 1e-3 else "**", ha="center", fontsize=11)
+        # anchor above the ZERO line, not above the taller mean: for frontal both means are negative, so
+        # max() put the marker at the top of the less-negative bar, detached from the pair it annotates.
+        ax[1].text(xx[i], max(inn[i].mean(), out[i].mean(), 0) + .035,
+                   "***" if p < 1e-3 else "**", ha="center", fontsize=11)
         rl.append(f"{lobes[i][0]} {inn[i].mean():+.2f} vs {out[i].mean():+.2f} (p={p:.0e})")
     ax[1].axhline(0, color="#666", lw=.8); ax[1].set_xticks(xx); ax[1].set_xticklabels([l for l, _ in lobes])
-    ax[1].set_ylabel("lobe focality  (prominence vs rest of head)"); ax[1].legend(frameon=False, fontsize=8)
-    ax[1].set_title("Lobe prominence rises when the report names that lobe", fontsize=10); ax[1].grid(alpha=.2, axis="y")
-    fig.suptitle("Laterality tracks the reported side; lobe prominence tracks the reported region", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "s4_d2.png", dpi=300); plt.close(fig)
+    # headroom for the significance markers: without it the tallest one (temporal) sits at the axes top and
+    # overlaps the subplot title.
+    _lo, _hi = ax[1].get_ylim()
+    ax[1].set_ylim(_lo, max(_hi, max(max(i.mean(), o.mean(), 0) for i, o in zip(inn, out)) + .10))
+    ax[1].set_ylabel("lobe focality (vs rest of head)", fontsize=9)
+    ax[1].legend(frameon=False, fontsize=7.5, loc="lower left")
+    ax[1].set_title("Lobe prominence rises when the report names it", fontsize=9.5); ax[1].grid(alpha=.2, axis="y")
+    fig.suptitle("Laterality tracks reported side; lobe prominence tracks reported region", fontsize=11)
+    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "s4_d2.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     md.append("- region (focality dose-response): " + "; ".join(rl) + "\n")
 
     # ---------- D3 ant-post ----------
@@ -155,8 +163,8 @@ def main():
         m = [dd[dd.stage == st].prevalence.mean() for st in STAGES]
         ax[0].plot(xs, m, "o-", color=col, label=grp)
     ax[0].set_xticks(list(xs)); ax[0].set_xticklabels(STAGES)
-    ax[0].set_ylabel("prevalence (mean)"); ax[0].set_title("Slowing prevalence by stage — gap persists into sleep", fontsize=10)
-    ax[0].legend(frameon=False, fontsize=8); ax[0].grid(alpha=.2)
+    ax[0].set_ylabel("prevalence (mean)"); ax[0].set_title("Slowing prevalence by stage: gap persists into sleep", fontsize=9.5)
+    ax[0].legend(frameon=False, fontsize=8, loc="upper right"); ax[0].grid(alpha=.2)
     for band, col in [("delta_p90", "#c8443c"), ("theta_p90", "#2c7fb8")]:
         m = [Sm[Sm.slowing][Sm[Sm.slowing].stage == st][band].median() for st in STAGES]
         ax[1].plot(xs, m, "o-", color=col, label=band.replace("_p90", "-excess z"))
@@ -164,7 +172,7 @@ def main():
     ax[1].set_ylabel("deviation z (median)"); ax[1].set_title("Band deviation by stage (report slowing)", fontsize=10)
     ax[1].legend(frameon=False, fontsize=8); ax[1].grid(alpha=.2)
     fig.suptitle("Stage-resolved: the slowing signal is present in sleep, not only wake", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d5.png", dpi=300); plt.close(fig)
+    fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / "s4_d5.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     # under-reporting probe: among report-negative recordings, N2 deviation still sits above clean-normal N2
     neg = Sm[(Sm.clean_normal != True) & (~Sm.slowing)]                                      # abnormal, report does not call slowing
     cnn2 = Sm[(Sm.clean_normal == True) & (Sm.stage == "N2")].prevalence.mean()              # noqa: E712
