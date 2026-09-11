@@ -45,6 +45,10 @@ EXCLUDED_EXAMPLES = {
     # "occasional PERIODS of generalized delta slowing", which matches no \bperiodic\b pattern, so PERIODIC
     # below would re-admit it.
     "S0001119160767_20190930133101",
+    # Retired as the marked focal example on 2026-09-01: its impression reads "abundant spike and slow wave"
+    # -- an epileptiform recording, not background slowing. De-identification redacts findings behind
+    # asterisks, so the PERIODIC screen cannot see it either.
+    "S0001112857553_20160206081631",
 }
 
 PINNED_EXAMPLES = (
@@ -200,11 +204,6 @@ def report_two_part(imp_raw, det_raw):
 # The alternative, quoting an amplitude in hertz verbatim, reads as our transcription error rather than the
 # clinician's and invites a reviewer comment on a point that is not about the method.
 REPORT_OVERRIDES = {
-    "S0001112857553_20160206081631": (
-        "focal slowing in the right posterior region",
-        "on the right, there is near continuous 3-5 hz of focal slowing in the posterior quadrant…drowsiness was "
-        "characterized by generalized background slowing and gradual dropout of the posterior dominant rhythm. "
-        "stage ii sleep was seen, characterized by sleep spindles."),
     "S0001120133802_20120917122010": (
         "focal right fronto-temporal theta slowing",
         "there was increased slowing over the right frontotemporal region. during drowsiness and sleep, "

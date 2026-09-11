@@ -113,7 +113,28 @@ def train_heads():
     return gen, foc, foc_med, amt_med
 
 
+def _require_all_partitions():
+    """Refuse to score a partial SAI-100 set.
+
+    score_sandor() scores whatever SB_* partitions happen to exist, and the panel join is an inner join, so a
+    machine missing two partitions silently reports n=98 under a manuscript that says n=100 -- which is exactly
+    what happened when SB_060 and SB_086 were built on one machine and never published. Every labelled panel
+    recording must have its feature partition, or the run stops and names what to build.
+    """
+    want = {f"SB_{int(k[2:]):03d}" for k in _panel("focal").file_name.astype(str).str.strip().unique()}
+    have = {q.name.split("=", 1)[1] for q in SM.glob("eeg_id=SB_*") if (q / "part.parquet").exists()}
+    missing = sorted(want - have)
+    if missing:
+        raise SystemExit(
+            f"SAI-100: {len(missing)} of {len(want)} labelled recordings have no segment_master partition: "
+            f"{missing}.\nScoring the rest would silently change n. Build them with\n"
+            f"  SANDOR_DIR=<dir with EDF/ and validation_study_excel_export.xlsx> "
+            f"python3 scripts/sandor100_stage_extract.py\n"
+            f"then publish data/derived/segment_master/eeg_id=SB_*/ and segment_summary/ to S3.")
+
+
 def score_sandor(gen, foc, foc_med, amt_med):
+    _require_all_partitions()
     age_of = _ages()
     rows = []
     for out in sorted(SM.glob("eeg_id=SB_*")):

@@ -134,6 +134,24 @@ SEG_STEP_S = 14.0                       # 15-s window, 14-s step; t_start_s == s
 _WH_CACHE = "data/derived/figure_cache/wholehead_z.parquet"
 
 
+def _pairs(r):
+    """The two comparisons each example shows, in order: (LENS label, LENS text, report label, report text)."""
+    return [("LENS: ", r.finding,
+             "Report impression: ", getattr(r, "report_impression_text", "") or "(no slowing sentence)"),
+            ("LENS (detailed): ", getattr(r, "paragraph", ""),
+             "Report description: ", getattr(r, "report_detail_text", "") or "(no slowing sentence)")]
+
+
+def _text_lines(r, wrapw):
+    """Lines of type the paired text needs: per pair, the taller of the two columns, plus the inter-pair gap."""
+    n = 0.0
+    for lab_l, text_l, lab_r, text_r in _pairs(r):
+        ll = textwrap.wrap(lab_l + (text_l or "\u2014"), wrapw) or [""]
+        lr = textwrap.wrap(lab_r + (text_r or "\u2014"), wrapw) or [""]
+        n += max(len(ll), len(lr)) + 0.55
+    return n
+
+
 def _pick_generalized_from_cache(eid, domstage):
     """Max whole-head amount in the dominant stage, first hour -- from the cache. None if unavailable."""
     if not os.path.exists(_WH_CACHE):
@@ -261,13 +279,16 @@ def main():
         # instead of after someone prints it. Pairing the LENS and report text in two columns (rather than
         # four stacked blocks) is what buys the room: it roughly halves the text height AND puts each
         # comparison side by side, which is the claim the figure is making.
-        # Only the HEADLINE comparison rides with the trace -- LENS's one-line finding against the report's
-        # impression. The detailed pair (LENS's full paragraph vs the report's description) is long enough
-        # that carrying all four blocks forced the figure to ~12 in tall, which the journal then scales to
-        # 138 mm wide to fit the page height, dragging every label back under 6 pt. That is the same trap
-        # C146-f flagged in round 1. The detailed text is in Table S4 (results/story/s4_examples.md), which
-        # can be as long as it likes, and the caption points at it.
-        TEXT_H, GAP, TOP_M, BOT_M, TITLE_H, XAXIS_H = 0.46, 0.16, 0.08, 0.08, 0.17, 0.34
+        # BOTH comparisons ride with the trace, as the Figure 4/5 captions state: LENS's brief finding against
+        # the report's impression, and LENS's detailed paragraph against the report's description. Carrying
+        # the detailed pair is affordable now only because each figure holds two examples, not three; with
+        # three, the four text blocks forced the figure to ~12 in and the journal's shrink-to-fit pulled every
+        # label under 6 pt (round-1 item C146-f). So the text height is measured from the actual wrapped text
+        # of the longest example in THIS figure, and the page-fit guard below re-checks the result.
+        TXT_PT, WRAPW = 7.0, 55
+        LH_IN = TXT_PT * 1.25 / 72.0                       # one line of type, inches
+        TEXT_H = max(_text_lines(r, WRAPW) for r in rows) * LH_IN + 0.06
+        GAP, TOP_M, BOT_M, TITLE_H, XAXIS_H = 0.16, 0.08, 0.08, 0.17, 0.34
         # Two examples per figure (see `panels`) is what makes room for taller traces: use it to reach the
         # clinical 0.15 in/channel convention, and never go below TRACE_H_IN, the label-collision floor.
         TRACE_H = max(TRACE_H_IN, 0.15 * len(BIPOLAR))
@@ -276,7 +297,7 @@ def main():
         FIG_H = n * cell + (n - 1) * GAP + TOP_M + BOT_M
         FIG_W, LEFT, RIGHT = 7.1, 0.085, 0.985
         page_scale = min(190.0, 240.0 * FIG_W / FIG_H) / (FIG_W * 25.4)
-        if LABEL_PT * page_scale < 6.0:
+        if min(LABEL_PT, TXT_PT) * page_scale < 6.0:
             raise SystemExit(f"at {FIG_W:.2f}x{FIG_H:.2f} in the page scale is {page_scale:.2f}, so the "
                              f"{LABEL_PT} pt channel labels would print at {LABEL_PT*page_scale:.1f} pt")
         fig = plt.figure(figsize=(FIG_W, FIG_H))
@@ -309,11 +330,10 @@ def main():
                 axe.axis("off"); axe.text(0.5, 0.5, f"EEG unavailable\n{type(e).__name__}", ha="center", va="center",
                                           fontsize=8, transform=axe.transAxes); axe.set_title(head, fontsize=8.5, fontweight="bold", loc="left")
                 print(f"  {r.eeg_id}: {type(e).__name__}: {e}", flush=True)
-            TXT_PT = 7.0
-            LH = TXT_PT * 1.25 / 72.0 / TEXT_H            # one line of type, as a fraction of the text axes
+            LH = LH_IN / TEXT_H                            # one line of type, as a fraction of the text axes
             y = [1.0]; C_LENS, C_REP = "#c2510a", "#3a3a3a"
 
-            def emit_pair(lab_l, text_l, lab_r, text_r, wrapw=55):
+            def emit_pair(lab_l, text_l, lab_r, text_r, wrapw=WRAPW):
                 """One comparison per ROW, LENS on the left, the clinical report on the right.
 
                 Round 1 read these as four stacked blocks, so the reader had to hold the LENS sentence in
@@ -327,9 +347,9 @@ def main():
                                  transform=axt.transAxes, fontweight="bold" if k == 0 else "normal")
                 y[0] -= max(len(ll), len(lr)) * LH + LH * 0.55
             # two paired comparisons: our brief vs the report IMPRESSION; our detailed vs the report DESCRIPTION
-            emit_pair("LENS: ", r.finding,
-                      "Report impression: ", getattr(r, "report_impression_text", "") or "(no slowing sentence)")
-        # Title, montage and filter settings are in the Figure 4 / Figure 5 captions in
+            for lab_l, text_l, lab_r, text_r in _pairs(r):
+                emit_pair(lab_l, text_l, lab_r, text_r)
+        # Title, montage and filter settings are in the figure captions in
         # docs/manuscript_draft.md (Clinical Neurophysiology wants the descriptive title in the legend), and
         # the height it used to cost is spent on the traces instead.
         fig.savefig(FIG / outname, dpi=300, bbox_inches="tight", facecolor="white")

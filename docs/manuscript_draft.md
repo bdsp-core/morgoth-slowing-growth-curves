@@ -301,33 +301,3 @@ Code is released as the open-source package `bdsp-core/morgoth-slowing-growth-cu
 36. Hirsch LJ, Fong MWK, Leitinger M, et al. American Clinical Neurophysiology Society's Standardized Critical Care EEG Terminology: 2021 Version. *J Clin Neurophysiol.* 2021;38(1):1--29.
 37. Mansilla D, Tveit J, Aurlien H, et al. Generalizability of electroencephalographic interpretation using artificial intelligence: an external validation study. *Epilepsia.* 2024;65(10):3028--3037.
 38. Beun AM, van Emde Boas W, Dekker E. Sharp transients in the sleep EEG of healthy adults: a possible pitfall in the diagnostic assessment of seizure disorders. *Electroencephalogr Clin Neurophysiol.* 1998;106(1):44--51.
-
-# Figures
-
-- **Figure 1.**
-
-{width="5.52842738407699in" height="9.876253280839896in"}
-
-- **Figure 2.**
-
-{width="5.52842738407699in" height="4.946487314085739in"}
-
-- **Figure 3.**
-
-{width="5.608695319335083in" height="2.4548490813648294in"}
-
-- **Figure 4.**
-
-{width="5.608695319335083in" height="7.123745625546807in"}
-
-- **Figure 5.**
-
-{width="5.608695319335083in" height="7.123745625546807in"}
-
-- **Figure 6.**
-
-{width="5.52842738407699in" height="4.762541557305337in"}
-
-- **Figure 7.**
-
-{width="5.608695319335083in" height="4.0869564741907265in"}
