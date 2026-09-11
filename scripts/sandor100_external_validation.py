@@ -91,9 +91,11 @@ def _ages() -> dict:
 AXIS_FILE = {"focal": "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx",
              "generalized": "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx"}
 
-SB_DIR = Path(os.environ.get("SANDOR_DIR") or
-              _resolve_sandor_dir())
-MR = SB_DIR / "Morgoth_results"
+# No module-level SANDOR_DIR lookup. SB_DIR and MR were resolved here at import and never used again, and
+# _resolve_sandor_dir() exits when the DUA source is absent -- so on a machine with only git + S3 the script
+# died on import, before it could read the published panel it actually needs. It only worked where a historical
+# Box path happened to exist. The two readers that do need the source (_panel/_ages fallbacks) resolve it
+# themselves, and only when the published panel is missing.
 SM = Path("data/derived/segment_master")
 OUT = Path("results/sandor"); FIG = Path("figures/story")
 AMT, FOC = m54.AMT, m54.FOC

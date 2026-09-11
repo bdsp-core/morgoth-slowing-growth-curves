@@ -103,10 +103,17 @@ run 4 results/vanputten_fullcoverage.md        "Fig S7 / Table S1 van Putten ben
 # Box daemon is not mounted -- the script sat forever with no output and no child process.
 SANDOR_DIR="${SANDOR_DIR:-}"
 if [ "${SKIP_SANDOR:-0}" = "1" ]; then echo "  [skip] SKIP_SANDOR=1 (Sandor external validation, Figure 3)"
-elif [ -z "$SANDOR_DIR" ] || [ ! -d "$SANDOR_DIR" ]; then echo "  [skip] SANDOR_DIR unset or not present (needs the Sandor_100 source + Morgoth) -> Figure 3 not regenerated from raw; the committed panel inputs are used"
 else
-  run 4 data/derived/segment_master/eeg_id=SB_001 "Sandor Morgoth staging + feature extraction (sandor100_stage_extract)" -- py scripts/sandor100_stage_extract.py
+  # Only feature EXTRACTION needs the DUA source (raw EDFs). Figure 3 itself builds from git + S3: the published
+  # de-identified panel (data/derived/sai100_panel.parquet) and the SB_* partitions. It used to be skipped
+  # whenever SANDOR_DIR was unset, i.e. on every machine but one. It refuses to run on a partial SB_* set.
+  if [ -n "$SANDOR_DIR" ] && [ -d "$SANDOR_DIR" ]; then
+    run 4 data/derived/segment_master/eeg_id=SB_001 "Sandor Morgoth staging + feature extraction (sandor100_stage_extract)" -- py scripts/sandor100_stage_extract.py
+  else
+    echo "  [skip] SANDOR_DIR unset: SB_* partitions come from S3, not re-extracted from raw EDFs"
+  fi
   run 4 figures/story/sandor100_slowing.png    "Fig 3 Sandor external validation (sandor100_external_validation)" -- py scripts/sandor100_external_validation.py
+  run 4 results/story/expert_standing.md       "review comment 7: symmetric expert standing + paired tests (113)" -- py scripts/113_expert_standing.py
 fi
 # -- Figure 4: description (D1-D6). band_calibration sets the δ/θ band thresholds hard-coded in scripts/58.
 run 4 results/story/band_calibration.md        "band (δ/θ) calibration -> scripts/58 thresholds (band_calibration)" -- py scripts/band_calibration.py

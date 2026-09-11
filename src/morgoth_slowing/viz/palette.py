@@ -172,3 +172,44 @@ def despine_all(fig):
 
 
 set_pub_style()
+
+
+# --- journal artwork: a vector twin of every committed figure panel ------------------------------------
+# Elsevier asks for line art at 1000 dpi (TIFF) or as vector (EPS/PDF), and our panels are committed as
+# 300-dpi PNGs. Upsampling those to 1000 dpi would invent pixels, not detail. So, when MORGOTH_VECTOR_DIR is
+# set, every PNG a figure script saves under figures/ is ALSO saved as a vector PDF at the same geometry
+# (same bbox_inches) under that directory, and scripts/export_journal_figures.py composes and rasterizes from
+# those. Unset -- the normal case -- this does nothing, so committed outputs are untouched.
+def _install_vector_twin():
+    import os
+    from pathlib import Path
+    out = os.environ.get("MORGOTH_VECTOR_DIR")
+    if not out:
+        return
+    import matplotlib as mpl
+    from matplotlib.figure import Figure
+    # TrueType (Type 42), not matplotlib's default Type 3: production systems re-flow Type 3 glyphs badly,
+    # and Elsevier asks that fonts be embedded. It also keeps font sizes readable by the size check.
+    mpl.rcParams["pdf.fonttype"] = 42
+    if getattr(Figure.savefig, "_vector_twin", False):
+        return
+    orig = Figure.savefig
+
+    def savefig(self, fname, *args, **kwargs):
+        res = orig(self, fname, *args, **kwargs)
+        p = Path(os.fspath(fname)) if isinstance(fname, (str, os.PathLike)) else None
+        if p is not None and p.suffix.lower() == ".png" and "figures" in p.parts:
+            rel = Path(*p.parts[p.parts.index("figures"):]).with_suffix(".pdf")
+            dst = Path(out) / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            kw = {k: v for k, v in kwargs.items() if k not in ("dpi", "format", "pil_kwargs")}
+            # dpi matters in a PDF only for artists drawn with rasterized=True (the dense scatter clouds in
+            # scripts/111 and 57). Left at the default it is figure.dpi = 100, which would embed those at 100 dpi
+            # inside an otherwise vector file.
+            orig(self, dst, *args, dpi=1200, **kw)
+        return res
+    savefig._vector_twin = True
+    Figure.savefig = savefig
+
+
+_install_vector_twin()

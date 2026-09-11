@@ -53,10 +53,17 @@ def _offsets():
 
 
 OFFS = _offsets()
-LABEL_PT = 7.0                                                                             # >= the 6 pt floor
+# 7 pt is Elsevier's minimum for normal lettering at PRINTED size (6 pt is allowed only for sub/superscripts),
+# so every text size in this figure is at least MIN_PT and the saved file is checked against the page below.
+MIN_PT = 7.0
+LABEL_PT = 7.0
 
-
-Y_SPAN = OFFS[-1] + 1.3 * SPACING                        # data units the trace axes shows (see plot_panel)
+# Vertical extent of the trace axes, in uV. The bottom leaves room for the calibration bar UNDER the last
+# trace: it used to sit inside the traces, where "100 uV" overprinted Cz-Pz and "1 s" sat on the time axis.
+# Y_SPAN is derived from these two, not restated, because a restated copy had already drifted (1.3 vs 1.65).
+Y_TOP = 0.7 * SPACING
+Y_BOT = OFFS[-1] + 1.75 * SPACING
+Y_SPAN = Y_TOP + Y_BOT
 # Inches of axes height the 18 channel labels need in order not to collide. Derived, not guessed: the
 # tightest gap is one SPACING out of Y_SPAN, and a label needs a little more room than its own point size.
 TRACE_H_IN = LABEL_PT * 1.15 * Y_SPAN / (SPACING * 72.0)
@@ -116,18 +123,21 @@ def plot_panel(ax, data, sr, title, hl=()):
     # unreadable exactly where it mattered. The panel is now tall enough (see the gridspec in main()) for
     # 6.5 pt with clear separation; check_label_spacing() below fails loudly if that ever stops being true.
     ax.set_yticks(-OFFS); ax.set_yticklabels(BIPOLAR, fontsize=LABEL_PT, color=DARK)
-    ax.set_xlim(0, t[-1]); ax.set_ylim(-(OFFS[-1] + 0.95 * SPACING), 0.7 * SPACING)
+    ax.set_xlim(0, t[-1]); ax.set_ylim(-Y_BOT, Y_TOP)
     ax.set_title(title, fontsize=8.5, fontweight="bold", pad=3, loc="left")
-    ax.set_xlabel("Time (s)", fontsize=8); ax.margins(x=0)
-    for s in ("top", "right", "left"):
+    ax.margins(x=0)
+    # No time axis: clinical EEG figures carry scale as a calibration bar, and here the axis duplicated the bar
+    # while its "Time (s)" label collided with the report text beneath. The title already states the window.
+    for s in ("top", "right", "left", "bottom"):
         ax.spines[s].set_visible(False)
-    ax.tick_params(left=False, labelsize=7)
-    # 100 uV / 1 s scale bar, lower-right
-    x0 = t[-1] - 1.1; y0 = -(OFFS[-1] + 0.72 * SPACING)
-    ax.plot([x0, x0 + 1.0], [y0, y0], color=DARK, lw=1.3, clip_on=False)
-    ax.plot([x0, x0], [y0, y0 + 100], color=DARK, lw=1.3, clip_on=False)
-    ax.text(x0 + 0.5, y0 - 0.06 * SPACING, "1 s", ha="center", va="top", fontsize=7)
-    ax.text(x0 - 0.05, y0 + 50, "100 µV", ha="right", va="center", fontsize=7)
+    ax.tick_params(left=False, bottom=False, labelbottom=False)
+    # 100 uV / 1 s calibration bar, lower right, BELOW the last trace. The corner sits 0.6 spacing under Cz-Pz's
+    # baseline so the vertical bar hangs clear of that trace's excursions.
+    x0 = t[-1] - 1.15; y_top = -(OFFS[-1] + 0.6 * SPACING); y_bot = y_top - 100.0
+    ax.plot([x0, x0], [y_top, y_bot], color=DARK, lw=1.2, clip_on=False)
+    ax.plot([x0, x0 + 1.0], [y_bot, y_bot], color=DARK, lw=1.2, clip_on=False)
+    ax.text(x0 - 0.06, (y_top + y_bot) / 2, "100 µV", ha="right", va="center", fontsize=MIN_PT, color=DARK)
+    ax.text(x0 + 0.5, y_bot - 0.05 * SPACING, "1 s", ha="center", va="top", fontsize=MIN_PT, color=DARK)
 
 
 SEG_STEP_S = 14.0                       # 15-s window, 14-s step; t_start_s == segment * 14 (verified)
@@ -285,19 +295,35 @@ def main():
         # three, the four text blocks forced the figure to ~12 in and the journal's shrink-to-fit pulled every
         # label under 6 pt (round-1 item C146-f). So the text height is measured from the actual wrapped text
         # of the longest example in THIS figure, and the page-fit guard below re-checks the result.
-        TXT_PT, WRAPW = 7.0, 55
+        # Full journal width (190 mm): the text needs every character of line length it can get, and a figure
+        # supplied at the printed width prints at exactly 100%, so 7 pt stays 7 pt.
+        FIG_W, LEFT, RIGHT = 190.0 / 25.4, 0.095, 0.99      # left margin holds the channel labels + letter
+        TXT_PT = MIN_PT
+        # Wrap width from the column's real width, not a guess: each column is ~0.485 of the text axes, and
+        # DejaVu Sans averages ~0.56 em per character in running prose.
+        WRAPW = int(0.485 * (RIGHT - LEFT) * FIG_W * 72.0 / (0.56 * TXT_PT))
         LH_IN = TXT_PT * 1.25 / 72.0                       # one line of type, inches
         TEXT_H = max(_text_lines(r, WRAPW) for r in rows) * LH_IN + 0.06
-        GAP, TOP_M, BOT_M, TITLE_H, XAXIS_H = 0.16, 0.08, 0.08, 0.17, 0.34
+        GAP, TOP_M, BOT_M, TITLE_H, XAXIS_H = 0.22, 0.08, 0.08, 0.17, 0.10
         # Two examples per figure (see `panels`) is what makes room for taller traces: use it to reach the
         # clinical 0.15 in/channel convention, and never go below TRACE_H_IN, the label-collision floor.
-        TRACE_H = max(TRACE_H_IN, 0.15 * len(BIPOLAR))
+        #
+        # But the PAGE wins over the convention: a figure taller than the page is shrunk to fit, which would pull
+        # the 7 pt type under the minimum. So traces get 0.15 in/channel when the text leaves room, and give way
+        # down to TRACE_H_IN -- the label-collision floor -- when it does not. Below that floor nothing can fit.
         n = len(rows)
+        PAGE_H_IN = 240.0 / 25.4 * min(1.0, 190.0 / (FIG_W * 25.4))    # tallest figure that prints at >= 100%
+        fixed = n * (TITLE_H + XAXIS_H + TEXT_H) + (n - 1) * GAP + TOP_M + BOT_M
+        room = (PAGE_H_IN * 0.985 - fixed) / n    # saved at exactly FIG_W x FIG_H, so only rounding headroom
+        TRACE_H = min(0.15 * len(BIPOLAR), room)
+        if TRACE_H < TRACE_H_IN:
+            raise SystemExit(f"{outname}: the report text leaves {room:.2f} in per trace panel, below the "
+                             f"{TRACE_H_IN:.2f} in the channel labels need at {LABEL_PT} pt. Shorten the text "
+                             f"or move an example out of this figure.")
         cell = TITLE_H + TRACE_H + XAXIS_H + TEXT_H
         FIG_H = n * cell + (n - 1) * GAP + TOP_M + BOT_M
-        FIG_W, LEFT, RIGHT = 7.1, 0.085, 0.985
         page_scale = min(190.0, 240.0 * FIG_W / FIG_H) / (FIG_W * 25.4)
-        if min(LABEL_PT, TXT_PT) * page_scale < 6.0:
+        if min(LABEL_PT, TXT_PT) * page_scale < MIN_PT - 1e-6:
             raise SystemExit(f"at {FIG_W:.2f}x{FIG_H:.2f} in the page scale is {page_scale:.2f}, so the "
                              f"{LABEL_PT} pt channel labels would print at {LABEL_PT*page_scale:.1f} pt")
         fig = plt.figure(figsize=(FIG_W, FIG_H))
@@ -308,7 +334,9 @@ def main():
             axt = fig.add_axes([LEFT, top - cell / FIG_H, RIGHT - LEFT, TEXT_H / FIG_H]); axt.axis("off")
             axt.set_zorder(-1)
             # One letter per example, so each case is citable from the text individually.
-            palette.panel_letter(axe, rr, dx=-0.075, dy=1.14)
+            # On the title row, in the left margin. At dy=1.14 the letter sat a third of an inch above its
+            # panel: the top one fell off the page and the second floated in the gap between examples.
+            palette.panel_letter(axe, rr, dx=-0.075, dy=1.0 + (TITLE_H * 0.35) / TRACE_H)
             kind = "Focal" if r.isfoc else "Generalized"
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()
             head = f"{kind} · {r.peakz:.1f} SD · {r.domstage} · {age}{sex}"
@@ -341,10 +369,18 @@ def main():
                 side, the comparison the figure is making is the thing you actually see."""
                 ll = textwrap.wrap(lab_l + (text_l or "\u2014"), wrapw) or [""]
                 lr = textwrap.wrap(lab_r + (text_r or "\u2014"), wrapw) or [""]
-                for x, lines, color in ((0.0, ll, C_LENS), (0.515, lr, C_REP)):
+                for x, lines, color, lab in ((0.0, ll, C_LENS, lab_l), (0.515, lr, C_REP, lab_r)):
                     for k, ln in enumerate(lines):
+                        # Report text is quoted verbatim, so a "$" in it must not open mathtext.
+                        ln = ln.replace("$", r"\$")
+                        if k == 0 and ln.startswith(lab.strip()):
+                            # Only the label is bold. Bolding the whole first wrapped line emboldened half a
+                            # sentence of the report at an arbitrary break, which read as emphasis.
+                            # The colon stays outside math mode, which would otherwise space it as a relation.
+                            head = lab.strip().rstrip(":").replace(" ", r"\ ")
+                            ln = r"$\mathbf{" + head + "}$:" + ln[len(lab.strip()):]
                         axt.text(x, y[0] - k * LH, ln, fontsize=TXT_PT, color=color, va="top",
-                                 transform=axt.transAxes, fontweight="bold" if k == 0 else "normal")
+                                 transform=axt.transAxes)
                 y[0] -= max(len(ll), len(lr)) * LH + LH * 0.55
             # two paired comparisons: our brief vs the report IMPRESSION; our detailed vs the report DESCRIPTION
             for lab_l, text_l, lab_r, text_r in _pairs(r):
@@ -352,9 +388,21 @@ def main():
         # Title, montage and filter settings are in the figure captions in
         # docs/manuscript_draft.md (Clinical Neurophysiology wants the descriptive title in the legend), and
         # the height it used to cost is spent on the traces instead.
-        fig.savefig(FIG / outname, dpi=300, bbox_inches="tight", facecolor="white")
+        # Exact size, NOT bbox_inches="tight". Every axes here is placed in absolute inches for a 190 mm page, and
+        # the tight crop undid that: the panel letters overhang the left edge, so it widened the file past 190 mm
+        # and the journal would shrink it to 99%, taking the 7 pt type to 6.93 pt.
+        fig.savefig(FIG / outname, dpi=300, facecolor="white")
         plt.close(fig)
-        print(f"  wrote figures/story/{outname}")
+        # The layout above is arithmetic; check the file that was actually written.
+        from PIL import Image
+        with Image.open(FIG / outname) as im:
+            w_in, h_in = im.size[0] / 300.0, im.size[1] / 300.0
+        printed = min(190.0, 240.0 * w_in / h_in) / (w_in * 25.4)
+        if min(LABEL_PT, TXT_PT) * printed < MIN_PT - 1e-6:
+            raise SystemExit(f"{outname}: saved at {w_in:.2f} x {h_in:.2f} in, it prints at {printed:.0%}, so "
+                             f"{min(LABEL_PT, TXT_PT)} pt type lands at {min(LABEL_PT, TXT_PT) * printed:.2f} pt "
+                             f"(< {MIN_PT} pt).")
+        print(f"  wrote figures/story/{outname}  ({w_in:.2f} x {h_in:.2f} in, prints at {printed:.0%})")
     print(f"rendered EEG for {ok}/6 examples across {len(panels)} figures")
 
 
