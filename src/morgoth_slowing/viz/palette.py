@@ -105,7 +105,8 @@ PANEL_PT = 10          # panel letters: one size, everywhere
 TITLE_PT = 9.5
 LABEL_PT = 8.5
 TICK_PT = 7.5
-LEGEND_PT = 6.5
+LEGEND_PT = 7.0        # Elsevier's 7 pt floor applies at PRINTED size; at 6.5 the Figure S3 legend printed
+                       # at 6.84 pt. The ROC figures print at ~1.0-1.1x, so 7.0 authored clears it.
 
 
 def style_roc(ax, xlabel="1 \u2212 specificity", ylabel="sensitivity"):

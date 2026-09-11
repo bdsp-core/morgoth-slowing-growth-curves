@@ -124,7 +124,7 @@ def main():
             ax.legend(frameon=False, fontsize=8, title="stage")
             ax.text(0.995, -0.20, "routine and overnight studies pooled \u2014 so these n exceed Figure 1B's "
                                   "source-appropriate counts", transform=ax.transAxes, ha="right", va="top",
-                    fontsize=6.8, color="#555")
+                    fontsize=7.2, color="#555")          # >= 7 pt printed; 6.8 printed at 6.88 in Figure S5
             fig.tight_layout()
             fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300, bbox_inches="tight")
             # Emit the per-stage n. Figure S5's counts differ tenfold from Figure 1B's for the same cohort

@@ -396,16 +396,22 @@ def main():
              ("band\n(delta/theta/mix)", a_band, n_band, False)]
     # Page-width and short -- see the note on the D3 panel in scripts/57: Figure S8 stacks four of these,
     # and one tall panel scales the entire composite (and all of its type) down to fit the page.
-    fig, ax = plt.subplots(figsize=(7.1, 2.7))
+    # 2.2 in, not 2.7: Figure S8 stacks this under D1/D3/D4 and the old heights made the stack too tall to print
+    # at full width (87%, pulling labels under 7 pt). See the D3 note in scripts/57.
+    fig, ax = plt.subplots(figsize=(7.1, 2.2))
     xx = np.arange(len(comps))
     for i, (lab_, v, n, solid) in enumerate(comps):
         # The x-axis names each component; blue here collided with SCORE-AI (Fig 3) and "visible in wake"
         # (Fig 7). Neutral fill, with the lighter tone still marking the provisional components.
         ax.bar(xx[i], v, color=(palette.NEUTRAL if solid else "#c9c9c9"), alpha=.95, edgecolor="#5a6b7a")
-        ax.text(xx[i], v + .01, f"{v*100:.0f}%\n(n={n})", ha="center", fontsize=8)
-    ax.axhline(1/3, ls="--", color="#666", lw=1); ax.text(xx[-1]+.15, 1/3, "chance (1/3)", color="#666", fontsize=8, va="bottom")
+        ax.text(xx[i], v + .015, f"{v*100:.0f}%\n(n={n})", ha="center", va="bottom", fontsize=8)   # clear of the bar edge
+    # Chance label in the gutter right of the last bar; at xx[-1]+.15 it was drawn across that bar.
+    ax.axhline(1/3, ls="--", color="#666", lw=1)
+    ax.text(xx[-1] + .45, 1/3 + .02, "chance\n(1/3)", color="#666", fontsize=8, va="bottom", ha="left")
+    ax.set_xlim(-.6, xx[-1] + .95)
     ax.set_xticks(xx); ax.set_xticklabels([c[0] for c in comps], fontsize=8.5)
-    ax.set_ylabel("concordance with report word"); ax.set_ylim(0, 1)
+    # Two lines: at the 2.2-in height Figure S8 needs, the one-line label ran off the top of the axes.
+    ax.set_ylabel("concordance\nwith report", fontsize=8.5); ax.set_ylim(0, 1)
     ax.set_title("Generated descriptor words concordant with the report", fontsize=9.5)
     ax.grid(alpha=.2, axis="y")
     fig.tight_layout(); fig.savefig(FIG / "s4_d6.png", dpi=300, bbox_inches="tight"); plt.close(fig)

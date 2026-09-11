@@ -92,7 +92,9 @@ def main():
                   label="report slowing", rasterized=True)
     ax[0].axvline(1, ls=":", color="#666"); ax[0].axhline(1, ls=":", color="#666")
     ax[0].set_xlabel("delta-excess z (p90)"); ax[0].set_ylabel("theta-excess z (p90)")
-    ax[0].set_title("Type plane: delta vs theta", fontsize=9); ax[0].legend(frameon=False, fontsize=8)
+    ax[0].set_title("Type plane: delta vs theta", fontsize=9)
+    # Opaque key: it sits over ~10k scatter points, and a frameless key let the cloud show through the words.
+    ax[0].legend(frameon=True, facecolor="white", edgecolor="none", framealpha=0.9, fontsize=8, loc="upper left")
     ax[0].set_xlim(-2, 5); ax[0].set_ylim(-2, 5)
     l1 = contrast(ax[1], [("report: theta\n(theta/mixed)", sl[sl.rep_theta].theta_p90),
                           ("report: no theta\n(delta only)", sl[~sl.rep_theta].theta_p90)],
@@ -163,20 +165,25 @@ def main():
     ax[1].grid(alpha=.2, axis="y")
 
     # ONE key for the whole panel. Two per-axes keys collided in the middle of the figure.
-    fig.tight_layout(w_pad=2.2, rect=[0, 0.075, 1, 1])
+    # Two lines, one per side, not one: as a single 6.4 pt line it was wider than the 7.1-in canvas, so
+    # bbox_inches="tight" grew the file to 8.45 in, the column rescale shrank everything by 0.84, and the key
+    # printed at 5.4 pt and the tick labels at 6.3 pt -- under Elsevier's 7 pt floor.
+    fig.tight_layout(w_pad=2.2, rect=[0, 0.12, 1, 1])
     fig.text(0.5, 0.012,
-             "left \u2014 violin: distribution (KDE, 1\u201399th percentile); point and bar: mean with bootstrap "
-             "95% CI.    right \u2014 bar: mean difference; error bar: bootstrap 95% CI; *** p < 10\u207b\u00b3 "
-             "(Mann\u2013Whitney).", ha="center", va="bottom", fontsize=6.4, color="#555")
+             "left \u2014 violin: distribution (KDE, 1\u201399th percentile); point and bar: mean with bootstrap 95% CI\n"
+             "right \u2014 bar: mean difference; error bar: bootstrap 95% CI; *** p < 10\u207b\u00b3 (Mann\u2013Whitney)",
+             ha="center", va="bottom", fontsize=7.4, color="#555", linespacing=1.3)
     fig.savefig(FIG / "s4_d2.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     md.append("- region (focality dose-response): " + "; ".join(rl) + "\n")
 
     # ---------- D3 ant-post ----------
     # Page-width and short: this is one of four panels stacked into Figure S8, and a tall narrow panel
     # forces the whole composite to be scaled down to fit the page height, shrinking every panel's type.
-    fig, ax = plt.subplots(figsize=(7.1, 2.55))
+    # At 2.55 in (D4 2.84, D6 2.7) the stack was 10.9 in and printed at 87%, taking every label under ~8.4 pt
+    # below Elsevier's 7 pt floor; these heights keep S8 printing at full width.
+    fig, ax = plt.subplots(figsize=(7.1, 2.05))
     aa = contrast(ax, [(t, d[d.gen_topography == t].antpost) for t in ["anterior", "posterior", "unspec"]],
-                  "Our A-P gradient by report topography", "anterior − posterior z  (+ = frontal)",
+                  "Our A-P gradient by report topography", "anterior − posterior z\n(+ = frontal)",
                   palette.topo_colors(["anterior", "posterior", "unspec"]), ylim=(-2, 2))
     ax.axhline(0, ls="--", color="#666")
     fig.tight_layout()
@@ -185,13 +192,19 @@ def main():
     md += ["## D3 — anterior-posterior predominance", "- " + "; ".join(aa) + f"; anterior>posterior p={pap:.1e}\n"]
 
     # ---------- D4 persistence ----------
-    fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.84))
+    fig, ax = plt.subplots(1, 2, figsize=(7.1, 2.30))   # shorter for Figure S8; see D3
     ax[0].hist(d[d.clean_normal == True].prevalence, bins=40, alpha=.6, color=palette.NEUTRAL, density=True, label="clean-normal")  # noqa: E712
     ax[0].hist(d[d.slowing].prevalence, bins=40, alpha=.6, color=palette.ABNORMAL, density=True, label="report slowing")
+    # Headroom above the tallest bar, and the rotated ACNS labels hang inside it. The "occasional" line sits at 1%,
+    # exactly where the clean-normal density peaks, so a label hung from the old top edge overprinted those bars.
+    ax[0].set_ylim(0, ax[0].get_ylim()[1] * 1.65)
     for x, lab_ in [(.01, "occasional"), (.10, "frequent"), (.50, "abundant"), (.90, "continuous")]:
-        ax[0].axvline(x, ls=":", color="#666"); ax[0].text(x, ax[0].get_ylim()[1]*.9, lab_, rotation=90, fontsize=7, va="top")
+        ax[0].axvline(x, ls=":", color="#666"); ax[0].text(x, ax[0].get_ylim()[1]*.98, lab_, rotation=90, fontsize=7.5, va="top")
     ax[0].set_xlabel("prevalence (frac abnormal segments)"); ax[0].set_ylabel("density")
-    ax[0].set_title("Prevalence + ACNS scale", fontsize=9); ax[0].legend(frameon=False, fontsize=8, loc="upper right")
+    ax[0].set_title("Prevalence + ACNS scale", fontsize=9)
+    # Key between the labels (top) and the prevalence-1.0 spike (bottom); opaque, as the 0.9 line runs behind it.
+    ax[0].legend(frameon=True, facecolor="white", edgecolor="none", framealpha=0.9, fontsize=8,
+                 loc="upper right", bbox_to_anchor=(0.985, 0.60))
     ax[1].hist(np.clip(d[d.slowing].longest_run_min, 0, 30), bins=40, color=palette.ABNORMAL, alpha=.7)
     ax[1].set_xlabel("longest continuous run (min)"); ax[1].set_ylabel("recordings")
     ax[1].set_title("Longest run (report slowing)", fontsize=9)
