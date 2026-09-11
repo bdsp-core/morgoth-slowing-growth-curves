@@ -50,7 +50,9 @@ SHRINK_WARN = 0.70   # a source authored wider than page-width/SHRINK_WARN has i
 # guard below could not see: Figure 1 passed it while its 5.6 pt tick labels printed at ~4 pt, which is what
 # review comment C103 ("Figure 1 illegible") was actually about. page_fit() checks the height limit too.
 PAGE_MM = (190.0, 240.0)
-MIN_PT = 6.0         # nothing may print smaller than this
+MIN_PT = 7.0         # nothing may print smaller than this: Elsevier's minimum for normal lettering at printed
+                     # size (6 pt is only for sub/superscripts). The exact check, from the vector PDFs, is
+                     # scripts/export_journal_figures.py; this one only estimates from fontsize= arguments.
 MIN_DPI = 300.0      # ...and nothing may print coarser than this, ON THE PAGE
 
 
