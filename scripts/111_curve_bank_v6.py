@@ -25,7 +25,8 @@ FEATURES = ["log_delta", "log_theta", "rel_delta", "rel_theta", "DAR", "TAR", "D
 REGIONS = ["whole_head", "L_temporal", "R_temporal", "L_parasagittal", "R_parasagittal"]
 STAGES = ["W", "N1", "N2", "N3", "REM"]
 GRID = np.arange(0.25, 90, 0.5)
-from morgoth_slowing.viz.palette import NORMAL as C_NORM, ABNORMAL as C_ABN
+from morgoth_slowing.viz import palette
+from morgoth_slowing.viz.palette import NORMAL as C_NORM, ABNORMAL as C_ABN, stage_colors
 XT = [0.25, 0.5, 1, 2, 5, 10, 20, 40, 60, 90]
 XL = ["3 mo", "6 mo", "1", "2", "5", "10", "20", "40", "60", "90"]
 
@@ -89,31 +90,55 @@ def main():
                 ax.plot(GRID, qa[0.5], color=C_ABN, lw=2.3, ls="--",
                         label=f"slowing-positive median (n={len(abn):,})")
             axfmt(ax)
-            ax.set_ylabel(f"{feat}  ({reg})")
-            ax.set_title(f"{feat} — {reg}, wake (v6: corrected labels + exact ages)", fontsize=10)
+            ax.set_ylabel(f"{palette.flabel(feat)}  ({reg})")
+            ax.set_title(f"{palette.flabel(feat)} — {reg}, wake", fontsize=10)
             ax.legend(frameon=False, fontsize=7)
             fig.tight_layout()
             fig.savefig(f"figures/curves/{feat}__{reg}.png", dpi=300)
             plt.close(fig)
             n += 1
 
+        stage_n = {}
         # stage-resolved variant, whole head
-        fig, ax = plt.subplots(figsize=(7.5, 4.8))
+        # Figure S5 stacks three of these. At 4.8 in tall each the composite was 13 in tall, which the
+        # journal has to scale to ~120 mm wide to fit the page height -- every label at 65% of authored
+        # size. Page-width and short keeps the stack inside the page at full width.
+        fig, ax = plt.subplots(figsize=(7.1, 2.65))
         drew = False
-        for st, col in zip(STAGES, ["#4575b4", "#91bfdb", "#fdae61", "#d73027", "#7b3294"]):
+        # Was an unrelated blue/orange/red ramp, which contradicted Figure 1A on the same five
+        # categories. One mapping, from the shared palette.
+        for st, col in zip(STAGES, stage_colors(STAGES)):
             s = d[(d.stage == st) & (d.region == "whole_head") & (d.clean_normal == True)]   # noqa: E712
             if len(s) < 200:
                 continue
             q = smooth_q(s.age, s[feat], qs=(0.5,))
             ax.plot(GRID, q[0.5], color=col, lw=2.2, label=f"{st} (n={len(s):,})")
+            stage_n[st] = len(s)
             drew = True
         if drew:
             axfmt(ax)
-            ax.set_ylabel(f"{feat}  (whole head)")
-            ax.set_title(f"{feat} by sleep stage — clean-normals (v6)", fontsize=10)
+            # "(whole head)" is in the Figure S5 caption; with the full display name the label ran
+            # off the top of the canvas.
+            ax.set_ylabel(palette.flabel(feat), fontsize=9)
+            ax.set_title(f"{palette.flabel(feat)}, whole head — clean-normals", fontsize=9.5)
             ax.legend(frameon=False, fontsize=8, title="stage")
+            ax.text(0.995, -0.20, "routine and overnight studies pooled \u2014 so these n exceed Figure 1B's "
+                                  "source-appropriate counts", transform=ax.transAxes, ha="right", va="top",
+                    fontsize=6.8, color="#555")
             fig.tight_layout()
-            fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300)
+            fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300, bbox_inches="tight")
+            # Emit the per-stage n. Figure S5's counts differ tenfold from Figure 1B's for the same cohort
+            # (S5 pools routine and overnight; 1B does not -- see the Figure 1B caption), so the caption has
+            # to quote both and neither had a source.
+            if feat == "rel_delta":
+                from pathlib import Path as _P
+                _P("results/story").mkdir(parents=True, exist_ok=True)
+                _P("results/story/curve_bank_stage_n.md").write_text(
+                    "# Figure S5 — clean-normal recordings per sleep stage (whole head)\n\n"
+                    "Routine and overnight recordings POOLED. Figure 1B applies the source-appropriate rule "
+                    "instead (wake from routine, sleep from overnight), which is why its per-stage n are an "
+                    "order of magnitude smaller.\n\n| stage | recordings |\n|---|---|\n"
+                    + "".join(f"| {k} | {v:,} |\n" for k, v in stage_n.items()))
             n += 1
         plt.close(fig)
 

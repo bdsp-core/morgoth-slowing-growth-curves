@@ -1,4 +1,4 @@
-# Figure S1 — severity is a null result (regenerated on v6)
+# Figure S9 — severity is a null result (regenerated on v6)
 
 Our continuous deviation score against the reader's own **mild / moderate / marked** adjective, on **2,393** cleanly-paired recordings. Two summary statistics are compared: the fragile **MAX** over each recording's region×stage deviation cells (one artifactual cell can set it) and a robust **P95**. If the adjective carried quantitative information, at least the robust version should track it.
 

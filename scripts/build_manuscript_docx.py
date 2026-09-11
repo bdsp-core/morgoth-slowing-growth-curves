@@ -1,10 +1,11 @@
 """Convert docs/manuscript_draft.md -> docs/manuscript_draft.docx (for circulating to colleagues), with the
 composited submission figures embedded at the end so the review copy is self-contained. Requires pandoc.
 
-Run: python3 scripts/build_manuscript_docx.py
+Run: python3 scripts/build_manuscript_docx.py [--outdir DIR]
+     --outdir also copies both .docx files there, date-stamped (e.g. ~/Downloads)
 """
 from __future__ import annotations
-import re, subprocess, tempfile
+import argparse, re, shutil, subprocess, tempfile
 from pathlib import Path
 
 MD = Path("docs/manuscript_draft.md")
@@ -94,7 +95,23 @@ def _render(md_text, out, figs, heading):
     print(f"wrote {out} ({out.stat().st_size/1e6:.1f} MB) with {len(figs)} figures embedded")
 
 
+def _repo_date() -> str:
+    """The manuscript's last-commit date, so the stamp names the draft rather than the day it was exported."""
+    try:
+        out = subprocess.run(["git", "log", "-1", "--format=%cd", "--date=format:%Y-%m-%d", "--", str(MD)],
+                             capture_output=True, text=True, check=True).stdout.strip()
+        if out:
+            return out
+    except Exception:
+        pass
+    from datetime import date
+    return date.today().isoformat()
+
+
 def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--outdir", default=None, help="also copy the .docx files here, date-stamped")
+    args = ap.parse_args()
     # The journal wants the supplement as its own file, so main and supplementary figures are split the same
     # way: FigureN.png with the main text, FigureSN.png with the supplement.
     allf = sorted((p for p in FIGDIR.glob("Figure*.png")), key=_order)
@@ -110,6 +127,16 @@ def main():
     _render(MD.read_text(), OUT, main_figs, "Figures")
     if SUPP_MD.exists():
         _render(SUPP_MD.read_text(), SUPP_OUT, supp_figs, "Supplementary Figures")
+
+    if args.outdir:
+        # Date-stamped, because co-authors accumulate versions and "manuscript_draft.docx" in a Downloads
+        # folder is indistinguishable from the last three.
+        dest = Path(args.outdir).expanduser(); dest.mkdir(parents=True, exist_ok=True)
+        stamp = _repo_date()
+        for src, name in ((OUT, "manuscript"), (SUPP_OUT, "supplementary_material")):
+            if src.exists():
+                d = dest / f"LENS_{name}_{stamp}.docx"; shutil.copy2(src, d)
+                print(f"  {d}  ({d.stat().st_size / 1e6:.1f} MB)")
 
 
 if __name__ == "__main__":

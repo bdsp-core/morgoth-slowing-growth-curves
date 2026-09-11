@@ -17,13 +17,12 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from morgoth_slowing.viz.palette import NORMAL, ABNORMAL
+from morgoth_slowing.viz import palette
+from morgoth_slowing.viz.palette import NEUTRAL, ABNORMAL
 
 DEV = "data/derived/segment_deviation"
 STAGES = ["W", "N1", "N2", "N3", "REM"]
-FEATS = [("z__whole_head__log_delta", "delta excess"),
-         ("z__whole_head__log_TAR", "theta/alpha ratio"),
-         ("z__whole_head__log_DAR", "delta/alpha ratio")]
+FEATS = [(f"z__whole_head__{k}", palette.flabel(k)) for k in ("log_delta", "log_TAR", "log_DAR")]
 FIG = Path("figures/story"); RES = Path("results/story")
 
 
@@ -88,7 +87,10 @@ def main():
     fig, axes = plt.subplots(1, 3, figsize=(7.1, 2.33), sharey=True)
     for j, (col, label) in enumerate(FEATS):
         ax = axes[j]
-        for grp, D, color in [("clean-normal", cn_d, NORMAL), ("abnormal", ab_d, ABNORMAL)]:
+        # clean-normal is NEUTRAL GREY here, matching Figures 6B and S8. It used to be green against a red
+        # "abnormal", which (a) contradicted the grey used for the same group elsewhere and (b) is the one
+        # colour pair that vanishes under deuteranopia and in greyscale.
+        for grp, D, color in [("clean-normal", cn_d, NEUTRAL), ("abnormal", ab_d, ABNORMAL)]:
             meds, q1s, q3s = [], [], []
             for st in STAGES:
                 v = D[D.stage == st][col].replace([np.inf, -np.inf], np.nan).dropna()
@@ -101,14 +103,15 @@ def main():
             md.append(f"| {label} | {grp} | " + " | ".join(f"{m:+.2f}" for m in meds) + " |")
         ax.axhline(0, ls="--", color="#888", lw=1)
         ax.set_xticks(range(len(STAGES))); ax.set_xticklabels(STAGES)
-        ax.set_title(label, fontsize=10); ax.grid(alpha=.2)
+        ax.set_title(label, fontsize=9.5); ax.grid(alpha=.2)
         if j == 0:
-            ax.set_ylabel("per-segment deviation z (median, IQR)")
+            # The full label was clipped by the canvas edge, taking the error-bar definition with it.
+            ax.set_ylabel("deviation z", fontsize=9)
+        palette.panel_letter(ax, j, dx=-0.18)
         ax.legend(frameon=False, fontsize=8)
-    fig.suptitle("Per-segment deviation field is stage-calibrated (normals ~0) and discriminative "
-                 "(abnormals shifted up) — whole head", fontsize=11)
-    fig.tight_layout(rect=[0, 0, 1, 0.94])
-    fig.savefig(FIG / "s2_segment_deviation.png", dpi=300); plt.close(fig)
+    # Title in the Figure S6 caption, not in the image (Clinical Neurophysiology).
+    fig.tight_layout()
+    fig.savefig(FIG / "s2_segment_deviation.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     (RES / "s2_segment_deviation.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/story/s2_segment_deviation.png + results/story/s2_segment_deviation.md")
 

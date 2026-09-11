@@ -52,4 +52,6 @@ run:
 
 # NOTE: FORBIDDEN output (docs/claims_table.md) — do NOT configure these:
 #   severity adjectives (mild/moderate/marked), ACNS frequency words (rare/frequent/continuous),
-#   band-from-our-features. Prevalence is reported as a % (ALLOWED), never as a word.
+#   band-from-our-features WAS forbidden; it is now PROVISIONAL (docs/claims_table.md clause 5) and
+#   ships only as a low-confidence delta/theta/mixed gloss calibrated to the report distribution.
+#   Prevalence is reported as a % (ALLOWED), never as a word.

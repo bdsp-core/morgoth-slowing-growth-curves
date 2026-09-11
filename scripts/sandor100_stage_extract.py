@@ -100,8 +100,14 @@ def stage_one(eid, data, chs, fs, n_seg, centers):
 
 
 def main():
-    demo = pd.read_excel(SB_DIR / "validation_study_excel_export.xlsx", sheet_name="Demographics")
-    age_of = {str(r[demo.columns[0]]).strip(): float(r["age_years"]) for _, r in demo.iterrows()}
+    # Prefer the published de-identified panel; the workbook is the fallback (see export_sai100_panel.py).
+    _p = Path("data/derived/sai100_panel.parquet")
+    if _p.exists():
+        _d = pd.read_parquet(_p).drop_duplicates("file_name")
+        age_of = {str(k).strip(): float(v) for k, v in zip(_d.file_name, _d.age_years)}
+    else:
+        demo = pd.read_excel(SB_DIR / "validation_study_excel_export.xlsx", sheet_name="Demographics")
+        age_of = {str(r[demo.columns[0]]).strip(): float(r["age_years"]) for _, r in demo.iterrows()}
     edfs = sorted(EDF.glob("ID-*.edf"), key=lambda p: int(p.stem.split("-")[1]))
     print(f"staging + extracting {len(edfs)} Sandor_100 EDFs -> segment_master (SB_NNN) ...", flush=True)
     done = fail = skip = 0

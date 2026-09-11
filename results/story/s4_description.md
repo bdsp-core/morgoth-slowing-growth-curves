@@ -1,15 +1,15 @@
 # §4 Description — reading the deviation field, validated by contrast vs the report
 
 ## D1 — type & amount
-- THETA: report: theta (theta/mixed) median=1.39 (n=7446) vs report: no theta (delta only) median=1.08 (n=3510); Cohen d=0.29, p=3.6e-45
-- DELTA: report: delta (delta/mixed) median=1.63 (n=7946) vs report: no delta (theta only) median=1.32 (n=3010); Cohen d=0.26, p=5.6e-47
+- THETA: report: theta (theta/mixed) median=1.39 mean=1.36 [1.33, 1.39] (n=7446) vs report: no theta (delta only) median=1.08 mean=0.96 [0.90, 1.01] (n=3510); Cohen d=0.29, p=2.8e-45
+- DELTA: report: delta (delta/mixed) median=1.63 mean=1.66 [1.63, 1.69] (n=7946) vs report: no delta (theta only) median=1.32 mean=1.33 [1.29, 1.37] (n=3010); Cohen d=0.26, p=0.0e+00
 
 ## D2 — laterality & region
-- laterality: left median=0.43 (n=3129); bilateral median=0.07 (n=2365); right median=-0.54 (n=2099)
-- region (focality dose-response): temporal +0.30 vs +0.20 (p=3e-38); frontal -0.17 vs -0.26 (p=3e-07); posterior +0.13 vs -0.01 (p=2e-15)
+- laterality: left median=0.43 mean=0.52 [0.50, 0.55] (n=3129); bilateral median=0.07 mean=0.04 [0.01, 0.07] (n=2365); right median=-0.54 mean=-0.58 [-0.61, -0.55] (n=2099)
+- region (focality dose-response): temporal named +0.30 vs unnamed +0.20; difference +0.10 [+0.09, +0.12] (p=3e-38); frontal named -0.17 vs unnamed -0.26; difference +0.10 [+0.06, +0.13] (p=3e-07); posterior named +0.13 vs unnamed -0.01; difference +0.14 [+0.10, +0.18] (p=2e-15)
 
 ## D3 — anterior-posterior predominance
-- anterior median=-0.07 (n=666); posterior median=-0.22 (n=974); unspec median=-0.11 (n=6194); anterior>posterior p=9.2e-06
+- anterior median=-0.07 mean=-0.08 [-0.13, -0.03] (n=666); posterior median=-0.22 mean=-0.21 [-0.25, -0.18] (n=974); unspec median=-0.11 mean=-0.12 [-0.13, -0.10] (n=6194); anterior>posterior p=9.2e-06
 
 ## D4 — persistence vs intermittence
 - prevalence: clean-normal 0.05 vs report-slowing 0.19

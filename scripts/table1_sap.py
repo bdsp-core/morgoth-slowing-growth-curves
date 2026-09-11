@@ -129,6 +129,29 @@ def main():
               f"({100*_both/_nf:.1f}% of the focal set, {100*_both/_ng:.1f}% of the pathologic generalized "
               f"set). The two axes are therefore substantially independent, which is why they are detected "
               f"by separate heads."]
+    # Band denominator. SS3.1's band row is a share of all cleanly paired abnormals; SS3.7 and SS5 quote the
+    # share among the recordings that NAME a band, which is a different denominator and was the source of a
+    # "~64% mixed" figure that did not reconcile with 50.9%. Emit both so neither has to be recomputed.
+    _bn = {b: int(((_ab.focal_band == b) | (_ab.gen_band == b)).sum()) for b in ("delta", "theta", "mixed")}
+    _bt = sum(_bn.values())
+    # The manifest denominators SS3.8 quotes: its patient count is over the FULL manifest, before the
+    # recording-level inclusion filter, so it must not be differenced against the cohort's 21,757.
+    try:
+        _man = pd.read_parquet("data/manifest/report_manifest_v6.parquet")
+        L += ["", f"**Manifest denominators (before inclusion).** The frozen report manifest holds "
+                  f"**{len(_man):,}** EEGs from **{_man.patient_id.nunique():,}** patients. The analysis "
+                  f"cohort below is what survives the recording-level inclusion filter: {len(d):,} "
+                  f"recordings from {d.patient_id.nunique():,} patients. SS3.8's per-patient denominator is "
+                  f"drawn from the manifest, not from the cohort."]
+    except Exception as _e:
+        L += ["", f"_(manifest denominators unavailable: {type(_e).__name__})_"]
+    L += ["", f"**Band denominator.** {_bt:,} of the {len(_ab):,} cleanly paired abnormal recordings name a "
+              f"band at all. Among those, **{100*_bn['mixed']/_bt:.1f}% say mixed** "
+              f"({100*_bn['delta']/_bt:.1f}% delta, {100*_bn['theta']/_bt:.1f}% theta). Counts: mixed "
+              f"{_bn['mixed']:,}, delta {_bn['delta']:,}, theta {_bn['theta']:,}; "
+              f"{len(_ab) - _bt:,} name no band. This is the denominator "
+              f"SS3.7 and SS5 use. The percentages in the Band rows above are of all "
+              f"{len(_ab):,} cleanly paired abnormals instead."]
     L += ["", f"_Generated from the new run's canonical tables (recording_meta + recording_labels); "
               f"n={len(d):,} included recordings, {d.patient_id.nunique():,} unique patients._"]
     OUT.parent.mkdir(parents=True, exist_ok=True)

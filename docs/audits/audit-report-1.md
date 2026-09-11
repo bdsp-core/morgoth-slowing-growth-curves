@@ -1,3 +1,24 @@
+> ## ⚠️ STATUS: SUPERSEDED — resolved 2026-08-26. Read this box before reading the report.
+>
+> **This audit was written on 2026-07-11 against a state of the repository that no longer exists.** It is
+> kept for provenance because it drove the v6 rebuild, but every load-bearing finding below has since been
+> closed, and several of its statements are now factually wrong about this repository. It must not be read
+> as a live objection to the manuscript.
+>
+> | Finding (as written 2026-07-11) | Status now | Evidence in the current repo |
+> |---|---|---|
+> | §1 "headline detection AUROC silently collapsed from 0.848 to 0.638"; `scripts/96_nested_cv_detection.py` hardcodes stale constants | **Closed — obsolete.** Neither number is claimed anywhere any more, and that script no longer exists. The detection numbers the paper now reports (ON-100 0.961/0.908, SAI-100 0.938/0.908) come from a different analysis on the v6 tables. | `grep -rn "0\.848" docs/manuscript_draft.md` → no match; `ls scripts/96*` → none |
+> | "Every number is computed from legacy `bdsp_id`-keyed derived tables that SAP §13 forbids" | **Closed.** The run was rebuilt on the frozen `eeg_id`-keyed manifest `report_manifest_v6.parquet`, pre-flight resolved (`scripts/129`, `130`); labels were re-derived (`rebuild_labels_unified.py`). | `data/manifest/report_manifest_v6.parquet`; `README.md` §"The frozen run manifest" |
+> | "The normative model is a Gaussian kernel mean/SD, not the pre-registered GAMLSS/BCT, so every emitted centile is misstated" | **Closed.** The grid is a GAMLSS fit: of the 330 cells in `grid_norm.json`, **110 are BCT** (the positive-support features) and **220 are a normal family** — the latter not a fallback but the deliberate support-aware choice for the real-line log features, since BCT is defined on the positive half-line (§2.4). | `scripts/gamlss_norm_grid.R` (BCT → BCT-pb → BCCG ladder); `python3 -c "import json,collections;print(collections.Counter(v[5] for v in json.load(open('data/derived/grid_norm.json')).values()))"` → `{'NO': 220, 'BCT': 110}` |
+> | "No k-fold cross-fitting, making the headline calibration check tautological" | **Closed.** Calibration is scored on a held-out complement: the norms are fitted on a seeded 3,000-recording sample and evaluated on the remaining 7,216 clean-normal recordings (6,779 patients) that were never used to fit them, plus an institutionally external arm (the 71 no-slowing ON-100 recordings). | `scripts/78_centile_calibration.py` (`fitted_ids()`); `results/story/centile_calibration.md`; Figure S2 |
+> | "The amount score `S` is fit by logistic regression on report labels, making the under-reporting claim circular" | **Closed.** §3.8 no longer rests on any supervised score. The within-subject sleep result is computed on the **unsupervised** deviation z (log delta, DAR) against age- and stage-matched clean-normals, adjudicated on spindle-verified N2 and on N3 blocks verified by a spindle elsewhere in the same sleep block. | manuscript §3.8; `scripts/95_v4a_wake_sleep.py`, `scripts/95b_v4a_spindle_check.py`; `results/v4a_wake_sleep.md` |
+>
+> Whether the repository still reproduces what the paper claims is not asserted here — it is **executed**, by
+> `scripts/certify_reproducibility.py` (five checks: display items, producers, numbers, fresh install,
+> integrity) and `scripts/verify_fresh_install.sh`. Run those rather than trusting this box.
+
+---
+
 # Audit Report 1 — SAP fidelity review and interpretation of findings
 
 **Date:** 2026-07-11

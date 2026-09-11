@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette
 from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
 
 m54 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m54", "scripts/54_single_model_train_eval.py"))
@@ -134,21 +135,39 @@ def main():
                 mm = MP[MP.axis == mx].set_index("fid").M_pred; mm.index = [f"ON_{int(i)}" for i in mm.index]
                 cm = m54.panel_curve(None, y.values[ok], mm.reindex(idx).values[ok], pts, C_MORG, "Morgoth")
                 fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
+                # Both comparators carry an interval. Only LENS did, so Figure 2 showed Morgoth's focal
+                # AUROC bare while Figure S3 gave [0.83, 0.97] for the same quantity -- the review read that
+                # as two different estimates.
+                mlo, mhi = m54.boot_ci(y.values[ok], mm.reindex(idx).values[ok])
+                CIS = {"LENS": (lo, hi), "Morgoth": (mlo, mhi)}
                 for cur2, lab, cc in [(cm, "Morgoth", C_MORG), (cur, "LENS", C_OURS)]:
-                    ci = f" [{lo:.2f}–{hi:.2f}]" if lab == "LENS" else ""
-                    a0.plot(cur2["fpr"], cur2["tpr"], color=cc, lw=2.4, label=f"{lab} (AUROC {cur2['auc']:.2f}{ci}, {cur2['ur']:.0f}% under)")
-                    a1.plot(cur2["rec"], cur2["prec"], color=cc, lw=2.4, label=f"{lab} (AP {cur2['ap']:.2f}, {cur2['up']:.0f}% under)")
+                    _lo, _hi = CIS[lab]
+                    ci = f" [{_lo:.2f}\u2013{_hi:.2f}]"
+                    a0.plot(cur2["fpr"], cur2["tpr"], color=cc, lw=2.4, label=f"{lab}  {cur2['auc']:.2f}{ci}\n{round(cur2['ur']*len(pts)/100)}/{len(pts)} experts under")
+                    a1.plot(cur2["rec"], cur2["prec"], color=cc, lw=2.4, label=f"{lab}  AP {cur2['ap']:.2f}\n{round(cur2['up']*len(pts)/100)}/{len(pts)} experts under")
                 for r, p in pts.items():
                     a0.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
                     if np.isfinite(p["precision"]): a1.plot(p["recall"], p["precision"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
                 a0.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
                 a1.axhline(y.mean(), ls="--", color="#ccc", lw=1)
-                a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{tag.upper()} — ROC", fontsize=11)
-                a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{tag.upper()} — PRC", fontsize=11)
-                a0.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3); a1.legend(frameon=False, fontsize=5.6, handlelength=1.2, borderaxespad=0.3, loc="upper right")
+                # One shared style for the whole ROC/PRC family (Figures 2, 3, S3, S7): square axes, the same
+                # ticks and decimals, the same type ladder. See palette.style_roc.
+                palette.style_roc(a0)
+                palette.style_roc(a1, xlabel="recall", ylabel="precision")
+                a0.set_title(f"{tag.upper()} — ROC", fontsize=palette.TITLE_PT)
+                a1.set_title(f"{tag.upper()} — PRC", fontsize=palette.TITLE_PT)
+                a0.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
+                      borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
+                # PRC curves live along the TOP of the panel, so an upper-right legend overprints them
+                # (round-1 render: the LENS-v2 entry was struck through by its own curve). Bottom-left is empty.
+                a1.legend(frameon=False, fontsize=palette.LEGEND_PT, handlelength=1.0, borderaxespad=0.2,
+                      labelspacing=0.35, handletextpad=0.5, loc="lower left")
                 for a in (a0, a1): a.set_xlim(-.02, 1.02); a.set_ylim(-.02, 1.02)
-                fig.suptitle(f"ON-100 {tag} — report-trained recording model vs Morgoth vs {len(pts)} experts", fontsize=10.5)
-                fig.tight_layout(rect=[0, 0, 1, 0.94]); fig.savefig(FIG / f"s0e_{ds}_{tag}.png", dpi=300); plt.close(fig)
+                # Title in the caption, not in the image (Clinical Neurophysiology). The subplot titles still
+                # carry the axis identity (GENERALIZED/FOCAL - ROC/PRC), and dropping the suptitle buys the
+                # height that keeps the two-panel Figure 2 composite inside a printed page.
+                fig.tight_layout()
+                fig.savefig(FIG / f"s0e_{ds}_{tag}.png", dpi=300, bbox_inches="tight"); plt.close(fig)
             else:
                 aum = roc_auc_score(y.values[ok], morg.reindex(idx).values[ok]) if morg is not None else np.nan
                 md.append(f"| {ds} | {tag} | Morgoth | {aum:.3f} | – | – | – |")

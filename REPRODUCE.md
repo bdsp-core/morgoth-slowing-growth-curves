@@ -28,7 +28,7 @@ bash scripts/reproduce_story.sh scratch            # ~24 h — from raw EDFs on 
 
 **How much you actually need depends on the tier.** A figure-loop install is **~1.9 GB**, not 71 GB: the
 flat parquets, the norm grids, the report manifest, `figure_cache/` and ~90 MB of panel partitions (ON-100
-and SAI-100). That regenerates **all 17** stage-4 producers — every figure and every table — and does so
+and SAI-100). That regenerates **all 22** stage-4 producers — every figure and every table — and does so
 **bit-identically** to a full install. That equivalence is tested, not asserted: hiding all 71 GB and
 re-running produces byte-identical result files.
 
@@ -55,7 +55,7 @@ features, which is all the `results` tier reads out of the per-segment field, an
 change to the deviation field.
 
 ```bash
-# figure loop (~1.9 GB) -- rebuilds ALL 17 producers, bit-identically to a full install
+# figure loop (~1.9 GB) -- rebuilds ALL 22 producers, bit-identically to a full install
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/ data/derived/ --exclude "*/*"
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/figure_cache/ data/derived/figure_cache/
 # the spindle sub-study checkpoint: the top-level sync above uses --exclude "*/*" and would skip it, and
@@ -75,6 +75,13 @@ aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/segment_mast
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/segment_deviation_examples/ \
     data/derived/segment_deviation/
 ```
+
+The first sync line above also brings down `sai100_panel.parquet` (19 KB): the de-identified SAI-100 expert
+votes and comparator predictions that **Figure 3** needs. Until 2026-08-27 that panel was read from the
+SCORE-AI study's Excel workbooks on one developer's Box mount, so Figure 3 was the one display item that
+rebuilt on exactly one machine. `scripts/export_sai100_panel.py` regenerates the published table from those
+workbooks and asserts the de-identification (study pseudonyms only, integer rater ids, ages above 89 binned
+to 90); the workbooks themselves stay where they are, and the EEG signal is not redistributed.
 
 `scripts/preflight_reproduce.py` detects which tier you have and checks only what that tier needs; it still
 fails loudly on a table that is present but INCOMPLETE, which is the failure mode that silently changed
@@ -104,7 +111,7 @@ Figures are assembled into the submission set by
 |---|---|---|---|
 | **Figure 1** normative model | `76_keystone_growth_grid.py`, `77_topoplots_by_age.py` | `grid_norm.json`, `segment_deviation/` | `figures/growth_v2/{keystone_growth_grid,topo_rel_delta_by_age_stage}.png` |
 | **Figure 2** detection (gen + focal) | `54_single_model_train_eval.py`, `55_recording_model.py` | `single_model_segfeats.parquet` | `figures/story/{s0d_single_occasion_generalized,s0e_occasion_focal}.png` |
-| **Figure 3** SAI-100 external | `sandor100_external_validation.py` | SAI-100 set + `segment_master/eeg_id=SB_*` | `figures/story/sandor100_slowing.png` |
+| **Figure 3** SAI-100 external | `sandor100_external_validation.py` | `sai100_panel.parquet` + `segment_master/eeg_id=SB_*` | `figures/story/sandor100_slowing.png` |
 | **Figure 4** example focal | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_focal.png` |
 | **Figure 5** example generalized | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_generalized.png` |
 | **Figure 6** description contrast | `57_description_panels.py` | `description_recording.parquet`, `description_stage.parquet` | `figures/story/{s4_d2,s4_d5}.png` |
@@ -123,6 +130,7 @@ Figures are assembled into the submission set by
 | **Table S1** van Putten full-coverage | `recompute_vanputten_fullcov.py` | `occasion_features.parquet` | `results/vanputten_fullcoverage.md` |
 | **Table S2** human ceiling | `recompute_human_ceiling_v6.py` | ON-100 panel votes | `results/table5_human_ceiling.md` |
 | **Table S3** band (δ/θ/mixed) calibration | `band_calibration.py` | `description_recording.parquet` (`band_dtr`) | `results/story/band_calibration.md` |
+| **Table S4** example generated vs clinical report text | `62_example_reports_panel.py` | `description_recording.parquet`, `report_manifest_v6.parquet`, source EDFs (S3) | `results/story/s4_examples.md` |
 
 ## Key quoted numbers → where they come from
 
@@ -135,6 +143,38 @@ Figures are assembled into the submission set by
 | Sleep under-reporting naming rates; spindle-verified AUROC | `95b_v4a_spindle_check.py` | `description_stage.parquet` + source EDFs |
 | Severity null (ρ≈0.05; 168-combination sweep) | `109_severity_null_v6.py` | `occasion_features.parquet` |
 | Slow-frequency null (ρ = 0.13 all-seg, 0.04 abnormal-only) | `81_slow_peak_frequency.py` | `report_manifest_v6.parquet` + source EDFs (S3) |
+
+### Known issue: `scripts/95b`'s spindle checkpoint GROWS, so §3.8's numbers move with it
+
+`scripts/95b_v4a_spindle_check.py` keeps a checkpoint at `data/derived/v4a_work/v4a_spindle_results_v2.parquet`
+and **skips any recording already in it**. That is deliberate — each recording costs an EDF pull from S3 — but
+it has a consequence worth stating plainly: a re-run on a machine that can reach more EDFs than the last one
+**adds** recordings and every §3.8 number shifts slightly. This is not nondeterminism; it is a larger sample.
+
+Measured on 2026-08-26: a re-run took the checkpoint from 601 to 627 attempted recordings and the usable set
+from 89/229 to **90 cases / 237 controls**. Every conclusion held and every AUROC moved by ≤0.004
+(spindle-verified log delta 0.858 → 0.860, DAR 0.789 → 0.789; N3 log delta 0.767 → 0.771, DAR 0.784 → 0.782).
+The manuscript now quotes the 90/237 figures.
+
+**So:** if your §3.8 numbers differ from the paper's, compare checkpoint composition before suspecting a bug —
+
+```bash
+python3 -c "import pandas as pd; d=pd.read_parquet('data/derived/v4a_work/v4a_spindle_results_v2.parquet'); \
+            print(len(d)); print(d.groupby(['group','status']).size())"
+# the paper's numbers: 627 rows; case ok=90, control ok=237
+```
+
+To reproduce the paper's figures exactly, sync the published checkpoint and do **not** re-run `95b`:
+
+```bash
+aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/v4a_work/ data/derived/v4a_work/
+```
+
+If you do re-run it and the checkpoint grows, publish it back so everyone else lands on the same numbers:
+
+```bash
+aws s3 sync data/derived/v4a_work/ s3://bdsp-opendata-credentialed/morgoth-slowing/derived/v4a_work/
+```
 
 ### Known issue: scripts/95 reads age from the manifest, not `metadata/ages_v6.parquet`
 
@@ -180,3 +220,18 @@ locally, continues from `features`.
 `results/story/s0c_morgoth_free.md` (the in-domain focal/generalized trajectory in dashboard block 2b) is a
 hand-authored summary of the design search, not a script-generated artifact. Everything else is produced by
 the stages above.
+
+### Artifacts in `data/derived/` that nothing reads
+
+Three files sit in the derived tree and are **not inputs to anything the paper reports**. They are named
+here because an automated audit of this repository flagged each as a possible undocumented methods step,
+which is the correct thing to suspect if you only see the file:
+
+| file | what it is | why it is not a methods step |
+|---|---|---|
+| `gen_labels_llm.csv` | 998 rows of LLM-suggested `gen_class` (pathologic / physiologic / normal / unsure) with a confidence and a rationale | An exploratory pass from before the label rules were fixed. **No script reads it** (`grep -rn gen_labels_llm scripts/ src/` returns nothing), and neither `gen_class` nor `p_gen_pathologic` survives into `report_manifest_v6.parquet` — check with `python3 -c "import pandas as pd; print('gen_class' in pd.read_parquet('data/manifest/report_manifest_v6.parquet').columns)"` → `False`. The pathologic-vs-physiologic split the paper uses is entirely rule-based, in `scripts/label_rederive_sap.py`: generalized slowing is pathologic only if the reader lists it among the abnormalities. `scripts/120`'s column request list still names the two fields, which is what makes an auditor suspect otherwise; it is annotated there. |
+| `seg_zcrit.json` | per-stage critical z (W 1.493 … N3 1.022) | Superseded. **No script reads it.** The abnormality threshold the descriptors actually use is a single fixed `THR = 1.5` in `scripts/56_description_descriptors.py`, the same in every stage — which is the right shape, since the deviation is already stage-matched. |
+| `config.example.yaml: norms.cross_fit: true` | a flag for out-of-fold z on normals | Stale. Nothing reads `cross_fit`. Held-out scoring is done the way §3.2 describes: the norms are fitted on a seeded 3,000-recording sample and evaluated on the 7,216-recording complement (`scripts/78_centile_calibration.py`). |
+
+The `moe` panel (1,761 recordings in the v5 manifest) is likewise carried through the fleet but contributes
+to no reported quantity; the expert-panel results are ON-100 and SAI-100 only.

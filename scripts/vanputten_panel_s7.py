@@ -98,12 +98,14 @@ def main():
     vp_gen, vp_foc = vanputten_panel_indices()
     vp_by_axis = {"generalized": vp_gen, "focal": vp_foc}
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 2.96)); md = ["# Figure S7 — van Putten vs LENS vs Morgoth on the "
+    # Square ROC axes need vertical room: at 2.96 in the two panels collapsed to narrow squares and the
+    # legends overflowed across them. Taller canvas + two-line legend labels, as in Figure 2.
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.95)); md = ["# Figure S3 — van Putten vs LENS vs Morgoth on the "
         "CLEAN ON-100 expert panel (fair benchmark; expert-majority labels)\n",
         "LENS = production code path (gen: scripts/54 MIL top-5; focal: scripts/66), identical to Figure 2. "
         "van Putten = best index per axis recomputed on the panel. Recording-level bootstrap 95% CIs.\n",
         "| axis | method | AUROC [95% CI] | % experts under ROC |", "|---|---|---|---|"]
-    for ax, axis in zip(axes, ["focal", "generalized"]):
+    for axi, (ax, axis) in enumerate(zip(axes, ["focal", "generalized"])):
         wide, morg = em[axis]
         idx = wide.index
         y_all = (wide.mean(axis=1).to_numpy() >= 0.5).astype(int)
@@ -124,17 +126,36 @@ def main():
             lo, hi = m54.boot_ci(y, s)
             short = name.split(" (")[0]
             ax.plot(cur["fpr"], cur["tpr"], color=c, lw=2.4,
-                    label=f"{short} (AUROC {cur['auc']:.2f} [{lo:.2f}–{hi:.2f}], {cur['ur']:.0f}% under)")
+                    label=f"{short}  {cur['auc']:.2f} [{lo:.2f}\u2013{hi:.2f}]\n"
+                          f"{round(cur['ur']*len(pts)/100)}/{len(pts)} experts under")
             md.append(f"| {axis} | {name} | {cur['auc']:.3f} [{lo:.3f}, {hi:.3f}] | {cur['ur']:.0f}% |")
         idx = idx[common]
         for p in pts.values():
             ax.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
         ax.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
-        ax.set_xlabel("1 − specificity"); ax.set_ylabel("sensitivity"); ax.set_xlim(-.02, 1.02); ax.set_ylim(-.02, 1.02)
-        ax.set_title(f"{axis.upper()} slowing — n={len(idx)}, {int(y.sum())} pos", fontsize=11)
-        ax.legend(frameon=False, fontsize=8, loc="lower right")
-    fig.suptitle("ON-100 panel (clean expert labels) — hand-crafted van Putten indices vs LENS vs Morgoth gate", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.95]); fig.savefig(FIG / "vanputten_panel_s7.png", dpi=300); plt.close(fig)
+        palette.style_roc(ax)                      # shared with Figures 2, 3 and S7
+        palette.panel_letter(ax, axi)
+        ax.set_title(f"{axis.upper()} slowing\nn={len(idx)}, {int(y.sum())} positive", fontsize=palette.TITLE_PT)
+        ax.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
+                  borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
+    # Title in the Figure S3 caption, not in the image (Clinical Neurophysiology).
+    fig.tight_layout()
+    fig.savefig(FIG / "vanputten_panel_s7.png", dpi=300, bbox_inches="tight"); plt.close(fig)
+
+    # The MARGINS the Discussion quotes, emitted here rather than computed by hand in the prose. Every
+    # number the manuscript states has to be findable in results/ -- scripts/certify_reproducibility.py
+    # check C enforces exactly that, and it is what stops a margin drifting when a model is refit.
+    def _auc(axis, name_frac):
+        for row in md:
+            c = [x.strip() for x in row.split("|")]
+            if len(c) > 4 and c[1] == axis and name_frac in c[2]:
+                return float(c[3].split(" [")[0])
+        return float("nan")
+    md += ["", "## Margins quoted in the manuscript (LENS minus comparator, same panel and labels)", "",
+           "| axis | LENS − best van Putten | LENS − Morgoth gate |", "|---|---|---|"]
+    for axis in ("focal", "generalized"):
+        lens = _auc(axis, "LENS"); vp = _auc(axis, "van Putten"); mg = _auc(axis, "Morgoth")
+        md.append(f"| {axis} | {lens - vp:+.3f} | {lens - mg:+.3f} |")
     (RES / "vanputten_panel_s7.md").write_text("\n".join(md))
     print("\n".join(md)); print("\nwrote figures/figs/vanputten_panel_s7.png + results/vanputten_panel_s7.md")
 

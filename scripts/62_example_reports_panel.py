@@ -35,6 +35,18 @@ EXCLUDE_IDS = ("S0001121298232",)
 # are illustrations, not results. So the identities are fixed here and only their CARDS are recomputed, which
 # is what actually needed updating: the committed cards were built from the superseded 7-region descriptors.
 # Order is the display order: 3 focal (marked/moderate/mild), then 3 generalized.
+# Recordings that must never be shown as a background-slowing exemplar, whatever the search returns. The
+# report-text screen below cannot catch these: it reads the NOTE, and these are cases where the note says
+# "slowing" while the signal shows something else. Only reachable via the fallback search (the pins normally
+# decide), but that fallback is exactly the path that runs unattended.
+EXCLUDED_EXAMPLES = {
+    # Retired as Figure 5A on co-author review 2026-08-27: the displayed window is a right-frontal-predominant
+    # rhythmic run that reads as LRDA / lateralised periodic discharges, not diffuse slowing. Its report says
+    # "occasional PERIODS of generalized delta slowing", which matches no \bperiodic\b pattern, so PERIODIC
+    # below would re-admit it.
+    "S0001119160767_20190930133101",
+}
+
 PINNED_EXAMPLES = (
     "S0001116080658_20120620112030",   # focal, marked. Chosen deliberately, not by the search: its
                                        # impression reads "high amplitude continuous FOCAL delta slowing
@@ -56,7 +68,17 @@ PINNED_EXAMPLES = (
                                        # claims to show. Re-picked under the widened screen above.
     "S0001120133802_20120917122010",   # focal, moderate
     "S0002118633403_20191203074129",   # focal, mild
-    "S0001119160767_20190930133101",   # generalized, marked
+    # Was S0001119160767_20190930133101 (generalized, marked, N2, 85M). Replaced 2026-08-27 on co-author
+    # review: its displayed window shows a right-frontal-predominant rhythmic run that reads as LRDA or
+    # lateralised periodic discharges rather than diffuse slowing, which is a distraction in the one figure
+    # whose job is to show plain generalized slowing. Note the report-text screen below could never have
+    # caught it -- that report says "occasional PERIODS of generalized delta slowing", which matches no
+    # \bperiodic\b pattern. The give-away is in the signal, so the replacement was chosen by screening the
+    # actual displayed window (scripts/screen_generalized_exemplars.py) and then looking at the traces.
+    # This one: same marked band (4.8 SD), same N2 dominant stage, continuous irregular polymorphic
+    # delta-theta across all chains, symmetric, no stereotyped repeating waveform -- and its report
+    # independently says "generalized SYMMETRIC theta/delta slowing".
+    "S0001116438689_20121214164651",   # generalized, marked
     "S0002114400117_20220102134116",   # generalized, moderate
     "S0002119199989_20170830132221",   # generalized, mild
 )
@@ -103,7 +125,7 @@ EXCLUDE = re.compile(r"\b(medication|treatment|administered|history|reason for|h
                      r"propofol|clobazam|lamotrigine|phenobarbital|phenytoin|lacosamide|keppra|levetiracetam)\b", re.I)
 # leading report boilerplate to strip so a snippet never reads "Report impression: final report impression: ..."
 BOILER = re.compile(r"^\s*(\*+\s*final report\s*\*+|final report impression|final impression|summary impression|"
-                    r"final correlation|clinical correlation|final report|impression|report)\s*[:\-.]*\s*", re.I)
+                    r"final correlation|clinical correlation|final report|impression|description|detail|report)\s*[:\-.]*\s*", re.I)
 
 
 def _strip_boiler(s: str) -> str:
@@ -171,7 +193,12 @@ def report_two_part(imp_raw, det_raw):
 # but reports are written description-first / conclusion-last, so the true impression sinks into the detail slot.
 # These six were hand-selected from the de-identified reports (impression = the report's conclusion; description =
 # the descriptive body) to make the two-way LENS↔report comparison faithful. Text is verbatim from the reports
-# (already de-identified; committable per project policy); "…" marks author-elided intervening text.
+# (already de-identified; committable per project policy); "…" marks author-elided intervening text, and square
+# brackets mark an author correction of an obvious clerical slip in the source note. Two reports give a voltage
+# in the wrong unit ("amplitude up to 100 hz", "predominantly 20-40 v"); both are corrected to [µV], which is
+# unambiguously what was meant -- the first of those same reports writes "30 uv" correctly two sentences later.
+# The alternative, quoting an amplitude in hertz verbatim, reads as our transcription error rather than the
+# clinician's and invites a reviewer comment on a point that is not about the method.
 REPORT_OVERRIDES = {
     "S0001112857553_20160206081631": (
         "focal slowing in the right posterior region",
@@ -187,14 +214,16 @@ REPORT_OVERRIDES = {
         "over the left hemisphere, there is moderate amplitude left temporo-parietal delta/theta slowing which "
         "rarely form fluctuating semi-rhythmic activity…intermittent drowsiness is characterized by attenuation of "
         "the background, slow roving eye movements and bilateral slowing in the theta and delta range, l>>r."),
-    "S0001119160767_20190930133101": (
-        "occasional periods of generalized delta slowing alternating with periods of lower voltage theta slowing "
-        "of the background.",
-        "there is frequent 3-5 hz generalized slowing in the 60-100 uv range"),
+    # Replaced the retired S0001119160767 exemplar (see PINNED_EXAMPLES). The automated split already put the
+    # right sentences in the right slots for this report; the override exists only to correct the unit.
+    "S0001116438689_20121214164651": (
+        "this is an abnormal eeg, due to the presence of generalized symmetric theta/ delta slowing.",
+        "the resting background showed generalized symmetric theta/ delta slowing with an amplitude up to "
+        "100 [µV]."),
     "S0002114400117_20220102134116": (
         "disorganized diffusely slow background",
         "the background is disorganized with no clear discernible posterior rhythm, but rather predominantly "
-        "20-40 v, theta and delta slowing."),
+        "20-40 [µV], theta and delta slowing."),
     "S0002119199989_20170830132221": (
         "abnormal, due to frequent bilateral anterior slowing, as well as bilateral high voltage theta bursts",
         "there is frequent bifrontal slowing with mostly theta activity. there are also independent bursts of "
@@ -231,7 +260,14 @@ def report_structured(r):
     return "; ".join(parts) if parts else "slowing (unspecified)"
 
 
-def main():
+def candidate_frame():
+    """The screened pool of candidate exemplars, and the frames the caller needs alongside it.
+
+    Extracted verbatim out of main() so it can be reused -- scripts/screen_generalized_exemplars.py
+    ranks candidates for a replacement pin from exactly the pool this figure draws from, rather than
+    from a second, subtly different one. No logic changed in the move; scripts/62's output is
+    byte-identical across the refactor.
+    """
     FIG.mkdir(parents=True, exist_ok=True); RES.mkdir(parents=True, exist_ok=True)
     R = pd.read_parquet("data/derived/description_recording.parquet")
     S = pd.read_parquet("data/derived/description_stage.parquet")
@@ -265,6 +301,8 @@ def main():
         return bool(impr) and not det.startswith("—")
     d = d[d.eeg_id.map(_two_part)]
 
+    d = d[~d.eeg_id.isin(EXCLUDED_EXAMPLES)]      # hand-vetted rejects the report text cannot identify
+
     # drop recordings whose report describes a PERIODIC epileptiform pattern (LPDs etc.) — not clean slowing
     def _no_periodic(eid):
         """Reject only recordings whose report ASSERTS a periodic or epileptiform pattern.
@@ -286,6 +324,11 @@ def main():
         # "periodic or rhythmic patterns: none" is kept.
         return not (asserts_epileptiform(imp) or _asserts(PERIODIC, txt))
     d = d[d.eeg_id.map(_no_periodic)]
+    return d, S, man, meta, stage_map
+
+
+def main():
+    d, S, man, meta, stage_map = candidate_frame()
 
     # --- pick 6 CONCORDANT examples (our field agrees slowing is present), 3 focal + 3 generalized,
     #     spanning degree (marked/moderate/mild) and DIFFERENT dominant sleep stages ---
@@ -403,7 +446,14 @@ def main():
         emit("LENS (brief): " + finding, "#127a3d")
         emit("LENS (full): " + paragraph, "#12608a")
         emit("Report (structured): " + rep, "#a5561f")
-        md.append(f"**Case {i+1} — {header}**  \n- LENS (brief): {finding}  \n- LENS (full): {paragraph}  \n- Report (structured): {rep}\n")
+        # This markdown IS Table S4 in the manuscript, so it must carry the report's own words -- the two
+        # sentences Figures 4/5 could not fit -- not only the structured descriptors.
+        md.append(f"**Case {i+1} — {header}**  \n"
+                  f"- LENS (brief): {finding}  \n"
+                  f"- Report impression: {report_impression_text or '(no slowing sentence)'}  \n"
+                  f"- LENS (full): {paragraph}  \n"
+                  f"- Report description: {report_detail_text or '(no slowing sentence)'}  \n"
+                  f"- Report (structured): {rep}\n")
     fig.suptitle("Example automated slowing reports vs the clinical report — focal & generalized, varying degree & sleep stage",
                  fontsize=12, y=0.995)
     fig.savefig(FIG / "s4_examples_panel.png", dpi=300, bbox_inches="tight"); plt.close(fig)

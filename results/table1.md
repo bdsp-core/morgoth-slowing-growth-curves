@@ -40,4 +40,8 @@ Analysis set: recordings passing inclusion (SAP §3.2), panels excluded (§3.6 i
 
 **Focal / generalized co-occurrence (Abnormal column).** Of 8,016 focal-slowing and 6,841 pathologic generalized-slowing recordings, **2,338 carry both** (29.2% of the focal set, 34.2% of the pathologic generalized set). The two axes are therefore substantially independent, which is why they are detected by separate heads.
 
+**Manifest denominators (before inclusion).** The frozen report manifest holds **27,524** EEGs from **23,543** patients. The analysis cohort below is what survives the recording-level inclusion filter: 25,536 recordings from 21,757 patients. SS3.8's per-patient denominator is drawn from the manifest, not from the cohort.
+
+**Band denominator.** 10,244 of the 12,676 cleanly paired abnormal recordings name a band at all. Among those, **62.9% say mixed** (20.4% delta, 16.7% theta). Counts: mixed 6,447, delta 2,088, theta 1,709; 2,432 name no band. This is the denominator SS3.7 and SS5 use. The percentages in the Band rows above are of all 12,676 cleanly paired abnormals instead.
+
 _Generated from the new run's canonical tables (recording_meta + recording_labels); n=25,536 included recordings, 21,757 unique patients._

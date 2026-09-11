@@ -91,16 +91,42 @@ def render(tab, info, feature):
         if row_n:
             axes[ri, 0].text(-0.62, 0.5, f"n={min(row_n)}--{max(row_n)}", transform=axes[ri, 0].transAxes,
                              fontsize=5.5, rotation=90, va="center", color="#555")
+    # No in-figure title: Clinical Neurophysiology wants the descriptive title in the caption, and a suptitle
+    # here overprinted the top row's labels. What it said -- median per 10-20 electrode over patients, mean of
+    # incident bipolar chains, clean-normal EEGs, the recording count -- is in the Figure 1 caption.
+    # Adjust BEFORE adding the colourbar: colorbar(ax=[...]) carves its space out of the axes' current
+    # positions, and a later subplots_adjust would move the maps back underneath it.
+    fig.subplots_adjust(top=0.97, bottom=0.035)
     if im is not None:
         cb = fig.colorbar(im, ax=axes.ravel().tolist(), fraction=0.013, pad=0.012)
-        cb.set_label(feature, fontsize=6.5); cb.ax.tick_params(labelsize=6)
-    fig.suptitle(f"Regional {feature} across the head by age & sleep stage (normal EEGs, cohort+expansion)\n"
-                 f"per 10-20 electrode (median over patients, mean of incident bipolar chains); "
-                 f"n={tab.bdsp_id.nunique()} recordings", fontsize=7.5)
+        cb.set_label(palette.flabel(feature), fontsize=6.5); cb.ax.tick_params(labelsize=6)
+    # A reviewer reads the image before the caption. The n are much smaller than a pooled whole-head count for
+    # the same cohort because wake comes from routine studies and sleep from overnight studies, never pooled
+    # (ratio features are not comparable across acquisition types) -- so the image says so. No figure number
+    # in this string: numbering moves when the text is cut, and a stale cross-reference inside a PNG is
+    # invisible to every text check.
+    fig.text(0.5, 0.005, "Source-appropriate: wake from routine studies, sleep from overnight studies, never "
+                         "pooled \u2014 so sleep-row n are far below pooled whole-head counts.",
+             ha="center", va="bottom", fontsize=6.8, color="#555")
     out = Path(f"figures/growth_v2/topo_{feature}_by_age_stage.png")
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=300, bbox_inches="tight"); plt.close(fig)
-    print("wrote", out)
+
+    # The per-cell coverage the caption quotes. Emitted as a results artifact rather than left only in the
+    # figure, so scripts/certify_reproducibility.py check C can find every number the manuscript states.
+    res = Path("results/story"); res.mkdir(parents=True, exist_ok=True)
+    md = [f"# Topography coverage — {feature} by age x sleep stage (Figure 1B / Figure S4)", "",
+          f"Median per 10-20 electrode over patients (mean of the incident bipolar chains), in clean-normal "
+          f"recordings from cohort + expansion. Total contributing recordings: **{tab.bdsp_id.nunique():,}**. "
+          f"One colour scale spans the whole grid, so rows are directly comparable (N3 is redder than W at "
+          f"every age).", "",
+          "| stage | " + " | ".join(BIN_LABELS) + " |", "|---|" + "---|" * len(BIN_LABELS)]
+    for stage in STAGES:
+        ns = [tab[(tab.stage == stage) & (tab.age >= lo) & (tab.age < hi)].bdsp_id.nunique()
+              for (lo, hi) in AGE_BINS]
+        md.append(f"| {stage} | " + " | ".join(str(n) for n in ns) + " |")
+    (res / f"topo_coverage_{feature}.md").write_text("\n".join(md) + "\n")
+    print("wrote", out, f"+ results/story/topo_coverage_{feature}.md")
 
 
 def main():

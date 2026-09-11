@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette
 from sklearn.metrics import roc_auc_score
 
 m53 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m53", "scripts/53_single_model_features.py"))
@@ -62,6 +63,34 @@ def _resolve_sandor_dir():
         "or run scripts/reproduce_story.sh, which skips this step cleanly when SANDOR_DIR is unset.")
 
 
+# The published, de-identified panel (scripts/export_sai100_panel.py). When present this is the source, so
+# Figure 3 rebuilds from git + S3 like every other display item; the Box/DUA workbook is only the fallback
+# for regenerating the export itself. See REPRODUCE.md.
+PANEL = Path("data/derived/sai100_panel.parquet")
+
+
+def _panel(axis: str) -> pd.DataFrame:
+    """The SAI-100 panel for one axis: expert votes + SCORE-AI + gate, published or from the workbook."""
+    if PANEL.exists():
+        d = pd.read_parquet(PANEL)
+        return d[d.axis == axis].drop(columns=["axis"]).reset_index(drop=True)
+    return pd.read_excel(Path(os.environ.get("SANDOR_DIR") or _resolve_sandor_dir())
+                         / "Morgoth_results" / AXIS_FILE[axis])
+
+
+def _ages() -> dict:
+    """Study pseudonym -> age. Ages above 89 are binned to 90 in the published table (Safe Harbor)."""
+    if PANEL.exists():
+        d = pd.read_parquet(PANEL).drop_duplicates("file_name")
+        return {str(k).strip(): float(v) for k, v in zip(d.file_name, d.age_years)}
+    demo = pd.read_excel(Path(os.environ.get("SANDOR_DIR") or _resolve_sandor_dir())
+                         / "validation_study_excel_export.xlsx", sheet_name="Demographics")
+    return {str(r[demo.columns[0]]).strip(): float(r["age_years"]) for _, r in demo.iterrows()}
+
+
+AXIS_FILE = {"focal": "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx",
+             "generalized": "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx"}
+
 SB_DIR = Path(os.environ.get("SANDOR_DIR") or
               _resolve_sandor_dir())
 MR = SB_DIR / "Morgoth_results"
@@ -85,8 +114,7 @@ def train_heads():
 
 
 def score_sandor(gen, foc, foc_med, amt_med):
-    demo = pd.read_excel(SB_DIR / "validation_study_excel_export.xlsx", sheet_name="Demographics")
-    age_of = {str(r[demo.columns[0]]).strip(): float(r["age_years"]) for _, r in demo.iterrows()}
+    age_of = _ages()
     rows = []
     for out in sorted(SM.glob("eeg_id=SB_*")):
         eid = out.name.split("=")[1]; n = int(eid.split("_")[1]); key = f"ID{n:03d}"
@@ -107,8 +135,8 @@ def score_sandor(gen, foc, foc_med, amt_med):
 
 
 def eval_axis(scores, axis, mr_file, ax):
-    """axis in {focal, generalized}; merge our score with the pre-joined SCORE-AI/Morgoth/expert file."""
-    d = pd.read_excel(MR / mr_file)
+    """axis in {focal, generalized}; merge our score with the pre-joined SCORE-AI/Morgoth/expert panel."""
+    d = _panel(axis)
     d["key"] = d.file_name.astype(str).str.strip()
     m = scores.merge(d, on="key", how="inner")
     expert_cols = [c for c in d.columns if c.startswith("expert_")]
@@ -136,19 +164,19 @@ def eval_axis(scores, axis, mr_file, ax):
         cur = m54.panel_curve(None, y[ok], s[ok], pts, c, name)
         lo, hi = m54.boot_ci(y[ok], s[ok])
         ax.plot(cur["fpr"], cur["tpr"], color=c, lw=2.4,
-                label=f"{name} (AUROC {cur['auc']:.2f} [{lo:.2f}–{hi:.2f}], {cur['ur']:.0f}% under)")
+                label=f"{name}  {cur['auc']:.2f} [{lo:.2f}\u2013{hi:.2f}]\n"
+                          f"{round(cur['ur']*len(pts)/100)}/{len(pts)} experts under")
         res.append((name, cur["auc"], lo, hi, cur["ur"], cur["ap"]))
     for r, p in pts.items():
         ax.plot(p["fpr"], p["tpr"], "o", ms=5, mfc="#999", mec="k", mew=.3, alpha=.75)
     ax.plot([], [], "o", mfc="#999", mec="k", label=f"{len(pts)} experts")
-    ax.set_xlabel("1 − specificity"); ax.set_ylabel("sensitivity"); ax.set_xlim(-.02, 1.02); ax.set_ylim(-.02, 1.02)
+    palette.style_roc(ax)                      # shared with Figures 2, S3 and S7
     # At page width the two titles collide and the long legend labels overrun the y-axis, so the title wraps
     # onto two lines and the legend is sized to sit inside its own axes.
     ttl = "FOCAL slowing" if axis == "focal" else "GENERALIZED slowing"
-    ax.set_title(f"{ttl}\nn={len(m)}, {int(y.sum())} positive", fontsize=8.5)
-    ax.legend(frameon=False, fontsize=5.6, loc="lower right", handlelength=1.2, borderaxespad=0.3)
-    ax.tick_params(labelsize=7)
-    ax.xaxis.label.set_size(8); ax.yaxis.label.set_size(8)
+    ax.set_title(f"{ttl}\nn={len(m)}, {int(y.sum())} positive", fontsize=palette.TITLE_PT)
+    ax.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
+              borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
     # PAIRED bootstrap of the AUROC DIFFERENCE (review comments 8/34-36). Comparative claims -- "outperforms
     # SCORE-AI on focal" -- rested on point estimates alone. Resampling recordings ONCE per replicate and
     # scoring both models on the SAME resample keeps the comparison paired, so the interval reflects the
@@ -181,8 +209,11 @@ def main():
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96))
     rf, nf, pf, ne, df = eval_axis(scores, "focal", "FocalSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a0)
     rg, ng, pg, _, dg = eval_axis(scores, "generalized", "GenSlowingOutput_Morgoth_ScoreAI_experts.xlsx", a1)
-    fig.suptitle(f"SAI-100 external validation — LENS vs SCORE-AI vs Morgoth vs {ne} experts", fontsize=9.5)
-    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / "sandor100_slowing.png", dpi=300); plt.close(fig)
+    # Title in the figure caption (Clinical Neurophysiology); panel letters so the two axes are citable.
+    for k, a in enumerate((a0, a1)):
+        palette.panel_letter(a, k)
+    fig.tight_layout()
+    fig.savefig(FIG / "sandor100_slowing.png", dpi=300, bbox_inches="tight"); plt.close(fig)
 
     md = ["# SAI-100 (SCORE-AI validation set) — external validation: LENS vs SCORE-AI vs Morgoth vs experts\n",
           f"Full pipeline (extraction → **Morgoth ss_hm_1 sleep staging** → age+stage-matched deviation → the "

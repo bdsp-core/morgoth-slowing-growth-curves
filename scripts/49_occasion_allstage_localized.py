@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
+from morgoth_slowing.viz import palette
 from morgoth_slowing.viz.palette import OURS
 
 m46 = importlib.util.module_from_spec(importlib.util.spec_from_file_location("m46", "scripts/46_occasion_wake_classifier.py"))
@@ -133,21 +134,44 @@ def evaluate(T, V, name, ax, cols, color):
     pu_roc, fr = m46.under_roc(fpr, tpr, pts); pu_pr, fp = m46.under_pr(prec, rec, pts)
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.97))
-    a0.plot([0, 1], [0, 1], "--", color="#bbb", lw=1); a0.plot(fpr, tpr, color=color, lw=2.4, label=f"LENS (AUROC {auc:.2f})")
+    # Recording-level bootstrap 95% CI -- the same convention and the same resampling unit as Figures 2,
+    # 3 and S3, so every performance number in the ROC family carries an interval of the same kind.
+    _rng = np.random.default_rng(0); _yv = y.values; _b = []
+    for _ in range(2000):
+        _i = _rng.integers(0, len(_yv), len(_yv))
+        if np.unique(_yv[_i]).size >= 2:
+            _b.append(roc_auc_score(_yv[_i], p[_i]))
+    lo, hi = (float(np.percentile(_b, 2.5)), float(np.percentile(_b, 97.5))) if _b else (np.nan, np.nan)
+    a0.plot([0, 1], [0, 1], "--", color="#bbb", lw=1)
+    a0.plot(fpr, tpr, color=color, lw=2.4, label=f"LENS  {auc:.2f} [{lo:.2f}\u2013{hi:.2f}]")
     for r, pp in pts.items():
-        a0.plot(pp["fpr"], pp["tpr"], "o", ms=6, mfc=("#888" if fr.get(r) else "#e41a1c"), mec="k", mew=.4, alpha=.85)
-    a0.plot([], [], "o", mfc="#888", mec="k", label=f"under ({sum(fr.values())})"); a0.plot([], [], "o", mfc="#e41a1c", mec="k", label=f"above ({len(pts)-sum(fr.values())})")
-    a0.set_xlabel("1 − specificity"); a0.set_ylabel("sensitivity"); a0.set_title(f"{name.upper()} — ROC\n{100*pu_roc:.0f}% of {len(pts)} experts under", fontsize=10)
-    a0.legend(frameon=False, fontsize=7.5, loc="lower right"); a0.set_xlim(-.02, 1.02); a0.set_ylim(-.02, 1.02)
-    a1.plot(rec, prec, color=color, lw=2.4, label=f"LENS (AP {ap:.2f})"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
+        a0.plot(pp["fpr"], pp["tpr"], "o", ms=6, mfc=("none" if fr.get(r) else palette.NEUTRAL), mec="k", mew=.4, alpha=.85)
+    # Filled vs hollow, not two hues: purple is Morgoth's colour in Figures 2, 3 and S3, and this
+    # panel sits next to S3.
+    a0.plot([], [], "o", mfc="none", mec="k", label=f"expert under curve ({sum(fr.values())})")
+    a0.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"expert above ({len(pts)-sum(fr.values())})")
+    palette.style_roc(a0)                      # shared with Figures 2, 3 and S3
+    a0.set_title(f"{name.upper()} — ROC\n{sum(fr.values())}/{len(pts)} experts under", fontsize=palette.TITLE_PT)
+    a0.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
+              borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
+    a1.plot(rec, prec, color=color, lw=2.4, label=f"LENS  AP {ap:.2f}"); a1.axhline(y.mean(), ls="--", color="#bbb", lw=1, label=f"prev {y.mean():.2f}")
     for r, pp in pts.items():
         if np.isfinite(pp["precision"]):
-            a1.plot(pp["recall"], pp["precision"], "o", ms=6, mfc=("#888" if fp.get(r) else "#e41a1c"), mec="k", mew=.4, alpha=.85)
-    a1.plot([], [], "o", mfc="#888", mec="k", label=f"under ({sum(fp.values())})"); a1.plot([], [], "o", mfc="#e41a1c", mec="k", label=f"above ({len(fp)-sum(fp.values())})")
-    a1.set_xlabel("recall"); a1.set_ylabel("precision"); a1.set_title(f"{name.upper()} — PRC\n{100*pu_pr:.0f}% of {len(fp)} under", fontsize=10)
-    a1.legend(frameon=False, fontsize=7.5, loc="upper right"); a1.set_xlim(-.02, 1.02); a1.set_ylim(-.02, 1.02)
-    fig.suptitle(f"Morgoth-FREE {'+'.join(STAGESET)} {name} detector vs {len(pts)} experts (LOO-CV)", fontsize=10.5)
-    fig.tight_layout(rect=[0, 0, 1, 0.93]); fig.savefig(FIG / f"s0_occasion_ours_v4_{name}.png", dpi=300); plt.close(fig)
+            a1.plot(pp["recall"], pp["precision"], "o", ms=6, mfc=("none" if fp.get(r) else palette.NEUTRAL), mec="k", mew=.4, alpha=.85)
+    a1.plot([], [], "o", mfc="none", mec="k", label=f"expert under curve ({sum(fp.values())})")
+    a1.plot([], [], "o", mfc=palette.NEUTRAL, mec="k", label=f"expert above ({len(fp)-sum(fp.values())})")
+    palette.style_roc(a1, xlabel="recall", ylabel="precision")
+    a1.set_title(f"{name.upper()} — PRC\n{sum(fp.values())}/{len(fp)} experts under", fontsize=palette.TITLE_PT)
+    a1.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower left", handlelength=1.0,
+              borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
+    # No in-figure title, and no "Morgoth-FREE": across the figure set "Morgoth" already names the sleep
+    # stager (Figure S1) and the reference detector (Figures 2, 3, S3), and using it a third time as a
+    # negation made it unclear whether this evaluates the same LENS as Figure 2. It does. Title is in the
+    # Figure S7 caption.
+    for k, a in enumerate((a0, a1)):
+        palette.panel_letter(a, k)
+    fig.tight_layout()
+    fig.savefig(FIG / f"s0_occasion_ours_v4_{name}.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     return f"| {name} | {'+'.join(STAGESET)} | {int(y.sum())}/{len(y)} | {auc:.3f} | {ap:.3f} | {len(pts)} | **{100*pu_roc:.0f}%** | **{100*pu_pr:.0f}%** |"
 
 

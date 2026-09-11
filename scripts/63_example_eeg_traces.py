@@ -13,14 +13,15 @@ below. The pulled window is cached under .eeg_cache/ so re-runs (layout tweaks) 
 Needs S3 access (rclone) + results/story/s4_examples.parquet (written by scripts/62).
 
 Run: PYTHONPATH=src MPLBACKEND=Agg KMP_DUPLICATE_LIB_OK=TRUE python3 scripts/63_example_eeg_traces.py
-Writes figures/story/s4_examples_eeg_panel.png
+Writes figures/story/s4_examples_eeg_{focal,generalized,mild}.png
 """
 from __future__ import annotations
-import os, subprocess, tempfile, textwrap, importlib.util
+import os, re, subprocess, tempfile, textwrap, importlib.util
 from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from morgoth_slowing.viz import palette
 from scipy.signal import butter, filtfilt, iirnotch
 
 from morgoth_slowing.io.edf import load_edf_referential
@@ -38,7 +39,7 @@ CHAINS = [["Fp1-F7", "F7-T3", "T3-T5", "T5-O1"], ["Fp2-F8", "F8-T4", "T4-T6", "T
           ["Fp1-F3", "F3-C3", "C3-P3", "P3-O1"], ["Fp2-F4", "F4-C4", "C4-P4", "P4-O2"],   # L-parasagittal, R-parasagittal
           ["Fz-Cz", "Cz-Pz"]]                                                              # midline
 BIPOLAR = [ch for chain in CHAINS for ch in chain]
-SPACING = 150.0; GROUP_GAP = 95.0                                                          # uV between traces / between chains
+SPACING = 150.0; GROUP_GAP = 45.0                                                          # uV between traces / between chains
 
 
 def _offsets():
@@ -52,6 +53,30 @@ def _offsets():
 
 
 OFFS = _offsets()
+LABEL_PT = 7.0                                                                             # >= the 6 pt floor
+
+
+Y_SPAN = OFFS[-1] + 1.3 * SPACING                        # data units the trace axes shows (see plot_panel)
+# Inches of axes height the 18 channel labels need in order not to collide. Derived, not guessed: the
+# tightest gap is one SPACING out of Y_SPAN, and a label needs a little more room than its own point size.
+TRACE_H_IN = LABEL_PT * 1.15 * Y_SPAN / (SPACING * 72.0)
+
+
+def check_label_spacing(fig, ax):
+    """Fail loudly if the channel labels are closer together than they are tall.
+
+    The overlap that made this figure unreadable in review round 1 is purely geometric: tick spacing in
+    points versus font size in points. Measuring it is one line, so there is no reason to rely on someone
+    noticing it in a rendered PNG again."""
+    fig.canvas.draw()
+    h_in = ax.get_window_extent().height / fig.dpi
+    span = ax.get_ylim()[1] - ax.get_ylim()[0]
+    gap_pt = (SPACING / span) * h_in * 72.0                    # tightest gap = within-chain spacing
+    if gap_pt < LABEL_PT * 1.10:
+        raise SystemExit(
+            f"channel labels would overlap: {gap_pt:.1f} pt between rows vs {LABEL_PT} pt type. "
+            f"Give the trace axes more height (TRACE_H_IN in main()) or lower LABEL_PT -- but not below 6.")
+    return gap_pt
 
 
 def bipolar(mono, names, sr):
@@ -64,29 +89,83 @@ def bipolar(mono, names, sr):
     return data
 
 
-def plot_panel(ax, data, sr, title):
+def highlight_rows(finding):
+    """Row indices of the bipolar chains that contain the electrode LENS names as the maximum.
+
+    The figure asks the reader to check a claim against a trace, so it should say WHERE to look. The claim
+    text already carries the electrode ("... (max T4)"); this turns that into a tint behind the two or three
+    derivations that electrode appears in. Returns () when the finding names no electrode (generalized
+    slowing), which is correct -- there is no single place to point at."""
+    m = re.search(r"max ([A-Za-z]+\d*)\)", finding or "")
+    if not m:
+        return ()
+    e = m.group(1).upper()
+    return tuple(i for i, ch in enumerate(BIPOLAR) if e in ch.upper().split("-"))
+
+
+def plot_panel(ax, data, sr, title, hl=()):
     n_ch, n_samp = data.shape; t = np.arange(n_samp) / sr
+    for i in hl:
+        ax.axhspan(-OFFS[i] - 0.42 * SPACING, -OFFS[i] + 0.42 * SPACING,
+                   color="#e6550d", alpha=0.085, lw=0, zorder=0)
     for i in range(n_ch):
         ax.plot(t, (data[i] - data[i].mean()) - OFFS[i], color=TRACE_COLOR, linewidth=0.45, zorder=2)
-    ax.set_yticks(-OFFS); ax.set_yticklabels(BIPOLAR, fontsize=5.6, color=DARK)
-    ax.set_xlim(0, t[-1]); ax.set_ylim(-(OFFS[-1] + 0.6 * SPACING), 0.7 * SPACING)
+    # Channel labels are the load-bearing text in a clinical EEG figure -- a reader has to be able to say
+    # WHICH chain carries the slowing. At 5.6 pt in a 1.4 in-tall panel the within-chain rows sat closer
+    # together than the glyph height, so 10 of the 18 labels overprinted their neighbour and the panel was
+    # unreadable exactly where it mattered. The panel is now tall enough (see the gridspec in main()) for
+    # 6.5 pt with clear separation; check_label_spacing() below fails loudly if that ever stops being true.
+    ax.set_yticks(-OFFS); ax.set_yticklabels(BIPOLAR, fontsize=LABEL_PT, color=DARK)
+    ax.set_xlim(0, t[-1]); ax.set_ylim(-(OFFS[-1] + 0.95 * SPACING), 0.7 * SPACING)
     ax.set_title(title, fontsize=8.5, fontweight="bold", pad=3, loc="left")
-    ax.set_xlabel("Time (s)", fontsize=7.5); ax.margins(x=0)
+    ax.set_xlabel("Time (s)", fontsize=8); ax.margins(x=0)
     for s in ("top", "right", "left"):
         ax.spines[s].set_visible(False)
-    ax.tick_params(left=False, labelsize=6.5)
+    ax.tick_params(left=False, labelsize=7)
     # 100 uV / 1 s scale bar, lower-right
-    x0 = t[-1] - 1.1; y0 = -(OFFS[-1] + 0.35 * SPACING)
+    x0 = t[-1] - 1.1; y0 = -(OFFS[-1] + 0.72 * SPACING)
     ax.plot([x0, x0 + 1.0], [y0, y0], color=DARK, lw=1.3, clip_on=False)
     ax.plot([x0, x0], [y0, y0 + 100], color=DARK, lw=1.3, clip_on=False)
-    ax.text(x0 + 0.5, y0 - 0.16 * SPACING, "1 s", ha="center", va="top", fontsize=6.5)
-    ax.text(x0 - 0.05, y0 + 50, "100 µV", ha="right", va="center", fontsize=6.5)
+    ax.text(x0 + 0.5, y0 - 0.06 * SPACING, "1 s", ha="center", va="top", fontsize=7)
+    ax.text(x0 - 0.05, y0 + 50, "100 µV", ha="right", va="center", fontsize=7)
+
+
+SEG_STEP_S = 14.0                       # 15-s window, 14-s step; t_start_s == segment * 14 (verified)
+_WH_CACHE = "data/derived/figure_cache/wholehead_z.parquet"
+
+
+def _pick_generalized_from_cache(eid, domstage):
+    """Max whole-head amount in the dominant stage, first hour -- from the cache. None if unavailable."""
+    if not os.path.exists(_WH_CACHE):
+        return None
+    cols = ["segment", "stage"] + AMT_Z
+    d = pd.read_parquet(_WH_CACHE, filters=[("eeg_id", "==", eid)], columns=cols)
+    if d.empty:
+        return None
+    d = d[d.segment * SEG_STEP_S < 3600]
+    have = [c for c in AMT_Z if c in d.columns]
+    if not have or d.empty:
+        return None
+    d = d.assign(amt=d[have].mean(axis=1))
+    ds = d[d.stage == domstage]
+    ds = ds if len(ds) else d
+    return float(ds.sort_values("amt", ascending=False).iloc[0].segment * SEG_STEP_S)
 
 
 def pick_segment(eid, domstage, region=None):
     """Display window = where the finding is clearest. FOCAL: the segment where the CLAIMED region's slowing
     peaks (so the plotted window matches the label, not an off-region/artefact whole-head max — QC 2026-07-19).
     GENERALIZED: the max whole-head amount. Restricted to the dominant stage, first hour."""
+    if region is None:
+        # GENERALIZED: the rule is "max whole-head amount in the dominant stage, first hour", and every
+        # column that needs is in figure_cache/wholehead_z.parquet -- which the figure-loop tier already
+        # ships for every recording. So a generalized example needs NO per-recording segment_deviation
+        # partition, and swapping one in costs nothing to publish. Verified equivalent: for all three
+        # generalized examples that have both sources, the two paths choose the identical window
+        # (t0 = 2254.0 / 2408.0 / 1036.0 s).
+        t0 = _pick_generalized_from_cache(eid, domstage)
+        if t0 is not None:
+            return t0
     f = f"{DEV}/eeg_id={eid}/part.parquet"
     if not os.path.exists(f):
         # Returning None here silently changed which 10-s window got plotted: fetch_window falls back to a
@@ -173,15 +252,42 @@ def main():
     for kind_name, rows, outname, title in panels:
         if not rows:
             continue
-        fig = plt.figure(figsize=(7.1, 4.6 * len(rows)))
-        outer = fig.add_gridspec(len(rows), 1, hspace=0.34, left=0.075, right=0.985,
-                                 top=0.93 if len(rows) > 1 else 0.88, bottom=0.03)
+        # Height budget, in inches, computed rather than tuned by eye. Two constraints fight each other and
+        # the round-1 figure lost both:
+        #   * the trace panel must be tall enough for 18 channel labels not to collide -> TRACE_H_IN, and
+        #   * the whole figure must fit 190 x 240 mm WITHOUT being scaled down, because a figure the journal
+        #     shrinks to fit the page shrinks its labels below the legibility floor at the same time.
+        # Laying the axes out in absolute figure fractions derived from inches makes both checkable here
+        # instead of after someone prints it. Pairing the LENS and report text in two columns (rather than
+        # four stacked blocks) is what buys the room: it roughly halves the text height AND puts each
+        # comparison side by side, which is the claim the figure is making.
+        # Only the HEADLINE comparison rides with the trace -- LENS's one-line finding against the report's
+        # impression. The detailed pair (LENS's full paragraph vs the report's description) is long enough
+        # that carrying all four blocks forced the figure to ~12 in tall, which the journal then scales to
+        # 138 mm wide to fit the page height, dragging every label back under 6 pt. That is the same trap
+        # C146-f flagged in round 1. The detailed text is in Table S4 (results/story/s4_examples.md), which
+        # can be as long as it likes, and the caption points at it.
+        TEXT_H, GAP, TOP_M, BOT_M, TITLE_H, XAXIS_H = 0.46, 0.16, 0.08, 0.08, 0.17, 0.34
+        # Two examples per figure (see `panels`) is what makes room for taller traces: use it to reach the
+        # clinical 0.15 in/channel convention, and never go below TRACE_H_IN, the label-collision floor.
+        TRACE_H = max(TRACE_H_IN, 0.15 * len(BIPOLAR))
+        n = len(rows)
+        cell = TITLE_H + TRACE_H + XAXIS_H + TEXT_H
+        FIG_H = n * cell + (n - 1) * GAP + TOP_M + BOT_M
+        FIG_W, LEFT, RIGHT = 7.1, 0.085, 0.985
+        page_scale = min(190.0, 240.0 * FIG_W / FIG_H) / (FIG_W * 25.4)
+        if LABEL_PT * page_scale < 6.0:
+            raise SystemExit(f"at {FIG_W:.2f}x{FIG_H:.2f} in the page scale is {page_scale:.2f}, so the "
+                             f"{LABEL_PT} pt channel labels would print at {LABEL_PT*page_scale:.1f} pt")
+        fig = plt.figure(figsize=(FIG_W, FIG_H))
         for rr, r in enumerate(rows):
-            # Balance: the report block runs 5-7 wrapped lines at a FIXED font size, so squeezing its
-            # share makes the lines collide (1.15 did). 1.55 fits the longest block with the traces
-            # still at ~0.16 in/channel, inside the clinical convention.
-            inner = outer[rr, 0].subgridspec(2, 1, height_ratios=[3.7, 1.55], hspace=0.34)
-            axe = fig.add_subplot(inner[0]); axt = fig.add_subplot(inner[1]); axt.axis("off")
+            top = 1.0 - (TOP_M + rr * (cell + GAP)) / FIG_H
+            axe = fig.add_axes([LEFT, top - (TITLE_H + TRACE_H) / FIG_H,
+                                RIGHT - LEFT, TRACE_H / FIG_H])
+            axt = fig.add_axes([LEFT, top - cell / FIG_H, RIGHT - LEFT, TEXT_H / FIG_H]); axt.axis("off")
+            axt.set_zorder(-1)
+            # One letter per example, so each case is citable from the text individually.
+            palette.panel_letter(axe, rr, dx=-0.075, dy=1.14)
             kind = "Focal" if r.isfoc else "Generalized"
             age = int(r.age) if np.isfinite(r.age) else "?"; sex = str(r.sex)[:1].upper()
             head = f"{kind} · {r.peakz:.1f} SD · {r.domstage} · {age}{sex}"
@@ -191,7 +297,8 @@ def main():
                 bip = bipolar(mono, chs, fs)
                 a_, b_ = int(trim[0]), int(trim[1])
                 bip = bip[:, a_: bip.shape[1] - b_] if (a_ or b_) else bip     # drop the filtered padding
-                plot_panel(axe, bip, fs, f"{head}   (10 s, t≈{t0/60:.0f} min)")
+                plot_panel(axe, bip, fs, f"{head}   (10 s, t≈{t0/60:.0f} min)", hl=highlight_rows(r.finding))
+                check_label_spacing(fig, axe)
                 ok += 1
             except FileNotFoundError:
                 # A missing deviation partition means we cannot know WHICH window to plot, so the panel
@@ -202,25 +309,33 @@ def main():
                 axe.axis("off"); axe.text(0.5, 0.5, f"EEG unavailable\n{type(e).__name__}", ha="center", va="center",
                                           fontsize=8, transform=axe.transAxes); axe.set_title(head, fontsize=8.5, fontweight="bold", loc="left")
                 print(f"  {r.eeg_id}: {type(e).__name__}: {e}", flush=True)
-            y = [0.99]; LH = 0.093; C_LENS, C_REP = "#c2510a", "#3a3a3a"
+            TXT_PT = 7.0
+            LH = TXT_PT * 1.25 / 72.0 / TEXT_H            # one line of type, as a fraction of the text axes
+            y = [1.0]; C_LENS, C_REP = "#c2510a", "#3a3a3a"
 
-            def emit(lab, text, color, wrapw=94):
-                for k, ln in enumerate(textwrap.wrap(lab + (text or "—"), wrapw) or [""]):
-                    axt.text(0.0, y[0], ln, fontsize=6, color=color, va="top", transform=axt.transAxes,
-                             fontweight="bold" if k == 0 else "normal"); y[0] -= LH
-                y[0] -= 0.02
+            def emit_pair(lab_l, text_l, lab_r, text_r, wrapw=55):
+                """One comparison per ROW, LENS on the left, the clinical report on the right.
+
+                Round 1 read these as four stacked blocks, so the reader had to hold the LENS sentence in
+                their head while scanning down to the report sentence it is being compared against. Side by
+                side, the comparison the figure is making is the thing you actually see."""
+                ll = textwrap.wrap(lab_l + (text_l or "\u2014"), wrapw) or [""]
+                lr = textwrap.wrap(lab_r + (text_r or "\u2014"), wrapw) or [""]
+                for x, lines, color in ((0.0, ll, C_LENS), (0.515, lr, C_REP)):
+                    for k, ln in enumerate(lines):
+                        axt.text(x, y[0] - k * LH, ln, fontsize=TXT_PT, color=color, va="top",
+                                 transform=axt.transAxes, fontweight="bold" if k == 0 else "normal")
+                y[0] -= max(len(ll), len(lr)) * LH + LH * 0.55
             # two paired comparisons: our brief vs the report IMPRESSION; our detailed vs the report DESCRIPTION
-            emit("LENS (brief): ", r.finding, C_LENS)
-            emit("Report impression: ", getattr(r, "report_impression_text", "") or "(no slowing sentence)", C_REP)
-            emit("LENS (detailed): ", r.paragraph, C_LENS)
-            emit("Report description: ", getattr(r, "report_detail_text", "") or "(no slowing sentence)", C_REP)
-        fig.suptitle(title + ".\nEach example pairs LENS's brief finding with the report's impression, and "
-                     "LENS's detailed description with the report's description.\n"
-                     "Longitudinal bipolar; 1\u201330 Hz + 60 Hz notch.", fontsize=7.5, y=0.992)
+            emit_pair("LENS: ", r.finding,
+                      "Report impression: ", getattr(r, "report_impression_text", "") or "(no slowing sentence)")
+        # Title, montage and filter settings are in the Figure 4 / Figure 5 captions in
+        # docs/manuscript_draft.md (Clinical Neurophysiology wants the descriptive title in the legend), and
+        # the height it used to cost is spent on the traces instead.
         fig.savefig(FIG / outname, dpi=300, bbox_inches="tight", facecolor="white")
         plt.close(fig)
         print(f"  wrote figures/story/{outname}")
-    print(f"rendered EEG for {ok}/6 examples across two panels")
+    print(f"rendered EEG for {ok}/6 examples across {len(panels)} figures")
 
 
 if __name__ == "__main__":

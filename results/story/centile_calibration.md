@@ -10,6 +10,8 @@ Fraction of held-out observations below each model-predicted centile. A calibrat
 
 | arm | stage | observations | patients | median \|observed − nominal\| | max |
 |---|---|---|---|---|---|
+**Reference denominator.** The norm-fitting reference is every clean-normal, cleanly paired recording with a known age: **10,216**. That is not the 10,189 clean-normal count in Table 1, which is additionally restricted by the recording-level inclusion filter that defines the 25,536-recording analysis cohort; norm fitting is deliberately not gated on it, since a wider normal reference is the conservative choice. The difference is 27 recordings.
+
 **Held-out split.** The norms are fitted on a seeded **3,000**-recording sample of the clean-normal reference; the remaining **7,216** clean-normal recordings (**6,779** patients) are held out and are what this page scores.
 
 | internal held-out normals | W | 42,631 | 1,454 | 0.9 | 5.4 |

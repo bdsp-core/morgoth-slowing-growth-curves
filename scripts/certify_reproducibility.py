@@ -65,6 +65,9 @@ CLASSIFIED = {
     "assemble_manuscript_figures": "stage 5 - composits committed figures for the docx, produces no new result",
     "certify_reproducibility": "this checker; cited in the code-and-data map, not a producer",
     "112": "in the runner as 112_age_ablation.py (review comment 14 ablations)",
+    "verify_fresh_install": "a VERIFIER, not a producer - re-runs every producer with only git + S3 and diffs",
+    "screen_generalized_exemplars": "a SELECTION tool - ranks candidate Figure 5 exemplars so a pin can be "
+                                    "chosen; run by hand when an example is challenged, not part of the build",
 }
 
 
