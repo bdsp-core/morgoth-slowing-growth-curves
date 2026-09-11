@@ -167,7 +167,7 @@ def evaluate(T, V, name, ax, cols, color):
     # No in-figure title, and no "Morgoth-FREE": across the figure set "Morgoth" already names the sleep
     # stager (Figure S1) and the reference detector (Figures 2, 3, S3), and using it a third time as a
     # negation made it unclear whether this evaluates the same LENS as Figure 2. It does. Title is in the
-    # Figure S7 caption.
+    # Figure S6 caption.
     for k, a in enumerate((a0, a1)):
         palette.panel_letter(a, k)
     fig.tight_layout()

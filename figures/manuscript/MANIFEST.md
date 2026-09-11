@@ -2,22 +2,24 @@
 
 Built by `scripts/assemble_manuscript_figures.py`: multi-panel figures are composited into one file with (A)/(B) labels (as submitted); singles are passed through. Regenerate panel sources via the `results` reproduce tier, then re-run.
 
-| submission figure | panels | producing script(s) |
-|---|---|---|
-| `Figure1_normative_model.png` | 2 (keystone_growth_grid.png, topo_rel_delta_by_age_stage.png) | `scripts/76, 77` |
-| `Figure2_detection.png` | 2 (s0d_single_occasion_generalized.png, s0e_occasion_focal.png) | `scripts/54, 55, 66` |
-| `Figure3_sandor_external.png` | 1 (sandor100_slowing.png) | `scripts/sandor100_external_validation` |
-| `Figure4_example_focal.png` | 1 (s4_examples_eeg_focal.png) | `scripts/62, 63` |
-| `Figure5_example_generalized.png` | 1 (s4_examples_eeg_generalized.png) | `scripts/62, 63` |
-| `FigureS10_example_mild.png` | 1 (s4_examples_eeg_mild.png) | `scripts/62, 63` |
-| `Figure6_description_contrast.png` | 2 (s4_d2.png, s4_d5.png) | `scripts/57` |
-| `Figure7_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/fig6_sleep_naming (95b stat)` |
-| `FigureS1_architecture.png` | 1 (architecture.png) | `scripts/architecture_diagram` |
-| `FigureS6_deviation_field.png` | 1 (s2_segment_deviation.png) | `scripts/44` |
-| `FigureS5_curvebank.png` | 3 (rel_delta__whole_head.png, TAR__whole_head.png, DAR__whole_head.png) | `scripts/111` |
-| `FigureS8_description_panels.png` | 4 (s4_d1.png, s4_d3.png, s4_d4.png, s4_d6.png) | `scripts/57, 58` |
-| `FigureS7_localized_focal.png` | 1 (s0_occasion_ours_v4_focal.png) | `scripts/49` |
-| `FigureS9_severity_null.png` | 1 (severity_recalibrated.png) | `scripts/109` |
-| `FigureS3_vanputten.png` | 1 (vanputten_panel_s7.png) | `scripts/vanputten_panel_s7` |
-| `FigureS4_topoplot_TAR.png` | 1 (topo_TAR_by_age_stage.png) | `scripts/77` |
-| `FigureS2_centile_calibration.png` | 1 (s9_centile_calibration.png) | `scripts/78` |
+Printed size is what the figure measures once it is scaled to fit Clinical Neurophysiology's 190 x 240 mm box; type scale is what every point size in it is multiplied by on the page. A figure that is too tall prints narrower than the column and shrinks its own labels, so both are reported here.
+
+| submission figure | panels | producing script(s) | printed mm | type scale | printed DPI |
+|---|---|---|---|---|---|
+| `Figure1_normative_model.png` | 2 (keystone_growth_grid.png, topo_rel_delta_by_age_stage.png) | `scripts/76, 77` | 190 x 239 | 1.37 | 300 |
+| `Figure2_detection.png` | 2 (s0d_single_occasion_generalized.png, s0e_occasion_focal.png) | `scripts/54, 55, 66` | 190 x 182 | 1.37 | 300 |
+| `Figure3_sandor_external.png` | 1 (sandor100_slowing.png) | `scripts/sandor100_external_validation` | 190 x 90 | 1.36 | 301 |
+| `Figure4_example_focal.png` | 1 (s4_examples_eeg_focal.png) | `scripts/62, 63` | 190 x 231 | 1.36 | 301 |
+| `Figure5_example_generalized.png` | 1 (s4_examples_eeg_generalized.png) | `scripts/62, 63` | 190 x 219 | 1.36 | 301 |
+| `FigureS10_example_mild.png` | 1 (s4_examples_eeg_mild.png) | `scripts/62, 63` | 190 x 225 | 1.36 | 301 |
+| `Figure6_description_contrast.png` | 2 (s4_d2.png, s4_d5.png) | `scripts/57` | 190 x 160 | 1.37 | 300 |
+| `Figure7_sleep_underreporting.png` | 1 (v4a_wake_sleep.png) | `scripts/fig6_sleep_naming (95b stat)` | 190 x 96 | 1.36 | 301 |
+| `FigureS1_architecture.png` | 1 (architecture.png) | `scripts/architecture_diagram` | 190 x 187 | 1.36 | 301 |
+| `FigureS5_deviation_field.png` | 1 (s2_segment_deviation.png) | `scripts/44` | 190 x 63 | 1.36 | 301 |
+| `FigureS4_curvebank.png` | 3 (rel_delta__whole_head.png, TAR__whole_head.png, DAR__whole_head.png) | `scripts/111` | 190 x 215 | 1.39 | 300 |
+| `FigureS8_description_panels.png` | 4 (s4_d1.png, s4_d3.png, s4_d4.png, s4_d6.png) | `scripts/57, 58` | 190 x 234 | 1.40 | 300 |
+| `FigureS6_localized_focal.png` | 1 (s0_occasion_ours_v4_focal.png) | `scripts/49` | 190 x 90 | 1.36 | 301 |
+| `FigureS9_severity_null.png` | 1 (severity_recalibrated.png) | `scripts/109` | 190 x 90 | 1.36 | 301 |
+| `FigureS7_vanputten.png` | 1 (vanputten_panel_s7.png) | `scripts/vanputten_panel_s7` | 190 x 102 | 1.36 | 301 |
+| `FigureS3_topoplot_TAR.png` | 1 (topo_TAR_by_age_stage.png) | `scripts/77` | 190 x 85 | 1.36 | 301 |
+| `FigureS2_centile_calibration.png` | 1 (s9_centile_calibration.png) | `scripts/78` | 190 x 216 | 1.36 | 301 |

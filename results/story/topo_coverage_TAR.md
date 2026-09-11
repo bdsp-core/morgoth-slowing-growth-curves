@@ -1,4 +1,4 @@
-# Topography coverage — TAR by age x sleep stage (Figure 1B / Figure S4)
+# Topography coverage — TAR by age x sleep stage (Figure 1B / Figure S3)
 
 Median per 10-20 electrode over patients (mean of the incident bipolar chains), in clean-normal recordings from cohort + expansion. Total contributing recordings: **10,158**. One colour scale spans the whole grid, so rows are directly comparable (N3 is redder than W at every age).
 

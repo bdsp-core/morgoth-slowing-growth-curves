@@ -150,7 +150,7 @@ def render(tab, info, feature):
     # The per-cell coverage the caption quotes. Emitted as a results artifact rather than left only in the
     # figure, so scripts/certify_reproducibility.py check C can find every number the manuscript states.
     res = Path("results/story"); res.mkdir(parents=True, exist_ok=True)
-    md = [f"# Topography coverage — {feature} by age x sleep stage (Figure 1B / Figure S4)", "",
+    md = [f"# Topography coverage — {feature} by age x sleep stage (Figure 1B / Figure S3)", "",
           f"Median per 10-20 electrode over patients (mean of the incident bipolar chains), in clean-normal "
           f"recordings from cohort + expansion. Total contributing recordings: **{tab.bdsp_id.nunique():,}**. "
           f"One colour scale spans the whole grid, so rows are directly comparable (N3 is redder than W at "

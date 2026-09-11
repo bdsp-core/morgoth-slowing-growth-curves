@@ -109,7 +109,7 @@ def main():
             ax.set_ylabel("deviation z", fontsize=9)
         palette.panel_letter(ax, j, dx=-0.18)
         ax.legend(frameon=False, fontsize=8)
-    # Title in the Figure S6 caption, not in the image (Clinical Neurophysiology).
+    # Title in the Figure S5 caption, not in the image (Clinical Neurophysiology).
     fig.tight_layout()
     fig.savefig(FIG / "s2_segment_deviation.png", dpi=300, bbox_inches="tight"); plt.close(fig)
     (RES / "s2_segment_deviation.md").write_text("\n".join(md))

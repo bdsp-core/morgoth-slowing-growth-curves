@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 MD = Path("docs/manuscript_draft.md")
+SUPP_MD = Path("docs/supplementary_material.md")
 SPLIT = "## References"
 CITE = re.compile(r"\\\[([0-9]+(?:\s*(?:--|–|-)\s*[0-9]+)?(?:\s*,\s*[0-9]+(?:\s*(?:--|–|-)\s*[0-9]+)?)*)\\\]")
 REF_ENTRY = re.compile(r"^(\d+)\.\s", re.M)
@@ -60,8 +61,11 @@ def citation_order(body: str) -> list[int]:
     return seen
 
 
-def renumber_refs(body: str, refs: str) -> tuple[str, str, dict[int, int]]:
+def renumber_refs(body: str, refs: str, supp: str) -> tuple[str, str, str, dict[int, int]]:
+    # The supplement has no reference list of its own and cites the main one. References cited in the main
+    # text are numbered first, in main-text order; those cited only in the supplement follow, in its order.
     order = citation_order(body)
+    order += [n for n in citation_order(supp) if n not in order]
     listed = [int(m.group(1)) for m in REF_ENTRY.finditer(refs)]
     missing = [n for n in order if n not in listed]
     if missing:
@@ -71,11 +75,15 @@ def renumber_refs(body: str, refs: str) -> tuple[str, str, dict[int, int]]:
         sys.exit(f"in the reference list but never cited: {uncited}")
     mapping = {old: new for new, old in enumerate(order, 1)}
 
-    before = sum(len(expand(m.group(1))) for m in CITE.finditer(body))
-    body = CITE.sub(lambda m: "\\[" + collapse([mapping[n] for n in expand(m.group(1))]) + "\\]", body)
-    after = sum(len(expand(m.group(1))) for m in CITE.finditer(body))
-    if after != before:
-        sys.exit(f"citation count changed during renumber: {before} -> {after} (a citation was dropped)")
+    def sub(text: str, label: str) -> str:
+        before = sum(len(expand(m.group(1))) for m in CITE.finditer(text))
+        text = CITE.sub(lambda m: "\\[" + collapse([mapping[n] for n in expand(m.group(1))]) + "\\]", text)
+        after = sum(len(expand(m.group(1))) for m in CITE.finditer(text))
+        if after != before:
+            sys.exit(f"{label}: citation count changed during renumber: {before} -> {after} (a citation was dropped)")
+        return text
+
+    body, supp = sub(body, "main text"), sub(supp, "supplement")
 
     # split the list into entries, reorder, renumber
     entries: dict[int, str] = {}
@@ -88,20 +96,25 @@ def renumber_refs(body: str, refs: str) -> tuple[str, str, dict[int, int]]:
     for old in order:
         text = REF_ENTRY.sub("", entries[old], count=1)
         lines.append(f"{mapping[old]}. {text}")
-    return body, head + "\n".join(lines) + "\n", mapping
+    return body, head + "\n".join(lines) + "\n", supp, mapping
 
 
-def renumber_supp(body: str, refs: str) -> tuple[str, str, dict[int, int]]:
+def supp_order(body: str, supp: str) -> list[int]:
+    """Supplementary figures in first-citation order: the main text first, then the supplement's own text."""
     order: list[int] = []
-    for m in SUPP.finditer(body):
-        n = int(m.group(1))
-        if n not in order:
-            order.append(n)
-    mapping = {old: new for new, old in enumerate(order, 1)}
+    for text in (body, supp):
+        for m in SUPP.finditer(text):
+            if int(m.group(1)) not in order:
+                order.append(int(m.group(1)))
+    return order
+
+
+def renumber_supp(body: str, refs: str, supp: str) -> tuple[str, str, str, dict[int, int]]:
+    mapping = {old: new for new, old in enumerate(supp_order(body, supp), 1)}
     if not mapping:
-        return body, refs, mapping
+        return body, refs, supp, mapping
     sub = lambda m: f"Figure S{mapping.get(int(m.group(1)), int(m.group(1)))}"  # noqa: E731
-    return SUPP.sub(sub, body), SUPP.sub(sub, refs), mapping
+    return SUPP.sub(sub, body), SUPP.sub(sub, refs), SUPP.sub(sub, supp), mapping
 
 
 def reorder_supp_legends(back: str) -> str:
@@ -128,20 +141,23 @@ def main() -> None:
     a = ap.parse_args()
     src = MD.read_text()
     body, refs = src.split(SPLIT, 1)
+    supp = SUPP_MD.read_text()
 
     order_before = citation_order(body)
-    supp_before = [int(m.group(1)) for m in SUPP.finditer(body)]
-    supp_first = list(dict.fromkeys(supp_before))
+    order_before += [n for n in citation_order(supp) if n not in order_before]
+    supp_first = supp_order(body, supp)
     ok = order_before == sorted(order_before) and supp_first == sorted(supp_first)
     if a.check:
         print("references in citation order:", order_before == sorted(order_before))
         print("supplementary in citation order:", supp_first == sorted(supp_first))
         sys.exit(0 if ok else 1)
 
-    body, refs, rmap = renumber_refs(body, refs)
-    body, refs, smap = renumber_supp(body, refs)
+    body, refs, supp, rmap = renumber_refs(body, refs, supp)
+    body, refs, supp, smap = renumber_supp(body, refs, supp)
     refs = reorder_supp_legends(refs)
+    supp = reorder_supp_legends(supp)
     MD.write_text(body + SPLIT + refs)
+    SUPP_MD.write_text(supp)
 
     moved_r = {o: n for o, n in rmap.items() if o != n}
     moved_s = {o: n for o, n in smap.items() if o != n}

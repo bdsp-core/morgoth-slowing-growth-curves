@@ -114,9 +114,10 @@ def main() -> int:
         # read or annotate. And the trailing notes are indented as continuation paragraphs of the list item,
         # or the first of them ends the list and the "- **Acknowledgements.**" bullet after it renders as a
         # literal "- Acknowledgements" glued onto the note.
-        lines = [("- **CRediT author contributions.** *\\[Draft for each author to confirm or amend before "
-                  "submission; initials are given on the title page.\\]*")]
-        lines += ["  " + l for l in role_view.splitlines()]
+        # The submitted form is per author, full names: the title page carries no initials to key a per-role
+        # list against, and the authors' edits are already applied to the source table.
+        lines = ["- **CRediT author contributions.**"]
+        lines += ["  " + re.sub(r" \([A-Za-z]+\):\*\*", ":**", l) for l in author_view.splitlines()]
         block = "  \n".join(lines) + "\n"
         for n in notes:
             block += "\n  " + n + "\n"

@@ -151,6 +151,10 @@ def edf_local(resolved_path, workdir):
     s3d = ("s3://" + d[3:]) if d.startswith("s3:") and not d.startswith("s3://") else d
     if s3d.startswith("s3://"):
         out = subprocess.run(["aws", "s3", "ls", s3d.rstrip("/") + "/"], capture_output=True, text=True)
+        if out.returncode != 0 and out.stderr.strip():
+            # A missing prefix exits 1 silently; an unreachable bucket or bad credentials says why on stderr.
+            # Counting the latter as attrition changed the spindle-verified n (87/234 -> 86/226) with exit 0.
+            raise SystemExit(f"cannot list {s3d}: {out.stderr.strip()[:300]} -- 95b needs S3 access")
         items = []
         for line in out.stdout.splitlines():
             parts = line.split()
@@ -249,8 +253,11 @@ def main():
 
     b, a = None, None
     work = Path(tempfile.mkdtemp())
+    # V4A_NO_PULL=1 scores the published checkpoint as it stands. Without it, every re-run attempts the matched
+    # recordings the checkpoint does not yet hold, so the checkpoint -- and §3.8's numbers -- grow per machine.
+    no_pull = os.environ.get("V4A_NO_PULL") == "1"
     for _, r in sub.iterrows():
-        if r.bdsp_id in done:
+        if r.bdsp_id in done or no_pull:
             continue
         rec = dict(bdsp_id=r.bdsp_id, group=r.group, age=float(r.age), status="", corr=np.nan,
                    align_drel=np.nan, n_n2=0, n_spindle=0)

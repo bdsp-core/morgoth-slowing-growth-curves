@@ -111,7 +111,7 @@ def main():
     # ---- validation -----------------------------------------------------------------------------
     top6 = min(r_b, p_b) - 0.75
     v1_b, _ = box(ax, 0.20, top6,
-                  5.30, "VALIDATION, held out\n• ON-100: 18 experts\n• the foundation-model gate\n"
+                  5.30, "VALIDATION, held out\n• ON-100: 18 experts\n• the Morgoth foundation model\n"
                         "• the published qEEG indices\n• SAI-100: second site, SCORE-AI", C_VAL, 7.2)
     v2_b, _ = box(ax, 6.20, top6,
                   5.60, "VALIDATION, against clinical reports\n• dose-response contrasts\n"

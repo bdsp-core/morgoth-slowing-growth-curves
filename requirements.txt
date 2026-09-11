@@ -36,6 +36,10 @@ tableone           # Table 1 cohort characteristics
 matplotlib
 seaborn
 
+# Journal artwork (scripts/export_journal_figures.py only; also needs poppler's pdftocairo binary)
+pypdf
+reportlab
+
 # Dev / notebooks
 jupyter
 pytest

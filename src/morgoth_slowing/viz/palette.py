@@ -12,7 +12,7 @@ SCORE_AI = "#2c7fb8"     # SCORE-AI (blue)
 
 # --- reference operating points ---
 EXPERTS = "#8c8c8c"      # individual expert points (grey)
-VANPUTTEN = "#8c510a"    # van Putten qEEG indices (dark ochre). NOT grey: in Figure S3 the index
+VANPUTTEN = "#8c510a"    # van Putten qEEG indices (dark ochre). NOT grey: in Figure S7 the index
                          # curve and the expert operating points shared one axes and one grey, so the
                          # method and the humans were indistinguishable inside the same panel.
 
@@ -26,7 +26,7 @@ CHANCE = "#bbbbbb"       # diagonal / chance reference lines
 
 
 # --- sleep stages -------------------------------------------------------------------------------------
-# ONE mapping for the five stages, everywhere. Figure 1A and Figure S5 used to disagree completely --
+# ONE mapping for the five stages, everywhere. Figure 1A and Figure S4 used to disagree completely --
 # W was yellow in one and dark blue in the other, N3 navy in one and red in the other -- so a reader who
 # learned either mapping was actively misled by the other. Ordered light-to-dark with depth, REM set apart.
 STAGE = {"W": "#E8B800", "N1": "#5FB0D0", "N2": "#4488FF", "N3": "#00008B", "REM": "#A040A0"}
@@ -105,7 +105,7 @@ PANEL_PT = 10          # panel letters: one size, everywhere
 TITLE_PT = 9.5
 LABEL_PT = 8.5
 TICK_PT = 7.5
-LEGEND_PT = 7.0        # Elsevier's 7 pt floor applies at PRINTED size; at 6.5 the Figure S3 legend printed
+LEGEND_PT = 7.0        # Elsevier's 7 pt floor applies at PRINTED size; at 6.5 the Figure S7 legend printed
                        # at 6.84 pt. The ROC figures print at ~1.0-1.1x, so 7.0 authored clears it.
 
 

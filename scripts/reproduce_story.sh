@@ -30,6 +30,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONPATH="${PYTHONPATH:-src}"
 export MPLBACKEND=Agg KMP_DUPLICATE_LIB_OK=TRUE
+# 95b scores the published spindle checkpoint as it stands. Set V4A_NO_PULL=0 only to grow it on purpose
+# (REPRODUCE.md, "Known issue: scripts/95b's spindle checkpoint GROWS").
+export V4A_NO_PULL="${V4A_NO_PULL:-1}"
 MODE="${1:-results}"
 FORCE="${FORCE:-0}"; SKIP_PANEL="${SKIP_PANEL:-0}"
 case "$MODE" in
@@ -134,7 +137,7 @@ run 4 figures/story/architecture.png           "Fig S1 architecture (architectur
 run 4 results/story/s4_examples.md             "Fig 4 example cards (62)"                         -- py scripts/62_example_reports_panel.py
 run 4 figures/story/s4_examples_eeg_focal.png  "Fig 4/5 example EEG traces (63)"                  -- py scripts/63_example_eeg_traces.py
 run 4 figures/story/s9_centile_calibration.png "Fig S2 held-out centile calibration (78)"         -- py scripts/78_centile_calibration.py
-run 4 figures/figs/vanputten_panel_s7.png      "Fig S3 van Putten panel head-to-head (vanputten_panel_s7)" -- py scripts/vanputten_panel_s7.py
+run 4 figures/figs/vanputten_panel_s7.png      "Fig S7 van Putten panel head-to-head (vanputten_panel_s7)" -- py scripts/vanputten_panel_s7.py
 
 # These back numbers quoted in the text (SS2.5 curve-fit agreement, SS2.7 top-k choice) and were likewise
 # never invoked, so those numbers could drift from the code with nothing to catch it.

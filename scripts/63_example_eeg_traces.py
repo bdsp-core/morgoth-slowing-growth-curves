@@ -349,15 +349,11 @@ def main():
                 plot_panel(axe, bip, fs, f"{head}   (10 s, t≈{t0/60:.0f} min)", hl=highlight_rows(r.finding))
                 check_label_spacing(fig, axe)
                 ok += 1
-            except FileNotFoundError:
-                # A missing deviation partition means we cannot know WHICH window to plot, so the panel
-                # would be silently wrong rather than merely absent. The generic handler below exists for
-                # transient S3/EDF problems; provenance errors must stop the run instead of being drawn.
-                raise
             except Exception as e:
-                axe.axis("off"); axe.text(0.5, 0.5, f"EEG unavailable\n{type(e).__name__}", ha="center", va="center",
-                                          fontsize=8, transform=axe.transAxes); axe.set_title(head, fontsize=8.5, fontweight="bold", loc="left")
-                print(f"  {r.eeg_id}: {type(e).__name__}: {e}", flush=True)
+                # No placeholder panel. A run without S3 access (a sandboxed shell, an expired token) used to
+                # draw "EEG unavailable", exit 0, and overwrite a committed submission figure with it.
+                raise SystemExit(f"{r.eeg_id}: EEG could not be rendered ({type(e).__name__}: {e}); "
+                                 "this script needs S3 access to the source EDFs") from e
             LH = LH_IN / TEXT_H                            # one line of type, as a fraction of the text axes
             y = [1.0]; C_LENS, C_REP = "#c2510a", "#3a3a3a"
 

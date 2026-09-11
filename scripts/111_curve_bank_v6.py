@@ -100,7 +100,7 @@ def main():
 
         stage_n = {}
         # stage-resolved variant, whole head
-        # Figure S5 stacks three of these. At 4.8 in tall each the composite was 13 in tall, which the
+        # Figure S4 stacks three of these. At 4.8 in tall each the composite was 13 in tall, which the
         # journal has to scale to ~120 mm wide to fit the page height -- every label at 65% of authored
         # size. Page-width and short keeps the stack inside the page at full width.
         fig, ax = plt.subplots(figsize=(7.1, 2.65))
@@ -117,24 +117,24 @@ def main():
             drew = True
         if drew:
             axfmt(ax)
-            # "(whole head)" is in the Figure S5 caption; with the full display name the label ran
+            # "(whole head)" is in the Figure S4 caption; with the full display name the label ran
             # off the top of the canvas.
             ax.set_ylabel(palette.flabel(feat), fontsize=9)
             ax.set_title(f"{palette.flabel(feat)}, whole head — clean-normals", fontsize=9.5)
             ax.legend(frameon=False, fontsize=8, title="stage")
             ax.text(0.995, -0.20, "routine and overnight studies pooled \u2014 so these n exceed Figure 1B's "
                                   "source-appropriate counts", transform=ax.transAxes, ha="right", va="top",
-                    fontsize=7.2, color="#555")          # >= 7 pt printed; 6.8 printed at 6.88 in Figure S5
+                    fontsize=7.2, color="#555")          # >= 7 pt printed; 6.8 printed at 6.88 in Figure S4
             fig.tight_layout()
             fig.savefig(f"figures/stage_curves/{feat}__whole_head.png", dpi=300, bbox_inches="tight")
-            # Emit the per-stage n. Figure S5's counts differ tenfold from Figure 1B's for the same cohort
+            # Emit the per-stage n. Figure S4's counts differ tenfold from Figure 1B's for the same cohort
             # (S5 pools routine and overnight; 1B does not -- see the Figure 1B caption), so the caption has
             # to quote both and neither had a source.
             if feat == "rel_delta":
                 from pathlib import Path as _P
                 _P("results/story").mkdir(parents=True, exist_ok=True)
                 _P("results/story/curve_bank_stage_n.md").write_text(
-                    "# Figure S5 — clean-normal recordings per sleep stage (whole head)\n\n"
+                    "# Figure S4 — clean-normal recordings per sleep stage (whole head)\n\n"
                     "Routine and overnight recordings POOLED. Figure 1B applies the source-appropriate rule "
                     "instead (wake from routine, sleep from overnight), which is why its per-stage n are an "
                     "order of magnitude smaller.\n\n| stage | recordings |\n|---|---|\n"

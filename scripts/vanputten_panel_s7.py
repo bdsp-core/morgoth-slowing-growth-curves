@@ -100,7 +100,7 @@ def main():
 
     # Square ROC axes need vertical room: at 2.96 in the two panels collapsed to narrow squares and the
     # legends overflowed across them. Taller canvas + two-line legend labels, as in Figure 2.
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.95)); md = ["# Figure S3 — van Putten vs LENS vs Morgoth on the "
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.95)); md = ["# Figure S7 — van Putten vs LENS vs Morgoth on the "
         "CLEAN ON-100 expert panel (fair benchmark; expert-majority labels)\n",
         "LENS = production code path (gen: scripts/54 MIL top-5; focal: scripts/66), identical to Figure 2. "
         "van Putten = best index per axis recomputed on the panel. Recording-level bootstrap 95% CIs.\n",
@@ -138,7 +138,7 @@ def main():
         ax.set_title(f"{axis.upper()} slowing\nn={len(idx)}, {int(y.sum())} positive", fontsize=palette.TITLE_PT)
         ax.legend(frameon=False, fontsize=palette.LEGEND_PT, loc="lower right", handlelength=1.0,
                   borderaxespad=0.2, labelspacing=0.35, handletextpad=0.5)
-    # Title in the Figure S3 caption, not in the image (Clinical Neurophysiology).
+    # Title in the Figure S7 caption, not in the image (Clinical Neurophysiology).
     fig.tight_layout()
     fig.savefig(FIG / "vanputten_panel_s7.png", dpi=300, bbox_inches="tight"); plt.close(fig)
 

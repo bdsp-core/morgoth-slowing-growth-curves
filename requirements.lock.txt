@@ -25,6 +25,8 @@ pandas==2.3.3
 pillow==12.1.1
 pyEDFlib==0.1.42
 pyarrow==23.0.1
+pypdf==6.18.1
+reportlab==5.0.1
 s3fs==2026.2.0
 scikit-learn==1.8.0
 scipy==1.17.1
@@ -34,4 +36,5 @@ statsmodels==0.14.6
 # Not pip-installable -- pin these by hand:
 #   R 4.5.2  with  gamlss 5.5.0     (scripts/gamlss_fit.R, scripts/gamlss_norm_grid.R, scripts/76, scripts/115)
 #   pandoc                          (scripts/build_manuscript_docx.py only)
+#   poppler 26.09 (pdftocairo)      (scripts/export_journal_figures.py only)
 #   awscli v2                       (aws s3 sync, in the worker and in REPRODUCE.md's data pull)

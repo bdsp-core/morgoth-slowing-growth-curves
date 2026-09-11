@@ -1,4 +1,4 @@
-# Figure S5 — clean-normal recordings per sleep stage (whole head)
+# Figure S4 — clean-normal recordings per sleep stage (whole head)
 
 Routine and overnight recordings POOLED. Figure 1B applies the source-appropriate rule instead (wake from routine, sleep from overnight), which is why its per-stage n are an order of magnitude smaller.
 

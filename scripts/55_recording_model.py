@@ -136,7 +136,7 @@ def main():
                 cm = m54.panel_curve(None, y.values[ok], mm.reindex(idx).values[ok], pts, C_MORG, "Morgoth")
                 fig, (a0, a1) = plt.subplots(1, 2, figsize=(7.1, 2.96)); a0.plot([0, 1], [0, 1], "--", color="#ccc", lw=1)
                 # Both comparators carry an interval. Only LENS did, so Figure 2 showed Morgoth's focal
-                # AUROC bare while Figure S3 gave [0.83, 0.97] for the same quantity -- the review read that
+                # AUROC bare while Figure S7 gave [0.83, 0.97] for the same quantity -- the review read that
                 # as two different estimates.
                 mlo, mhi = m54.boot_ci(y.values[ok], mm.reindex(idx).values[ok])
                 CIS = {"LENS": (lo, hi), "Morgoth": (mlo, mhi)}

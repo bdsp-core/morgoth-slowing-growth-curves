@@ -118,11 +118,11 @@ Figures are assembled into the submission set by
 | **Figure 7** sleep under-reporting | `fig6_sleep_naming.py` (stat: `95b_v4a_spindle_check.py`) | `description_stage.parquet`, `results/p6_sleep_underreporting.md` | `figures/growth_v2/v4a_wake_sleep.png` |
 | **Figure S1** architecture | `architecture_diagram.py` | — | `figures/story/architecture.png` |
 | **Figure S2** held-out centile calibration | `78_centile_calibration.py` | `grid_norm.json`, `figure_cache/wholehead_z.parquet`, `panel_v6_scores.parquet` | `figures/story/s9_centile_calibration.png`, `results/story/centile_calibration.md` |
-| **Figure S3** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
-| **Figure S4** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
-| **Figure S5** curve bank | `111_curve_bank_v6.py` | `grid_norm.json` | `figures/stage_curves/*__whole_head.png` |
-| **Figure S6** deviation field | `44_segment_deviation_summary.py` | `figure_cache/wholehead_z.parquet` | `figures/story/s2_segment_deviation.png` |
-| **Figure S7** localized focal | `49_occasion_allstage_localized.py` | `occasion_features.parquet` | `figures/story/s0_occasion_ours_v4_focal.png` |
+| **Figure S7** van Putten benchmark | `vanputten_panel_s7.py` | `occasion_features.parquet`, gate tables | `figures/figs/vanputten_panel_s7.png` |
+| **Figure S3** topoplot (TAR) | `77_topoplots_by_age.py` | `segment_deviation/` | `figures/growth_v2/topo_TAR_by_age_stage.png` |
+| **Figure S4** curve bank | `111_curve_bank_v6.py` | `grid_norm.json` | `figures/stage_curves/*__whole_head.png` |
+| **Figure S5** deviation field | `44_segment_deviation_summary.py` | `figure_cache/wholehead_z.parquet` | `figures/story/s2_segment_deviation.png` |
+| **Figure S6** localized focal | `49_occasion_allstage_localized.py` | `occasion_features.parquet` | `figures/story/s0_occasion_ours_v4_focal.png` |
 | **Figure S8** description panels (D1–D6) | `57_description_panels.py`, `58_description_words.py` | `description_recording.parquet` | `figures/story/s4_d{1,3,4,6}.png` |
 | **Figure S9** severity null | `109_severity_null_v6.py` | `occasion_features.parquet` | `figures/growth_v2/severity_recalibrated.png` |
 | **Figure S10** mild examples | `62_example_reports_panel.py`, `63_example_eeg_traces.py` | `description_recording.parquet`, `data/manifest/report_manifest_v6.parquet`, source EDFs (S3) | `figures/story/s4_examples_eeg_mild.png` |
@@ -151,26 +151,26 @@ and **skips any recording already in it**. That is deliberate — each recording
 it has a consequence worth stating plainly: a re-run on a machine that can reach more EDFs than the last one
 **adds** recordings and every §3.8 number shifts slightly. This is not nondeterminism; it is a larger sample.
 
-Measured on 2026-08-26: a re-run took the checkpoint from 601 to 627 attempted recordings and the usable set
-from 89/229 to **90 cases / 237 controls**. Every conclusion held and every AUROC moved by ≤0.004
+Measured on 2026-08-26: a re-run on one machine took the checkpoint from 601 to 627 attempted recordings and
+the usable set from 89/229 to 90 cases / 237 controls. Every conclusion held and every AUROC moved by ≤0.004
 (spindle-verified log delta 0.858 → 0.860, DAR 0.789 → 0.789; N3 log delta 0.767 → 0.771, DAR 0.784 → 0.782).
-The manuscript now quotes the 90/237 figures.
+That 627-row checkpoint was never published, so no one else could reproduce it. **The paper quotes the
+published 601-row checkpoint** (89 cases / 229 controls), which S3 holds.
 
-**So:** if your §3.8 numbers differ from the paper's, compare checkpoint composition before suspecting a bug —
-
-```bash
-python3 -c "import pandas as pd; d=pd.read_parquet('data/derived/v4a_work/v4a_spindle_results_v2.parquet'); \
-            print(len(d)); print(d.groupby(['group','status']).size())"
-# the paper's numbers: 627 rows; case ok=90, control ok=237
-```
-
-To reproduce the paper's figures exactly, sync the published checkpoint and do **not** re-run `95b`:
+**So `95b` no longer pulls by default.** `reproduce_story.sh` exports `V4A_NO_PULL=1`, which scores the
+checkpoint as it stands; `results/v4a_wake_sleep.md` then reproduces byte-for-byte. It also stops, rather than
+recording attrition, when S3 cannot be listed: a run without access once wrote 25 `lsjson_fail` rows into the
+checkpoint and shifted the numbers with exit 0.
 
 ```bash
 aws s3 sync s3://bdsp-opendata-credentialed/morgoth-slowing/derived/v4a_work/ data/derived/v4a_work/
+python3 -c "import pandas as pd; d=pd.read_parquet('data/derived/v4a_work/v4a_spindle_results_v2.parquet'); \
+            print(len(d)); print(d.groupby(['group','status']).size())"
+# the paper's numbers: 601 rows; case ok=89, control ok=229
 ```
 
-If you do re-run it and the checkpoint grows, publish it back so everyone else lands on the same numbers:
+To grow the checkpoint on purpose, run with `V4A_NO_PULL=0` and S3 access, then publish it back **and** update
+§3.8 from the regenerated file, so the paper, the bucket and the repo move together:
 
 ```bash
 aws s3 sync data/derived/v4a_work/ s3://bdsp-opendata-credentialed/morgoth-slowing/derived/v4a_work/
