@@ -28,18 +28,18 @@ Jin Jing <jjing@bidmc.harvard.edu>; Chenxi Sun <cxsun@stanford.edu>; Wolfgang Ga
 ## Highlights
 
 - Lifespan × sleep-stage EEG growth charts score slowing as deviation from normal
-- LENS detects slowing above experts and a foundation model
+- LENS detects slowing at expert level on two external multi-expert panels
 - LENS quantifies sleep slowing that clinical reports less often mention
 - LENS auto-generates slowing reports validated against the clinical record
 - Second-site validation matches experts
 
 ## Abstract
 
-**Objective.** Norms for abnormal EEG background slowing rest on small, mostly awake samples. To address this gap, we built LENS (Lifespan EEG Normative Scoring): Lifespan- and sleep-stage-resolved EEG growth charts and the deviation-from-normal field they yield.
+**Objective.** Norms for EEG background slowing rest on small, mostly awake samples. We built LENS (Lifespan EEG Normative Scoring): lifespan- and sleep-stage-resolved EEG growth charts and the deviation-from-normal field they yield.
 
-**Methods.** From 25,536 clinical EEGs (21,757 patients; infancy to \>90 y) we estimated age × sleep-stage percentile curves (GAMLSS) for spectral power and its ratios, scoring each 15-s segment as a deviation z from its matched normal. Logistic detectors trained on report labels identify, localize and describe slowing. Both were validated on two 100-EEG multi-expert sets from outside the training system: ON-100 (18 experts) and SAI-100 (14 experts).
+**Methods.** From 25,536 clinical EEGs (21,757 patients; infancy to \>90 y) we estimated age × sleep-stage percentile curves (GAMLSS) for spectral power and its ratios, scoring each 15-s segment as a deviation z from its matched normal. Logistic detectors trained on report labels identify, localize and describe slowing. We validated them on two external 100-EEG multi-expert sets: ON-100 (18 experts) and SAI-100 (14 experts).
 
-**Results.** Curves reproduced development and sleep physiology and were calibrated on held-out normals (median centile error 1.0 point). Against the ON-100 majority LENS reached AUROC 0.961 (generalized) and 0.908 (focal), placing 83% and 53% of experts under its curves and exceeding a foundation model and the best published index by 0.09--0.14. On SAI-100 it reached AUROC 0.930 (focal) and 0.908 (generalized), placing 64% and 50% of experts under its curves. Slowing was the least reliable expert judgement (κ 0.37--0.45), and reports named it far less often when confined to sleep (54% vs 75%).
+**Results.** Curves reproduced development and sleep physiology and were calibrated on held-out normals (median centile error 1.0 point). On ON-100, LENS reached AUROC 0.961 (generalized) and 0.908 (focal), placing 83% and 53% of experts under its curves; on SAI-100, 0.930 (focal) and 0.908 (generalized), placing 64% and 50%. Slowing was the least reliable expert judgement (κ 0.37--0.45), and reports named it less often when confined to sleep (54% vs 75%).
 
 **Conclusions.** One deviation field, shared by detection and description, identifies slowing at expert level and yields stage-aware automated reports.
 
@@ -271,7 +271,7 @@ We present LENS (Lifespan EEG Normative Scoring), which provides to our knowledg
   **M. Brandon Westover:** Conceptualization, Data curation, Formal analysis, Funding acquisition, Investigation, Methodology, Project administration, Resources, Software, Supervision, Validation, Visualization, Writing -- original draft, Writing -- review & editing.
 
   Under Resources, S.B. provided the SAI-100 evaluation set and its expert reads (§2.9).
-- **Acknowledgements.** We thank the electroencephalographers who annotated the ON-100 and SAI-100 evaluation sets, whose independent reads make both the external validation and the human-ceiling analysis possible. We thank the Brain Data Science Platform (BDSP) team for data curation, de-identification and hosting, and the clinical neurophysiology technologists at the contributing centres, whose recordings and reports are the substrate of this work. *\[Authors to add individual acknowledgements and any non-author contributors before submission.\]*
+- **Acknowledgements.** We thank the electroencephalographers who annotated the ON-100 and SAI-100 evaluation sets, whose independent reads make both the external validation and the human-ceiling analysis possible. We thank the Brain Data Science Platform (BDSP) team for data curation, de-identification and hosting, and the clinical neurophysiology technologists at the contributing centres, whose recordings and reports are the substrate of this work.
 
 ## Data and code availability
 
