@@ -8,16 +8,20 @@ not, and publishing it closes the gap.
 
 What is exported, and what is deliberately not:
 
-  KEPT   study pseudonym (ID001..ID100), the 14 anonymous per-rater binary calls per axis, SCORE-AI's and
-         the Morgoth gate's scores and classes, the workbook's own (corrupted, see below) summary label, and
+  KEPT   study pseudonym (ID001..ID100), the anonymous per-rater binary calls per axis (a 14-rater pool, 11
+         calls per recording), SCORE-AI's and the Morgoth gate's scores and classes, the derived workbook's
+         `majority` column (see below), and
          age + sex, which the pipeline needs because every score is age-matched.
   DROPPED  everything else in the workbooks. There are no rater names in the source to begin with --
          `human_expert_id` is an integer 0-14 -- and this script ASSERTS that, rather than assuming it.
   BINNED   any age above 89 is set to 90 (HIPAA Safe Harbor), matching the rule the main cohort already
          uses. One SAI-100 recording is affected (95.0 -> 90).
 
-The workbook's `majority` column is corrupted on the focal sheet and is exported only so the correction
-stays checkable; ground truth is recomputed from the individual votes by the consumer, as before.
+On the focal sheet of the DERIVED FocalSlowingOutput workbook, `majority` carries the focal interictal
+EPILEPTIFORM consensus (he_con_intictepifoc), not focal slowing. The source workbook,
+validation_study_excel_export.xlsx, is internally consistent: its he_con_nonepifoc matches the individual
+slowing votes on 100/100. The column is exported only so that check stays reproducible; ground truth is
+recomputed from the individual votes by the consumer.
 
 Run: SANDOR_DIR=... PYTHONPATH=src python3 scripts/export_sai100_panel.py
 """

@@ -1,5 +1,5 @@
 """The 'honest wrinkle' check: does the DE-CONFOUNDED focal target on 6-REGION features alone (dropping the finer
-per-channel features that were shown to fit the corrupted Sandor label) beat the deployed COMBINED head against
+per-channel features that were shown to fit the mislabelled SAI-100 focal column -- epileptiform, not slowing) beat the deployed COMBINED head against
 the CORRECTED expert-vote labels? Trains region-only / finer-only / combined with the same de-confounded target
 (scripts/66) and evaluates on OccasionNoise (held-out panel) + Sandor_100 (corrected 14-expert vote), with
 recording-level bootstrap CIs. Informational — the production head is COMBINED (scripts/66); this quantifies the

@@ -123,7 +123,7 @@ SECTIONS = [
              "overlap with training or the OccasionNoise panel) — feature extraction, Morgoth ss_hm_1 sleep "
              "staging, age+stage-matched deviation, and the report-trained detectors — scored 98/100 and "
              "compared against SCORE-AI, the Morgoth gate, and the 14 individual experts. GROUND-TRUTH NOTE: "
-             "the workbook's focal 'majority' column is corrupted (disagrees with the 14-expert vote on "
+             "the derived focal workbook's 'majority' column is the epileptiform consensus, not slowing (disagrees with the expert slowing vote on "
              "23/100; an independent model predicts the stated label at 0.62 vs the true vote at 0.98), so we "
              "score against the actual expert-vote majority (the generalized sheet is unaffected). Corrected — "
              "FOCAL: our interpretable head (de-confounded target, combined region + finer per-channel features) "
