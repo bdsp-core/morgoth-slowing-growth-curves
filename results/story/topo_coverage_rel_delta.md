@@ -1,6 +1,6 @@
 # Topography coverage — rel_delta by age x sleep stage (Figure 1B / Figure S4)
 
-Median per 10-20 electrode over patients (mean of the incident bipolar chains), in clean-normal recordings from cohort + expansion. Total contributing recordings: **10,158**. Each row carries its own colour scale, because the physiological range differs by an order of magnitude between wake and N3.
+Median per 10-20 electrode over patients (mean of the incident bipolar chains), in clean-normal recordings from cohort + expansion. Total contributing recordings: **10,158**. One colour scale spans the whole grid, so rows are directly comparable (N3 is redder than W at every age).
 
 | stage | <1mo | 1-3mo | 3-6mo | 6-12mo | 1-2y | 2-5y | 5-10y | 10-20 | 20-40 | 40-60 | 60-80 | 80+ |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|

@@ -62,15 +62,20 @@ def compose(panel_pdfs: list[Path], out_pdf: Path) -> dict:
     pages = [PdfReader(str(p)).pages[0] for p in panel_pdfs]
     sizes = [(float(pg.mediabox.width), float(pg.mediabox.height)) for pg in pages]
     n = len(pages)
-    s_panel = [COLW_PT / w for w, _ in sizes]
+    # A single-panel figure is placed at its native geometry, with no column rescale and no pad: the panel
+    # already carries its own margins, and scripts such as 63 author at exactly the printed width, so any extra
+    # rescale shows up directly as type below 7 pt (it took the EEG figures from 7.00 to 6.88 pt).
+    s_panel = [1.0] if n == 1 else [COLW_PT / w for w, _ in sizes]
+    colw = sizes[0][0] if n == 1 else COLW_PT
     heights = [h * s for (_, h), s in zip(sizes, s_panel)]
     gap = HSPACE * (sum(heights) / n) if n > 1 else 0.0
     lettered = n > 1
     # room for the letters: they sit outside the panel's top-left corner, right- and bottom-aligned
-    left = PAD_PT + (0.015 * COLW_PT + 0.75 * LETTER_PT if lettered else 0.0)
-    top = PAD_PT + (0.015 * heights[0] + LETTER_PT if lettered else 0.0)
-    W = left + COLW_PT + PAD_PT
-    H = top + sum(heights) + gap * (n - 1) + PAD_PT
+    pad = PAD_PT if lettered else 0.0
+    left = pad + (0.015 * colw + 0.75 * LETTER_PT if lettered else 0.0)
+    top = pad + (0.015 * heights[0] + LETTER_PT if lettered else 0.0)
+    W = left + colw + pad
+    H = top + sum(heights) + gap * (n - 1) + pad
     # The journal fits the figure inside 190 x 240 mm: width-limited unless the figure is tall.
     scale = min(PAGE_W_PT / W, PAGE_H_PT / H)
     Wp, Hp = W * scale, H * scale
@@ -82,7 +87,7 @@ def compose(panel_pdfs: list[Path], out_pdf: Path) -> dict:
         y0 = y_top - h
         out.merge_transformed_page(pg, Transformation().scale(s * scale, s * scale).translate(left * scale, y0 * scale))
         if lettered:
-            letters.append((chr(65 + i), (left - 0.015 * COLW_PT) * scale, (y0 + h + 0.015 * h) * scale))
+            letters.append((chr(65 + i), (left - 0.015 * colw) * scale, (y0 + h + 0.015 * h) * scale))
         y_top = y0 - gap
 
     if letters:
