@@ -79,7 +79,12 @@ def test_stage_alignment_is_direct_time_mapping():
                     reason="no pilot segment_master present")
 def test_pilot_segment_master_golden():
     """If a pilot run exists, validate the real output + a physiology invariant (deep sleep is slower)."""
-    sm = C.load_segment_master()
+    # A bounded sample, not every partition: on a machine holding the full fleet output (~59 GB) loading all of
+    # it got the test process SIGKILLed. The ON-100 panel partitions ship with a fresh install, so prefer them.
+    parts = sorted(glob.glob("data/derived/segment_master/eeg_id=*/part.parquet"))
+    on = [p for p in parts if "eeg_id=ON_" in p]
+    ids = [p.split("eeg_id=")[1].split("/")[0] for p in (on or parts)[:25]]
+    sm = C.load_segment_master(eeg_ids=ids)
     C.validate_schema(sm)
     reg = C.to_regions(C.usable(sm))                 # whole-head region view, non-artifact
     wh = reg[reg.region == "whole_head"]

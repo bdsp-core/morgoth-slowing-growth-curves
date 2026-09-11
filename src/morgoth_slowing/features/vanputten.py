@@ -28,7 +28,7 @@ def _bandpow(freqs, psd, lo, hi, idx=None):
     """Mean over selected channels of the trapezoid band power [lo, hi)."""
     m = (freqs >= lo) & (freqs < hi)
     p = psd[:, m] if idx is None else psd[np.asarray(idx)][:, m]
-    return float(np.mean(np.trapz(p, freqs[m], axis=1)))
+    return float(np.mean(np.trapezoid(p, freqs[m], axis=1)))
 
 
 # ---- global slowing ratios ----------------------------------------------------------------------

@@ -139,7 +139,7 @@ def _bandpower(x, fs, lo, hi):
     m = (f >= lo) & (f < hi)
     if not np.any(m):
         return 0.0
-    return float(np.trapz(pxx[m], f[m]))
+    return float(np.trapezoid(pxx[m], f[m]))
 
 
 def hi_nyq(fs):

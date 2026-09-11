@@ -17,10 +17,10 @@ def slow_shape(freqs, psd):
     psd: (n_ch, n_freq). Returns dict of (n_ch,) arrays."""
     m = (freqs >= SLOW_LO) & (freqs < SLOW_HI)
     f = freqs[m]; p = psd[:, m]
-    tot = np.trapz(p, f, axis=1) + 1e-12
-    centroid = np.trapz(p * f, f, axis=1) / tot
+    tot = np.trapezoid(p, f, axis=1) + 1e-12
+    centroid = np.trapezoid(p * f, f, axis=1) / tot
     peak = f[np.argmax(p, axis=1)]
-    spread = np.sqrt(np.trapz(p * (f[None, :] - centroid[:, None]) ** 2, f, axis=1) / tot)
+    spread = np.sqrt(np.trapezoid(p * (f[None, :] - centroid[:, None]) ** 2, f, axis=1) / tot)
     return {"slow_centroid": centroid, "slow_peak": peak, "slow_spread": spread}
 
 
