@@ -105,3 +105,5 @@ data/raw/**/*.mat
 # TIFFs are tens of MB each and are upload files, not source. The vector panel twins are an intermediate.
 build/
 figures/journal/
+docs/cover_letter.md
+docs/cover_letter.docx
