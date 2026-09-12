@@ -51,6 +51,6 @@ preserved). The data is **DUA-governed** — its canonical home is the credentia
 references it. Committed proximal artifacts (report manifest, findings CSVs, result tables) carry only
 surrogate IDs and de-identified report text.
 
-- **bdsp.io project:** LENS v1.0.0 — https://bdsp.io/content/q8qpxsk3sgq57vkm5abp/1.0.0/
-  (version DOI [10.60508/7060-qq30](https://doi.org/10.60508/7060-qq30), concept DOI [10.60508/wt7m-f443](https://doi.org/10.60508/wt7m-f443))
+- **bdsp.io project:** LENS v1.1.0 — https://bdsp.io/content/q8qpxsk3sgq57vkm5abp/1.1.0/
+  (version DOI [10.60508/1aw8-tk12](https://doi.org/10.60508/1aw8-tk12), concept DOI [10.60508/wt7m-f443](https://doi.org/10.60508/wt7m-f443))
 - **GitHub:** https://github.com/bdsp-core/morgoth-slowing-growth-curves
