@@ -26,13 +26,24 @@ Nothing about the paper's numbers changes.
 
 ## 2. Why a new version
 
-v1.0.0's data description is stale. Measured on S3 on 2026-09-11 (`aws s3 ls --recursive`):
+v1.0.0's data description is stale. Re-measured on S3 on 2026-09-11 via `list_objects_v2`.
 
-| prefix | v1.0.0 said | now | files |
+**Units:** v1.0.0's published numbers (`bucket_manifest.csv`, the S3 `README.md`, `DATA_SOURCE.md` and the
+site's `content_description`) are **binary** — "66.7 GB" is 66.7 GiB. Keep that convention so the old and new
+rows are comparable. (An earlier draft of this note quoted the "now" column in decimal GB, which made a
+0.5 GB refresh look like a 5.4 GB one. It is not.)
+
+| prefix | v1.0.0 published | now | files (was → now) |
 |---|---|---|---|
-| `derived/` | 66.7 GB | **72.09 GB** | 164,735 |
-| `panels/` | 2.4 GB | **2.55 GB** | 1,861 |
-| `manifest_build/` | 146 MB | **0.15 GB** | 13 |
+| `derived/` | 66.7 GB | **67.1 GB** | 164,718 → **164,735** |
+| `panels/` | 2.4 GB | **2.4 GB** (byte-identical, unchanged) | 1,861 → **1,861** |
+| `manifest_build/` | 146.0 MB | **147.0 MB** | 11 → **13** |
+| `manifest/` | *(not listed)* | **22.5 MB** | — → **1** |
+| **TOTAL** | 69.2 GB | **69.7 GB** | 166,591 → **166,613** |
+
+Exact totals for the Django gate: **166,613 files / 74,817,394,070 bytes**. The whole refresh adds
+494,087,163 bytes (~0.46 GiB); `derived/` accounts for 469,469,854 of that, which is essentially all
+`figure_cache/` (457.6 MiB). Nothing was removed.
 
 What changed in the published data since 2026-07-20:
 
@@ -43,7 +54,8 @@ What changed in the published data since 2026-07-20:
   Figure 3 no longer needs the raw workbook.
 - **`derived/segment_deviation_examples/`** — the six Figure 4/5 example recordings' deviation partitions.
 - **`derived/v4a_work/v4a_spindle_results_v2.parquet`** — the §3.8 spindle checkpoint (601 rows).
-- **`derived/figure_cache/`** plus regenerated derived tables, which is most of the 5.4 GB growth.
+- **`derived/figure_cache/`** (3 objects, 457.6 MiB) plus regenerated derived tables — essentially all of the
+  0.46 GiB growth.
 
 Code side: the reproducibility certificate (`scripts/certify_reproducibility.py`, five checks, all passing),
 the journal artwork pipeline (`scripts/export_journal_figures.py`), review-comment analyses (`scripts/112`,
@@ -82,7 +94,8 @@ print(ap.slug, ap.version, ap.version_order)
   > the figure could not be reproduced at n=100). Adds the de-identified SAI-100 panel
   > (`derived/sai100_panel.parquet`), the Figure 4/5 example deviation partitions
   > (`derived/segment_deviation_examples/`), the §3.8 spindle checkpoint (`derived/v4a_work/`), and the figure
-  > cache, with the derived tables regenerated. `derived/` grows from 66.7 GB to 72.1 GB. No result in the
+  > cache, with the derived tables regenerated. `derived/` grows from 66.7 GB to 67.1 GB (164,718 to 164,735
+  > objects); the release totals 166,613 files and 69.7 GB. No result in the
   > paper changes; every figure, table and number now reproduces from this release plus the public code
   > repository, verified by `scripts/certify_reproducibility.py` (checks A–E, including a fresh-install
   > simulation).
@@ -90,7 +103,20 @@ print(ap.slug, ap.version, ap.version_order)
 - `content_description` → update the three sizes in the layout table to the "now" column of §2 above.
 
 **3c. Manifest** (hard publish gate, runbook gotcha #18 — the file alone is not enough; set every flag).
-Regenerate it, since the object count changed. Locally:
+
+> **Already done for you (2026-09-11).** All three files are generated and staged in
+> **`~/Desktop/GithubRepos/lens-v1.1.0-release/`**:
+>
+> | file | what it is | where it goes |
+> |---|---|---|
+> | `lens-v1.1.0-manifest.csv` | 21 MB, 166,613 rows, `path,file_size,etag,last_modified` | `scp` → `docker cp` → Django `manifest_file` |
+> | `bucket_manifest.csv` | directory summary, v1.0.0's schema and binary units | `s3://…/morgoth-slowing/bucket_manifest.csv` |
+> | `README.md` | v1.0.0's README with sizes corrected and the project URL filled in | `s3://…/morgoth-slowing/README.md` |
+>
+> Gate values: `manifest_total_files = 166613`, `manifest_total_size = 74817394070`.
+> Only regenerate if S3 has changed since; the script that built them is below.
+
+If you do need to rebuild it, locally:
 
 ```python
 import csv, io, boto3
@@ -105,14 +131,22 @@ for page in s3.get_paginator("list_objects_v2").paginate(Bucket=BUCKET, Prefix=P
         w.writerow([o["Key"][len(PREFIX)+1:], o["Size"], o["ETag"].strip('"'), o["LastModified"].isoformat()])
         n += 1; tot += o["Size"]
 open("/tmp/lens-v1.1.0-manifest.csv", "w").write(buf.getvalue())
-print(n, "files", tot, "bytes")     # expect ~166,600 files / ~74.8 GB
+print(n, "files", tot, "bytes")     # expect 166,613 files / 74,817,394,070 bytes
 ```
 
 Then `scp` → `docker cp` → attach in the Django shell with **all** the gate flags (runbook Phase 5 / Appendix).
 
-Also refresh the directory summary that lives in the bucket itself, `s3://…/morgoth-slowing/bucket_manifest.csv`
-— schema `prefix,n_files,size_bytes,size_human`, one row per top-level prefix — and the sizes in
-`s3://…/morgoth-slowing/README.md`, which still say 66.7 GB / 2.4 GB / 146 MB.
+Also refresh the two files that live in the bucket itself — both are staged, so this is just an upload
+(write keys from `AWSKeys/bdsp_opendata_write_accessKeys.csv`; `AWS_PROFILE=bidmc` is read-only):
+
+```bash
+REL=~/Desktop/GithubRepos/lens-v1.1.0-release
+aws s3 cp $REL/bucket_manifest.csv s3://bdsp-opendata-credentialed/morgoth-slowing/bucket_manifest.csv
+aws s3 cp $REL/README.md           s3://bdsp-opendata-credentialed/morgoth-slowing/README.md
+```
+
+Note `bucket_manifest.csv` is self-referential — uploading it changes the root prefix's size by a few hundred
+bytes. v1.0.0 had the same harmless skew; don't chase it.
 
 **3d. Publish + DOIs:** runbook Phases 6 and 7, unchanged. `publish()` does **not** mint DOIs (gotcha #6); use
 `event='publish'`, never `'register'` (gotcha #7); `update_doi` right after `register_doi` can 404 on DataCite
